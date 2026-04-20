@@ -63,8 +63,8 @@ public sealed record RankedTeamImportRowDto(
     string? Club,
     WaveDto Wave);
 
-public sealed record ImportPredefinedPoolsDto(Guid TournamentId, bool DryRun, IReadOnlyList<PredefinedPoolImportRowDto> Rows);
-public sealed record ImportRankedTeamsDto(Guid TournamentId, bool DryRun, RankedSeedStrategyDto Strategy, IReadOnlyList<RankedTeamImportRowDto> Rows);
+public sealed record ImportPredefinedPoolsDto(Guid TournamentId, IReadOnlyList<PredefinedPoolImportRowDto> Rows);
+public sealed record ImportRankedTeamsDto(Guid TournamentId, RankedSeedStrategyDto Strategy, IReadOnlyList<RankedTeamImportRowDto> Rows);
 
 public sealed record ImportErrorDto(int RowNumber, string Message);
 public sealed record ImportResultDto(int CreatedPools, int CreatedTeams, int UpdatedTeams, IReadOnlyList<ImportErrorDto> Errors);

@@ -42,8 +42,6 @@
             </MudStack>
         }
 
-        <MudSwitch T="bool" @bind-Value="_dryRun" Color="Color.Info" Label="Dry run (validate only)" />
-
         <MudText Typo="Typo.subtitle2">CSV upload</MudText>
         @if (_detectedMode == ImportMode.RankedTeams)
         {
@@ -171,7 +169,6 @@
     private enum ImportMode { PredefinedPools, RankedTeams }
 
     private string _csv = string.Empty;
-    private bool _dryRun;
     private bool _loading;
     private bool _dragActive;
     private string? _fileName;
@@ -237,19 +234,7 @@
             return Task.CompletedTask;
         }
 
-        if (_detectedMode == ImportMode.PredefinedPools)
-        {
-            _previewErrors = ParsePredefinedRows(_csv).Errors;
-            _rankedPoolPreview.Clear();
-        }
-        else
-        {
-            var parsed = ParseRankedRows(_csv);
-            _previewErrors = parsed.Errors;
-            _rankedPoolPreview = _previewErrors.Count == 0
-                ? BuildRankedPoolPreview(parsed.Rows)
-                : new List<RankedDivisionPreview>();
-        }
+        RunClientValidation();
 
         if (_previewErrors.Count == 0)
         {
@@ -276,6 +261,21 @@
             return;
         }
 
+        RunClientValidation();
+        if (_previewErrors.Count > 0)
+        {
+            Snackbar.Add("Fix validation errors before importing. Use Preview to review.", Severity.Warning);
+            return;
+        }
+
+        var ok = await DialogService.ShowMessageBox(
+            "Import",
+            "Apply this import to the selected tournament? This will create or update divisions, pools, and teams in the database.",
+            yesText: "Import",
+            cancelText: "Cancel");
+        if (ok != true)
+            return;
+
         _loading = true;
         _result = null;
         try
@@ -283,21 +283,28 @@
             if (_detectedMode == ImportMode.PredefinedPools)
             {
                 var parsed = ParsePredefinedRows(_csv);
-                _previewErrors = parsed.Errors;
-                if (parsed.Errors.Count > 0) return;
+                if (parsed.Errors.Count > 0)
+                {
+                    _previewErrors = parsed.Errors;
+                    Snackbar.Add("Validation failed.", Severity.Warning);
+                    return;
+                }
+
                 _result = await Api.Imports.ImportPredefinedPoolsAsync(
-                    new ImportPredefinedPoolsDto(TournamentStore.SelectedTournamentId.Value, _dryRun, parsed.Rows));
+                    new ImportPredefinedPoolsDto(TournamentStore.SelectedTournamentId.Value, parsed.Rows));
             }
             else
             {
                 var parsed = ParseRankedRows(_csv);
-                _previewErrors = parsed.Errors;
-                _rankedPoolPreview = parsed.Errors.Count == 0
-                    ? BuildRankedPoolPreview(parsed.Rows)
-                    : new List<RankedDivisionPreview>();
-                if (parsed.Errors.Count > 0) return;
+                if (parsed.Errors.Count > 0)
+                {
+                    _previewErrors = parsed.Errors;
+                    Snackbar.Add("Validation failed.", Severity.Warning);
+                    return;
+                }
+
                 _result = await Api.Imports.ImportRankedTeamsAsync(
-                    new ImportRankedTeamsDto(TournamentStore.SelectedTournamentId.Value, _dryRun, _strategy, parsed.Rows));
+                    new ImportRankedTeamsDto(TournamentStore.SelectedTournamentId.Value, _strategy, parsed.Rows));
             }
 
             Snackbar.Add(_result.Errors.Count == 0 ? "Import complete." : "Import finished with errors.", _result.Errors.Count == 0 ? Severity.Success : Severity.Warning);
@@ -309,6 +316,23 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private void RunClientValidation()
+    {
+        if (_detectedMode == ImportMode.PredefinedPools)
+        {
+            _previewErrors = ParsePredefinedRows(_csv).Errors;
+            _rankedPoolPreview.Clear();
+        }
+        else
+        {
+            var parsed = ParseRankedRows(_csv);
+            _previewErrors = parsed.Errors;
+            _rankedPoolPreview = _previewErrors.Count == 0
+                ? BuildRankedPoolPreview(parsed.Rows)
+                : new List<RankedDivisionPreview>();
         }
     }
 

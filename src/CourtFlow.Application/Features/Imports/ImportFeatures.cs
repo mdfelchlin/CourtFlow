@@ -29,8 +29,8 @@ public sealed record RankedTeamImportRow(
     string? Club,
     Wave Wave);
 
-public sealed record ImportPredefinedPoolsCommand(Guid TournamentId, bool DryRun, IReadOnlyList<PredefinedPoolImportRow> Rows) : IRequest<ImportResultDto>;
-public sealed record ImportRankedTeamsCommand(Guid TournamentId, bool DryRun, RankedSeedStrategy Strategy, IReadOnlyList<RankedTeamImportRow> Rows) : IRequest<ImportResultDto>;
+public sealed record ImportPredefinedPoolsCommand(Guid TournamentId, IReadOnlyList<PredefinedPoolImportRow> Rows) : IRequest<ImportResultDto>;
+public sealed record ImportRankedTeamsCommand(Guid TournamentId, RankedSeedStrategy Strategy, IReadOnlyList<RankedTeamImportRow> Rows) : IRequest<ImportResultDto>;
 
 public sealed class ImportPredefinedPoolsValidator : AbstractValidator<ImportPredefinedPoolsCommand>
 {
@@ -105,10 +105,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
                 division = new Division(tournament.OrganizationId, tournament.Id, row.DivisionName.Trim(), DivisionFormat.PoolPlusBracket, 64);
                 divisions.Add(division);
                 divisionByName[division.Name] = division;
-                if (!request.DryRun)
-                {
-                    _db.Divisions.Add(division);
-                }
+                _db.Divisions.Add(division);
             }
 
             var poolName = row.PoolName.Trim();
@@ -134,10 +131,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
                 pool = new Pool(division.OrganizationId, division.Id, poolName);
                 pools.Add(pool);
                 createdPools++;
-                if (!request.DryRun)
-                {
-                    _db.Pools.Add(pool);
-                }
+                _db.Pools.Add(pool);
             }
 
             var team = teams.FirstOrDefault(t =>
@@ -149,10 +143,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
                 team = new Team(division.OrganizationId, division.Id, teamName, row.Wave, pool.Id, row.Club, row.SeedHint);
                 teams.Add(team);
                 createdTeams++;
-                if (!request.DryRun)
-                {
-                    _db.Teams.Add(team);
-                }
+                _db.Teams.Add(team);
             }
             else
             {
@@ -164,7 +155,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
             }
         }
 
-        if (!request.DryRun && errors.Count == 0)
+        if (errors.Count == 0)
         {
             await _db.SaveChangesAsync(ct);
         }
@@ -223,10 +214,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                 division = new Division(tournament.OrganizationId, tournament.Id, divisionGroup.Key, DivisionFormat.PoolPlusBracket, 64);
                 divisions.Add(division);
                 divisionByName[division.Name] = division;
-                if (!request.DryRun)
-                {
-                    _db.Divisions.Add(division);
-                }
+                _db.Divisions.Add(division);
             }
             var ordered = divisionGroup.OrderBy(r => r.Rank).ToList();
             var poolSizes = BuildPoolSizes(ordered.Count);
@@ -251,10 +239,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                     pool = new Pool(division.OrganizationId, division.Id, name);
                     pools.Add(pool);
                     createdPools++;
-                    if (!request.DryRun)
-                    {
-                        _db.Pools.Add(pool);
-                    }
+                    _db.Pools.Add(pool);
                 }
                 divisionPools.Add(pool);
             }
@@ -280,10 +265,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                     team = new Team(division.OrganizationId, division.Id, row.TeamName.Trim(), row.Wave, pool.Id, row.Club, row.Rank);
                     teams.Add(team);
                     createdTeams++;
-                    if (!request.DryRun)
-                    {
-                        _db.Teams.Add(team);
-                    }
+                    _db.Teams.Add(team);
                 }
                 else
                 {
@@ -296,7 +278,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
             }
         }
 
-        if (!request.DryRun && errors.Count == 0)
+        if (errors.Count == 0)
         {
             await _db.SaveChangesAsync(ct);
         }

@@ -33,7 +33,6 @@ public class ImportFeaturesTests
         var result = await handler.Handle(
             new ImportRankedTeamsCommand(
                 tournament.Id,
-                DryRun: false,
                 Strategy: RankedSeedStrategy.Snake,
                 Rows: new[]
                 {
@@ -78,7 +77,6 @@ public class ImportFeaturesTests
         var result = await handler.Handle(
             new ImportRankedTeamsCommand(
                 tournament.Id,
-                DryRun: false,
                 Strategy: RankedSeedStrategy.Snake,
                 Rows: new[]
                 {
@@ -123,7 +121,6 @@ public class ImportFeaturesTests
         var result = await handler.Handle(
             new ImportRankedTeamsCommand(
                 tournament.Id,
-                DryRun: false,
                 Strategy: RankedSeedStrategy.Snake,
                 Rows: new[]
                 {
@@ -149,7 +146,6 @@ public class ImportFeaturesTests
         var result = await handler.Handle(
             new ImportPredefinedPoolsCommand(
                 tournament.Id,
-                DryRun: false,
                 Rows: new[]
                 {
                     new PredefinedPoolImportRow(2, "Unknown", "Pool A", "Team A", null, Wave.AM, 1),
@@ -178,7 +174,6 @@ public class ImportFeaturesTests
         var result = await handler.Handle(
             new ImportPredefinedPoolsCommand(
                 tournament.Id,
-                DryRun: false,
                 Rows: new[]
                 {
                     new PredefinedPoolImportRow(2, "Men's Open", "Pool A", "Team A", null, Wave.AM, 1),

@@ -20,7 +20,6 @@ public class ImportsController : ControllerBase
     {
         var cmd = new ImportPredefinedPoolsCommand(
             request.TournamentId,
-            request.DryRun,
             request.Rows.Select(r => new PredefinedPoolImportRow(
                 r.RowNumber,
                 r.DivisionName,
@@ -38,7 +37,6 @@ public class ImportsController : ControllerBase
     {
         var cmd = new ImportRankedTeamsCommand(
             request.TournamentId,
-            request.DryRun,
             request.Strategy,
             request.Rows.Select(r => new RankedTeamImportRow(
                 r.RowNumber,
@@ -52,8 +50,8 @@ public class ImportsController : ControllerBase
     }
 }
 
-public sealed record ImportPredefinedPoolsRequest(Guid TournamentId, bool DryRun, IReadOnlyList<ImportPredefinedPoolRowRequest> Rows);
+public sealed record ImportPredefinedPoolsRequest(Guid TournamentId, IReadOnlyList<ImportPredefinedPoolRowRequest> Rows);
 public sealed record ImportPredefinedPoolRowRequest(int RowNumber, string DivisionName, string PoolName, string TeamName, string? Club, Wave Wave, int? SeedHint);
 
-public sealed record ImportRankedTeamsRequest(Guid TournamentId, bool DryRun, RankedSeedStrategy Strategy, IReadOnlyList<ImportRankedTeamRowRequest> Rows);
+public sealed record ImportRankedTeamsRequest(Guid TournamentId, RankedSeedStrategy Strategy, IReadOnlyList<ImportRankedTeamRowRequest> Rows);
 public sealed record ImportRankedTeamRowRequest(int RowNumber, string DivisionName, int Rank, string TeamName, string? Club, Wave Wave);
