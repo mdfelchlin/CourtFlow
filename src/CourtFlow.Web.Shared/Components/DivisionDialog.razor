@@ -1,0 +1,56 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack>
+            <MudTextField @bind-Value="_name" Label="Name" Required="true" />
+            <MudSelect T="DivisionFormatDto" @bind-Value="_format" Label="Format" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
+                <MudSelectItem Value="DivisionFormatDto.PoolOnly">Pool only</MudSelectItem>
+                <MudSelectItem Value="DivisionFormatDto.PoolPlusBracket">Pool + bracket</MudSelectItem>
+                <MudSelectItem Value="DivisionFormatDto.BracketOnly">Bracket only</MudSelectItem>
+            </MudSelect>
+            <MudNumericField @bind-Value="_maxTeams" Label="Max teams" Min="2" Max="128" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public DivisionDto? Existing { get; set; }
+    [Parameter] public Guid TournamentId { get; set; }
+
+    private string _name = "";
+    private DivisionFormatDto _format = DivisionFormatDto.PoolPlusBracket;
+    private int _maxTeams = 16;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            _name = Existing.Name;
+            _format = Existing.Format;
+            _maxTeams = Existing.MaxTeams;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            if (Existing is null)
+                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name, _format, _maxTeams));
+            else
+                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name, _format, _maxTeams));
+            Snackbar.Add("Saved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

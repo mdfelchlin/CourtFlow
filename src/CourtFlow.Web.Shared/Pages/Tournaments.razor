@@ -1,0 +1,58 @@
+@page "/tournaments"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Tournaments · CourtFlow</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+    <MudText Typo="Typo.h4">Tournaments</MudText>
+    <CfToolbarAddButton OnClick="New" AriaLabel="Add tournament" />
+</MudStack>
+
+<MudDataGrid T="TournamentDto" Items="_items" Loading="_loading" Dense="true" Hover="true" Striped="true">
+    <Columns>
+        <PropertyColumn Property="x => x.Name" Title="Name" />
+        <PropertyColumn Property="x => x.StartDate" Title="Start" />
+        <PropertyColumn Property="x => x.EndDate" Title="End" />
+        <TemplateColumn Title="Time zone">
+            <CellTemplate>@TimeZoneOptions.Label(context.Item.TimeZoneId)</CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.DefaultMatchDurationMinutes" Title="Match (min)" />
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Edit tournament" OnClick="@(() => Edit(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Delete tournament" OnClick="@(() => DeleteAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private IReadOnlyList<TournamentDto> _items = Array.Empty<TournamentDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try { _items = await Api.Tournaments.ListAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        _loading = false;
+    }
+
+    private void New() => Nav.NavigateTo("/tournaments/new");
+
+    private void Edit(TournamentDto t) => Nav.NavigateTo($"/tournaments/{t.Id}");
+
+    private async Task DeleteAsync(TournamentDto t)
+    {
+        var ok = await DialogService.ShowMessageBox("Delete tournament", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        if (ok != true) return;
+        try { await Api.Tournaments.DeleteAsync(t.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

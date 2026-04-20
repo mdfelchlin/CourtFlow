@@ -1,0 +1,171 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="Name" Required="true" />
+            <MudTextField @bind-Value="_address" Label="Address" Lines="2" />
+
+            <MudDivider />
+
+            <MudText Typo="Typo.subtitle2">Courts</MudText>
+
+            @if (_courts.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                    No courts yet. Add one below.
+                </MudAlert>
+            }
+            else
+            {
+                <MudList T="CourtRow" Dense="true">
+                    @foreach (var row in _courts)
+                    {
+                        <MudListItem T="CourtRow">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.SportsVolleyball" Size="Size.Small" />
+                                    <MudText Typo="Typo.body2">@row.Name</MudText>
+                                </MudStack>
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Delete"
+                                    Color="Color.Error"
+                                    Size="Size.Small"
+                                    aria-label="Remove court"
+                                    OnClick="@(() => RemoveCourt(row))" />
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudTextField @bind-Value="_newCourtName" Label="New court name" Immediate="true" OnKeyDown="OnCourtKeyDown" />
+                <CfToolbarAddButton OnClick="AddCourt"
+                                    Disabled="@(string.IsNullOrWhiteSpace(_newCourtName))"
+                                    AriaLabel="Add court" />
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="_saving">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public VenueDto? Existing { get; set; }
+    [Parameter] public Guid TournamentId { get; set; }
+
+    private string _name = "";
+    private string? _address;
+    private string _newCourtName = "";
+    private bool _saving;
+
+    private readonly List<CourtRow> _courts = new();
+    private readonly HashSet<Guid> _originalCourtIds = new();
+
+    private sealed class CourtRow
+    {
+        public Guid? Id { get; set; }
+        public string Name { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Existing is not null)
+        {
+            _name = Existing.Name;
+            _address = Existing.Address;
+
+            try
+            {
+                var existingCourts = await Api.Courts.ListAsync(Existing.Id);
+                foreach (var c in existingCourts.OrderBy(c => c.Name))
+                {
+                    _courts.Add(new CourtRow { Id = c.Id, Name = c.Name });
+                    _originalCourtIds.Add(c.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to load courts: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void AddCourt()
+    {
+        var trimmed = (_newCourtName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(trimmed)) return;
+        if (_courts.Any(c => string.Equals(c.Name, trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("A court with that name already exists.", Severity.Warning);
+            return;
+        }
+        _courts.Add(new CourtRow { Id = null, Name = trimmed });
+        _newCourtName = "";
+    }
+
+    private void OnCourtKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddCourt();
+        }
+    }
+
+    private void RemoveCourt(CourtRow row) => _courts.Remove(row);
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Name is required.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            Guid venueId;
+            if (Existing is null)
+            {
+                var created = await Api.Venues.CreateAsync(new CreateVenueDto(TournamentId, _name.Trim(), _address));
+                venueId = created.Id;
+            }
+            else
+            {
+                var updated = await Api.Venues.UpdateAsync(new UpdateVenueDto(Existing.Id, _name.Trim(), _address));
+                venueId = updated.Id;
+            }
+
+            var keptIds = _courts.Where(c => c.Id.HasValue).Select(c => c.Id!.Value).ToHashSet();
+            var toDelete = _originalCourtIds.Where(id => !keptIds.Contains(id)).ToList();
+            foreach (var id in toDelete)
+            {
+                await Api.Courts.DeleteAsync(id);
+            }
+
+            foreach (var row in _courts.Where(c => c.Id is null))
+            {
+                await Api.Courts.CreateAsync(new CreateCourtDto(venueId, row.Name, Array.Empty<string>()));
+            }
+
+            Snackbar.Add("Saved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

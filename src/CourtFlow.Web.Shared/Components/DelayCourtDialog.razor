@@ -1,0 +1,34 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">Delay all upcoming matches on <b>@CourtName</b>.</MudText>
+        <MudNumericField @bind-Value="_slots" Label="Slots to delay (each = default match duration)" Min="1" Max="20" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="Confirm">Delay</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid CourtId { get; set; }
+    [Parameter] public string CourtName { get; set; } = "";
+
+    private int _slots = 1;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Confirm()
+    {
+        try
+        {
+            await Api.Courts.DelayAsync(CourtId, _slots);
+            Snackbar.Add("Delay applied", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

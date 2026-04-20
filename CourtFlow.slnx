@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CourtFlow.Api/CourtFlow.Api.csproj" />
+    <Project Path="src/CourtFlow.ApiClient/CourtFlow.ApiClient.csproj" />
+    <Project Path="src/CourtFlow.Application/CourtFlow.Application.csproj" />
+    <Project Path="src/CourtFlow.Domain/CourtFlow.Domain.csproj" />
+    <Project Path="src/CourtFlow.Infrastructure/CourtFlow.Infrastructure.csproj" />
+    <Project Path="src/CourtFlow.Web.Shared/CourtFlow.Web.Shared.csproj" />
+    <Project Path="src/CourtFlow.Web/CourtFlow.Web.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,551 @@
+@page "/tournaments/new"
+@page "/tournaments/{Id:guid}"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>@(_current is null ? "New tournament" : $"{_current.Name} · CourtFlow")</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   aria-label="Back to tournaments"
+                   OnClick="@(() => Nav.NavigateTo("/tournaments"))" />
+    <MudText Typo="Typo.h4">@(_current is null ? "New tournament" : _current.Name)</MudText>
+</MudStack>
+
+@if (_loadFailed)
+{
+    <MudAlert Severity="Severity.Error">Tournament not found.</MudAlert>
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudPaper Class="pa-5" Elevation="1">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">Details</MudText>
+                <MudTextField @bind-Value="_name" Label="Name" Required="true" />
+                <MudTextField @bind-Value="_description" Label="Description" Lines="2" />
+                <MudStack Row="true" Spacing="3">
+                    <MudDatePicker @bind-Date="_startDate" Label="Start date" />
+                    <MudDatePicker @bind-Date="_endDate" Label="End date" />
+                </MudStack>
+                <MudStack Row="true" Spacing="3">
+                    <MudSelect T="string" @bind-Value="_tz" Label="Time zone" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--lg"
+                               ToStringFunc="@(id => TimeZoneOptions.Label(id))">
+                        @foreach (var tz in TimeZoneOptions.All)
+                        {
+                            <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudNumericField @bind-Value="_duration" Label="Default match duration (min)" Min="15" Max="240" />
+                </MudStack>
+                <MudStack Row="true" Justify="Justify.FlexEnd">
+                    <MudButton
+                        Color="Color.Primary"
+                        Variant="Variant.Filled"
+                        StartIcon="@Icons.Material.Filled.Save"
+                        OnClick="SaveDetailsAsync"
+                        Disabled="_savingDetails">
+                        Save details
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        @if (_current is not null)
+        {
+            <MudPaper Class="pa-5" Elevation="1">
+                <MudStack Spacing="3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">Venues &amp; courts</MudText>
+                        <CfToolbarAddButton OnClick="AddVenueAsync" AriaLabel="Add venue" />
+                    </MudStack>
+
+                    @if (_loadingVenues)
+                    {
+                        <MudProgressLinear Indeterminate="true" />
+                    }
+                    else if (_venues.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                            No venues yet. Use Add above.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudExpansionPanels MultiExpansion="true">
+                            @foreach (var v in _venues)
+                            {
+                                <MudExpansionPanel>
+                                    <TitleContent>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.subtitle1">@v.Name</MudText>
+                                                @if (!string.IsNullOrWhiteSpace(v.Address))
+                                                {
+                                                    <MudText Typo="Typo.caption">@v.Address</MudText>
+                                                }
+                                                <MudText Typo="Typo.caption" Class="mt-1">
+                                                    @CourtsFor(v.Id).Count court(s)
+                                                </MudText>
+                                            </MudStack>
+                                            <div @onclick:stopPropagation="true">
+                                                <MudStack Row="true" Spacing="0">
+                                                    <MudIconButton
+                                                        Icon="@Icons.Material.Filled.Edit"
+                                                        Size="Size.Small"
+                                                        aria-label="Edit venue"
+                                                        OnClick="@(() => EditVenueAsync(v))" />
+                                                    <MudIconButton
+                                                        Icon="@Icons.Material.Filled.Delete"
+                                                        Color="Color.Error"
+                                                        Size="Size.Small"
+                                                        aria-label="Delete venue"
+                                                        OnClick="@(() => DeleteVenueAsync(v))" />
+                                                </MudStack>
+                                            </div>
+                                        </MudStack>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <MudStack Spacing="2">
+                                            @if (CourtsFor(v.Id).Count == 0)
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">No courts yet.</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudList T="CourtDto" Dense="true">
+                                                    @foreach (var c in CourtsFor(v.Id))
+                                                    {
+                                                        <MudListItem T="CourtDto">
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.SportsVolleyball" Size="Size.Small" />
+                                                                    <MudText Typo="Typo.body2">@c.Name</MudText>
+                                                                </MudStack>
+                                                                <MudIconButton
+                                                                    Icon="@Icons.Material.Filled.Delete"
+                                                                    Color="Color.Error"
+                                                                    Size="Size.Small"
+                                                                    aria-label="Delete court"
+                                                                    OnClick="@(() => DeleteCourtAsync(v.Id, c))" />
+                                                            </MudStack>
+                                                        </MudListItem>
+                                                    }
+                                                </MudList>
+                                            }
+
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudTextField
+                                                    Value="@GetNewCourtName(v.Id)"
+                                                    ValueChanged="@((string s) => SetNewCourtName(v.Id, s))"
+                                                    T="string"
+                                                    Label="New court name"
+                                                    Immediate="true"
+                                                    OnKeyDown="@((KeyboardEventArgs e) => OnCourtKeyDown(v.Id, e))" />
+                                                <CfToolbarAddButton OnClick="@(() => AddCourtAsync(v.Id))"
+                                                                    Disabled="@string.IsNullOrWhiteSpace(GetNewCourtName(v.Id))"
+                                                                    AriaLabel="Add court" />
+                                            </MudStack>
+                                        </MudStack>
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            }
+                        </MudExpansionPanels>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="pa-5" Elevation="1">
+                <MudStack Spacing="3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">Divisions</MudText>
+                        <CfToolbarAddButton OnClick="AddDivisionAsync" AriaLabel="Add division" />
+                    </MudStack>
+
+                    @if (_loadingDivisions)
+                    {
+                        <MudProgressLinear Indeterminate="true" />
+                    }
+                    else if (_divisions.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                            No divisions yet. Use Add above.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudList T="DivisionDto" Dense="true">
+                            @foreach (var d in _divisions)
+                            {
+                                <MudListItem T="DivisionDto">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
+                                        <MudText Typo="Typo.body1">@d.Name</MudText>
+                                        <MudStack Row="true" Spacing="0">
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.OpenInNew"
+                                                Size="Size.Small"
+                                                aria-label="Manage division"
+                                                OnClick="@(() => ManageDivision(d))" />
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Delete"
+                                                Color="Color.Error"
+                                                Size="Size.Small"
+                                                aria-label="Delete division"
+                                                OnClick="@(() => DeleteDivisionAsync(d))" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                Save tournament details to manage venues, courts, and divisions.
+            </MudAlert>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private TournamentDto? _current;
+    private bool _loadFailed;
+    private bool _savingDetails;
+    private bool _loadingVenues;
+
+    private string _name = "";
+    private string? _description;
+    private DateTime? _startDate = DateTime.Today;
+    private DateTime? _endDate = DateTime.Today.AddDays(1);
+    private string _tz = TimeZoneOptions.DefaultId;
+    private int _duration = 60;
+
+    private List<VenueDto> _venues = new();
+    private Dictionary<Guid, List<CourtDto>> _courtsByVenue = new();
+    private Dictionary<Guid, string> _newCourtNameByVenue = new();
+
+    private List<DivisionDto> _divisions = new();
+    private bool _loadingDivisions;
+
+    private Guid? _lastLoadedId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null)
+        {
+            if (_current is not null)
+            {
+                ResetNew();
+            }
+            return;
+        }
+
+        if (_lastLoadedId == Id) return;
+
+        _lastLoadedId = Id;
+        await LoadTournamentAsync(Id.Value);
+        if (_current is not null)
+        {
+            await ReloadVenuesAsync();
+            await ReloadDivisionsAsync();
+        }
+    }
+
+    private void ResetNew()
+    {
+        _current = null;
+        _name = "";
+        _description = null;
+        _startDate = DateTime.Today;
+        _endDate = DateTime.Today.AddDays(1);
+        _tz = TimeZoneOptions.DefaultId;
+        _duration = 60;
+        _venues = new();
+        _courtsByVenue = new();
+        _newCourtNameByVenue = new();
+        _divisions = new();
+    }
+
+    private async Task LoadTournamentAsync(Guid id)
+    {
+        try
+        {
+            var t = await Api.Tournaments.GetAsync(id);
+            if (t is null)
+            {
+                _loadFailed = true;
+                return;
+            }
+            _current = t;
+            _name = t.Name;
+            _description = t.Description;
+            _startDate = t.StartDate.ToDateTime(TimeOnly.MinValue);
+            _endDate = t.EndDate.ToDateTime(TimeOnly.MinValue);
+            _tz = t.TimeZoneId;
+            _duration = t.DefaultMatchDurationMinutes;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _loadFailed = true;
+        }
+    }
+
+    private async Task SaveDetailsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Name is required.", Severity.Warning);
+            return;
+        }
+
+        _savingDetails = true;
+        try
+        {
+            var start = DateOnly.FromDateTime(_startDate ?? DateTime.Today);
+            var end = DateOnly.FromDateTime(_endDate ?? DateTime.Today);
+
+            if (_current is null)
+            {
+                var created = await Api.Tournaments.CreateAsync(
+                    new CreateTournamentDto(_name.Trim(), _description, start, end, _tz, _duration));
+                _current = created;
+                _lastLoadedId = created.Id;
+                Snackbar.Add("Tournament created", Severity.Success);
+                await ReloadVenuesAsync();
+                await ReloadDivisionsAsync();
+                Nav.NavigateTo($"/tournaments/{created.Id}", replace: true);
+            }
+            else
+            {
+                var updated = await Api.Tournaments.UpdateAsync(
+                    new UpdateTournamentDto(_current.Id, _name.Trim(), _description, start, end, _tz, _duration, _current.TournamentPartnerId));
+                _current = updated;
+                Snackbar.Add("Saved", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _savingDetails = false;
+        }
+    }
+
+    private async Task ReloadVenuesAsync()
+    {
+        if (_current is null) return;
+        _loadingVenues = true;
+        try
+        {
+            var venues = await Api.Venues.ListAsync(_current.Id);
+            _venues = venues.OrderBy(v => v.Name).ToList();
+            var map = new Dictionary<Guid, List<CourtDto>>();
+            foreach (var v in _venues)
+            {
+                var courts = await Api.Courts.ListAsync(v.Id);
+                map[v.Id] = courts.OrderBy(c => c.Name).ToList();
+                if (!_newCourtNameByVenue.ContainsKey(v.Id))
+                {
+                    _newCourtNameByVenue[v.Id] = "";
+                }
+            }
+            _courtsByVenue = map;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loadingVenues = false;
+        }
+    }
+
+    private IReadOnlyList<CourtDto> CourtsFor(Guid venueId) =>
+        _courtsByVenue.TryGetValue(venueId, out var list) ? list : (IReadOnlyList<CourtDto>)Array.Empty<CourtDto>();
+
+    private string GetNewCourtName(Guid venueId) =>
+        _newCourtNameByVenue.TryGetValue(venueId, out var s) ? s : "";
+
+    private void SetNewCourtName(Guid venueId, string value) =>
+        _newCourtNameByVenue[venueId] = value ?? "";
+
+    private void OnCourtKeyDown(Guid venueId, KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _ = AddCourtAsync(venueId);
+        }
+    }
+
+    private async Task AddCourtAsync(Guid venueId)
+    {
+        var name = GetNewCourtName(venueId).Trim();
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var existing = CourtsFor(venueId);
+        if (existing.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("A court with that name already exists.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await Api.Courts.CreateAsync(new CreateCourtDto(venueId, name, Array.Empty<string>()));
+            SetNewCourtName(venueId, "");
+            await ReloadVenuesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteCourtAsync(Guid venueId, CourtDto court)
+    {
+        var ok = await DialogService.ShowMessageBox(
+            "Delete court",
+            $"Delete '{court.Name}'?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+        if (ok != true) return;
+
+        try
+        {
+            await Api.Courts.DeleteAsync(court.Id);
+            Snackbar.Add("Deleted", Severity.Success);
+            await ReloadVenuesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AddVenueAsync()
+    {
+        if (_current is null) return;
+
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = _current.Id
+        };
+        var dialog = await DialogService.ShowAsync<VenueDialog>("Add venue", parms);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await ReloadVenuesAsync();
+        }
+    }
+
+    private async Task EditVenueAsync(VenueDto v)
+    {
+        if (_current is null) return;
+
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = _current.Id,
+            ["Existing"] = v
+        };
+        var dialog = await DialogService.ShowAsync<VenueDialog>("Edit venue", parms);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await ReloadVenuesAsync();
+        }
+    }
+
+    private async Task DeleteVenueAsync(VenueDto v)
+    {
+        var ok = await DialogService.ShowMessageBox(
+            "Delete venue",
+            $"Delete '{v.Name}' and all of its courts?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+        if (ok != true) return;
+
+        try
+        {
+            await Api.Venues.DeleteAsync(v.Id);
+            Snackbar.Add("Deleted", Severity.Success);
+            await ReloadVenuesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ReloadDivisionsAsync()
+    {
+        if (_current is null) return;
+        _loadingDivisions = true;
+        try
+        {
+            var divisions = await Api.Divisions.ListAsync(_current.Id);
+            _divisions = divisions.OrderBy(d => d.Name).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loadingDivisions = false;
+        }
+    }
+
+    private async Task AddDivisionAsync()
+    {
+        if (_current is null) return;
+
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = _current.Id
+        };
+        var dialog = await DialogService.ShowAsync<DivisionDialog>("Add division", parms);
+        if ((await dialog.Result) is { Canceled: false })
+        {
+            await ReloadDivisionsAsync();
+        }
+    }
+
+    private async Task DeleteDivisionAsync(DivisionDto d)
+    {
+        var ok = await DialogService.ShowMessageBox(
+            "Delete division",
+            $"Delete '{d.Name}'?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+        if (ok != true) return;
+
+        try
+        {
+            await Api.Divisions.DeleteAsync(d.Id);
+            Snackbar.Add("Deleted", Severity.Success);
+            await ReloadDivisionsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void ManageDivision(DivisionDto d)
+    {
+        if (_current is null) return;
+        Nav.NavigateTo($"/divisions?tournamentId={_current.Id}&divisionId={d.Id}");
+    }
+}

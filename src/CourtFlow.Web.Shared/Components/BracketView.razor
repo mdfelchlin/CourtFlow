@@ -1,0 +1,56 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_data is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <div class="bracket-view" style="display:flex; overflow-x:auto; gap:48px; padding:8px;">
+        @foreach (var (branch, rounds) in _rounds)
+        {
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@branch</MudText>
+                <div style="display:flex; gap:16px;">
+                    @foreach (var round in rounds)
+                    {
+                        <div style="display:flex; flex-direction:column; gap:12px; min-width:180px;">
+                            <MudText Typo="Typo.caption">R@(round.Round)</MudText>
+                            @foreach (var n in round.Nodes)
+                            {
+                                <MudPaper Outlined="true" Class="pa-2" Elevation="0">
+                                    <MudText Typo="Typo.body2">@(n.HomeSeed is null ? "-" : $"#{n.HomeSeed}") @TeamName(n.HomeTeamId)</MudText>
+                                    <MudText Typo="Typo.body2">@(n.AwaySeed is null ? "-" : $"#{n.AwaySeed}") @TeamName(n.AwayTeamId)</MudText>
+                                </MudPaper>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid BracketId { get; set; }
+
+    private BracketWithNodesDto? _data;
+    private Dictionary<Guid, string> _teamNames = new();
+    private List<(string Branch, List<(int Round, List<BracketNodeDto> Nodes)>)> _rounds = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _data = await Api.Brackets.GetAsync(BracketId);
+        if (_data is null) return;
+        var teams = await Api.Teams.ListAsync(_data.Bracket.DivisionId);
+        _teamNames = teams.ToDictionary(t => t.Id, t => t.Name);
+        _rounds = _data.Nodes
+            .GroupBy(n => n.Branch)
+            .OrderBy(g => g.Key)
+            .Select(g => (g.Key.ToString(), g.GroupBy(n => n.Round).OrderBy(r => r.Key).Select(r => (r.Key, r.OrderBy(x => x.Slot).ToList())).ToList()))
+            .ToList();
+    }
+
+    private string TeamName(Guid? id) => id is null ? "TBD" : (_teamNames.TryGetValue(id.Value, out var n) ? n : "?");
+}

@@ -1,0 +1,318 @@
+@page "/events/{Id:guid}"
+@layout PublicLayout
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>@(_event?.Name ?? "Event") · CourtFlow</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_event is null)
+{
+    <MudPaper Class="pa-8" Outlined="true">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6">Event not found</MudText>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/">Back to events</MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudBreadcrumbs Items="_crumbs" />
+
+        <MudPaper Elevation="0" Class="pa-6" Outlined="true">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudText Typo="Typo.h4">@_event.Name</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@StatusColor" Variant="Variant.Filled">@StatusLabel</MudChip>
+                </MudStack>
+                <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_event.OrganizationName</MudText>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">@FormatDates(_event.StartDate, _event.EndDate)</MudText>
+                </MudStack>
+                @if (!string.IsNullOrWhiteSpace(_event.Description))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">@_event.Description</MudText>
+                }
+                <MudStack Row="true" Spacing="6" Class="mt-2">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Venues</MudText>
+                        <MudText Typo="Typo.h6">@_event.Venues.Count</MudText>
+                    </MudStack>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Divisions</MudText>
+                        <MudText Typo="Typo.h6">@_event.Divisions.Count</MudText>
+                    </MudStack>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Teams</MudText>
+                        <MudText Typo="Typo.h6">@_event.Divisions.Sum(d => d.TeamCount)</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <MudTabs Elevation="0" Outlined="true" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" ActivePanelIndexChanged="OnTabChanged">
+            <MudTabPanel Text="Schedule" Icon="@Icons.Material.Filled.CalendarViewWeek">
+                @if (_scheduleLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (_schedule is null || _schedule.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Schedule hasn't been published yet.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="_schedule" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Time</MudTh>
+                            <MudTh>Court</MudTh>
+                            <MudTh>Division</MudTh>
+                            <MudTh>Match</MudTh>
+                            <MudTh>State</MudTh>
+                            <MudTh>Score</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.ScheduledStartUtc.ToLocalTime().ToString("MMM d · HH:mm")</MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2">@(context.CourtName ?? "-")</MudText>
+                                @if (!string.IsNullOrWhiteSpace(context.VenueName))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.VenueName</MudText>
+                                }
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2">@context.DivisionName</MudText>
+                                @if (!string.IsNullOrWhiteSpace(context.PoolName))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Pool @context.PoolName</MudText>
+                                }
+                            </MudTd>
+                            <MudTd>@(context.HomeTeamName ?? "TBD") vs @(context.AwayTeamName ?? "TBD")</MudTd>
+                            <MudTd><MudChip T="string" Size="Size.Small" Color="@StateColor(context.State)">@context.State</MudChip></MudTd>
+                            <MudTd>@FormatScore(context)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Brackets" Icon="@Icons.Material.Filled.AccountTree">
+                @if (_bracketsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (_brackets is null || _brackets.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No brackets have been generated for this event yet.</MudAlert>
+                }
+                else
+                {
+                    @foreach (var b in _brackets)
+                    {
+                        <MudPaper Outlined="true" Class="pa-4 mb-4">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary" />
+                                <MudText Typo="Typo.h6">@b.DivisionName</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@b.Type</MudChip>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@b.TeamCapacity teams</MudChip>
+                            </MudStack>
+                            <MudTable Items="b.Nodes.OrderBy(n => n.Round).ThenBy(n => n.Slot)" Dense="true" Hover="true">
+                                <HeaderContent>
+                                    <MudTh>Round</MudTh>
+                                    <MudTh>Slot</MudTh>
+                                    <MudTh>Branch</MudTh>
+                                    <MudTh>Matchup</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Round</MudTd>
+                                    <MudTd>@context.Slot</MudTd>
+                                    <MudTd>@context.Branch</MudTd>
+                                    <MudTd>
+                                        @(context.HomeTeamName ?? (context.HomeSeed.HasValue ? $"Seed {context.HomeSeed}" : "TBD"))
+                                        <span class="mud-typography mud-typography-caption mx-2" style="opacity:0.7;">vs</span>
+                                        @(context.AwayTeamName ?? (context.AwaySeed.HasValue ? $"Seed {context.AwaySeed}" : "TBD"))
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    }
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Standings" Icon="@Icons.Material.Filled.Leaderboard">
+                @if (_standingsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (_standings is null || _standings.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Standings appear once pool matches are scored.</MudAlert>
+                }
+                else
+                {
+                    @foreach (var pool in _standings)
+                    {
+                        <MudPaper Outlined="true" Class="pa-4 mb-4">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Color="Color.Primary" />
+                                <MudText Typo="Typo.h6">@pool.DivisionName</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Pool @pool.PoolName</MudChip>
+                            </MudStack>
+                            <MudTable Items="pool.Rows" Dense="true" Hover="true">
+                                <HeaderContent>
+                                    <MudTh>#</MudTh>
+                                    <MudTh>Team</MudTh>
+                                    <MudTh>MP</MudTh>
+                                    <MudTh>W</MudTh>
+                                    <MudTh>L</MudTh>
+                                    <MudTh>Sets</MudTh>
+                                    <MudTh>Set %</MudTh>
+                                    <MudTh>Point %</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Rank</MudTd>
+                                    <MudTd>@context.TeamName</MudTd>
+                                    <MudTd>@context.MatchesPlayed</MudTd>
+                                    <MudTd>@context.MatchWins</MudTd>
+                                    <MudTd>@context.MatchLosses</MudTd>
+                                    <MudTd>@context.SetsWon-@context.SetsLost</MudTd>
+                                    <MudTd>@context.SetPercentage.ToString("P0")</MudTd>
+                                    <MudTd>@context.PointPercentage.ToString("P0")</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    }
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CourtFlow.ApiClient.PublicEventDetailDto? _event;
+    private bool _loading = true;
+
+    private IReadOnlyList<CourtFlow.ApiClient.PublicMatchDto>? _schedule;
+    private IReadOnlyList<CourtFlow.ApiClient.PublicBracketDto>? _brackets;
+    private IReadOnlyList<CourtFlow.ApiClient.PublicPoolStandingsDto>? _standings;
+    private bool _scheduleLoading;
+    private bool _bracketsLoading;
+    private bool _standingsLoading;
+
+    private List<BreadcrumbItem> _crumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _event = await Api.PublicEvents.GetAsync(Id);
+        }
+        catch
+        {
+            _event = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_event is not null)
+        {
+            _crumbs = new List<BreadcrumbItem>
+            {
+                new("Events", href: "/"),
+                new(_event.Name, href: null, disabled: true)
+            };
+            await LoadScheduleAsync();
+        }
+    }
+
+    private async Task LoadScheduleAsync()
+    {
+        if (_schedule is not null || _scheduleLoading) return;
+        _scheduleLoading = true;
+        try { _schedule = await Api.PublicEvents.GetScheduleAsync(Id); }
+        catch { _schedule = Array.Empty<CourtFlow.ApiClient.PublicMatchDto>(); }
+        finally { _scheduleLoading = false; }
+    }
+
+    private async Task LoadBracketsAsync()
+    {
+        if (_brackets is not null || _bracketsLoading) return;
+        _bracketsLoading = true;
+        try { _brackets = await Api.PublicEvents.GetBracketsAsync(Id); }
+        catch { _brackets = Array.Empty<CourtFlow.ApiClient.PublicBracketDto>(); }
+        finally { _bracketsLoading = false; }
+    }
+
+    private async Task LoadStandingsAsync()
+    {
+        if (_standings is not null || _standingsLoading) return;
+        _standingsLoading = true;
+        try { _standings = await Api.PublicEvents.GetStandingsAsync(Id); }
+        catch { _standings = Array.Empty<CourtFlow.ApiClient.PublicPoolStandingsDto>(); }
+        finally { _standingsLoading = false; }
+    }
+
+    private async Task OnTabChanged(int index)
+    {
+        switch (index)
+        {
+            case 0: await LoadScheduleAsync(); break;
+            case 1: await LoadBracketsAsync(); break;
+            case 2: await LoadStandingsAsync(); break;
+        }
+    }
+
+    private string StatusLabel
+    {
+        get
+        {
+            if (_event is null) return string.Empty;
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (today < _event.StartDate) return "Upcoming";
+            if (today > _event.EndDate) return "Completed";
+            return "Live";
+        }
+    }
+
+    private Color StatusColor
+    {
+        get
+        {
+            if (_event is null) return Color.Default;
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (today < _event.StartDate) return Color.Info;
+            if (today > _event.EndDate) return Color.Default;
+            return Color.Success;
+        }
+    }
+
+    private static string FormatDates(DateOnly start, DateOnly end)
+    {
+        if (start == end) return start.ToString("MMM d, yyyy");
+        if (start.Year == end.Year && start.Month == end.Month)
+            return $"{start:MMM d}-{end:d}, {end.Year}";
+        return $"{start:MMM d, yyyy} - {end:MMM d, yyyy}";
+    }
+
+    private static Color StateColor(CourtFlow.ApiClient.MatchStateDto s) => s switch
+    {
+        CourtFlow.ApiClient.MatchStateDto.InProgress => Color.Success,
+        CourtFlow.ApiClient.MatchStateDto.Final => Color.Default,
+        CourtFlow.ApiClient.MatchStateDto.Canceled => Color.Error,
+        _ => Color.Info
+    };
+
+    private static string FormatScore(CourtFlow.ApiClient.PublicMatchDto m)
+    {
+        if (m.Sets.Count == 0) return "-";
+        return string.Join(", ", m.Sets.Select(s => $"{s.HomeScore}-{s.AwayScore}"));
+    }
+}

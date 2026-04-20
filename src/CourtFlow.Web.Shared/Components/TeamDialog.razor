@@ -1,0 +1,71 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack>
+            <MudTextField @bind-Value="_name" Label="Team name" Required="true" />
+            <MudTextField @bind-Value="_club" Label="Club" />
+            <MudSelect T="WaveDto" @bind-Value="_wave" Label="Wave" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
+                <MudSelectItem Value="WaveDto.AM">AM</MudSelectItem>
+                <MudSelectItem Value="WaveDto.PM">PM</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="Guid?" @bind-Value="_poolId" Label="Pool" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md" ToStringFunc="_poolName">
+                @foreach (var p in Pools)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)p.Id)">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int?" @bind-Value="_seed" Label="Seed hint" Min="1" Max="128" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public TeamDto? Existing { get; set; }
+    [Parameter] public Guid DivisionId { get; set; }
+    [Parameter] public IReadOnlyList<PoolDto> Pools { get; set; } = Array.Empty<PoolDto>();
+
+    private string _name = "";
+    private string? _club;
+    private WaveDto _wave = WaveDto.AM;
+    private Guid? _poolId;
+    private int? _seed;
+
+    private Func<Guid?, string> _poolName =>
+        id => id is null ? string.Empty
+            : Pools.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            _name = Existing.Name;
+            _club = Existing.Club;
+            _wave = Existing.Wave;
+            _poolId = Existing.PoolId;
+            _seed = Existing.SeedHint;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            if (Existing is null)
+                await Api.Teams.CreateAsync(new CreateTeamDto(DivisionId, _poolId, _name, _club, _wave, _seed));
+            else
+                await Api.Teams.UpdateAsync(new UpdateTeamDto(Existing.Id, _poolId, _name, _club, _wave, _seed));
+            Snackbar.Add("Saved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

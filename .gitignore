@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll.pdb
+*.pdb
+*.cache
+.vs/
+.vscode/
+.idea/
+
+## NSwag generated (kept tracked; ignore temp output)
+# (Generated client lives under src/CourtFlow.ApiClient/Generated; we track it for IDE completeness.)
+
+## Secrets / env
+*.user
+appsettings.*.Local.json
+.env
+
+## Logs
+logs/
+*.log
+
+## OS
+Thumbs.db
+.DS_Store

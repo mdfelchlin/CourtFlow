@@ -1,0 +1,87 @@
+@page "/brackets"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject SelectedTournamentStore TournamentStore
+@implements IDisposable
+
+<PageTitle>Brackets · CourtFlow</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+    <MudText Typo="Typo.h4">Brackets</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudSelect T="Guid?" @bind-Value="_divisionId" Label="Division" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value:after="ReloadAsync" Class="cf-select--md"
+                   ToStringFunc="_divisionName">
+            @foreach (var d in _divisions)
+            {
+                <MudSelectItem T="Guid?" Value="@((Guid?)d.Id)">@d.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="cf-toolbar-btn" OnClick="GenerateAsync" Disabled="_divisionId is null">Generate</MudButton>
+    </MudStack>
+</MudStack>
+
+@if (_brackets.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No brackets. Generate one above.</MudAlert>
+}
+else
+{
+    <MudTabs Elevation="0" Outlined="true">
+        @foreach (var b in _brackets)
+        {
+            <MudTabPanel Text="@($"{b.Type} · {b.TeamCapacity}")">
+                <BracketView BracketId="b.Id" />
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+    private IReadOnlyList<DivisionDto> _divisions = Array.Empty<DivisionDto>();
+    private IReadOnlyList<BracketDto> _brackets = Array.Empty<BracketDto>();
+    private Guid? _divisionId;
+
+    private Func<Guid?, string> _divisionName =>
+        id => id is null ? string.Empty
+            : _divisions.FirstOrDefault(d => d.Id == id)?.Name ?? string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TournamentStore.Changed += OnTournamentStoreChanged;
+        await TournamentStore.EnsureInitializedAsync();
+        await OnTournamentChanged();
+    }
+
+    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await OnTournamentChanged());
+
+    private async Task OnTournamentChanged()
+    {
+        var tid = TournamentStore.SelectedTournamentId;
+        _divisions = tid is null ? Array.Empty<DivisionDto>() : await Api.Divisions.ListAsync(tid);
+        _divisionId = _divisions.Count > 0 ? _divisions[0].Id : null;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        try { _brackets = _divisionId is null ? Array.Empty<BracketDto>() : await Api.Brackets.ListAsync(_divisionId); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task GenerateAsync()
+    {
+        var tid = TournamentStore.SelectedTournamentId;
+        if (_divisionId is null || tid is null) return;
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = tid.Value,
+            ["DivisionId"] = _divisionId.Value
+        };
+        var dialog = await DialogService.ShowAsync<GenerateBracketDialog>("Generate bracket", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
+    }
+
+    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
+}

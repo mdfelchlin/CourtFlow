@@ -1,0 +1,61 @@
+@page "/matches"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject SelectedTournamentStore TournamentStore
+@implements IDisposable
+
+<PageTitle>Matches · CourtFlow</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-3">Matches</MudText>
+
+<MudDataGrid T="MatchDto" Items="_items" Loading="_loading" Dense="true" Hover="true" Groupable="false">
+    <Columns>
+        <PropertyColumn Property="x => x.ScheduledStartUtc" Title="Start (UTC)" Format="g" />
+        <PropertyColumn Property="x => x.State" Title="State" />
+        <PropertyColumn Property="x => x.Wave" Title="Wave" />
+        <TemplateColumn Title="Score">
+            <CellTemplate>
+                @string.Join(", ", context.Item.Sets.Select(s => $"{s.HomeScore}-{s.AwayScore}"))
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Scoreboard" Size="Size.Small" aria-label="Score" OnClick="@(() => ScoreAsync(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private IReadOnlyList<MatchDto> _items = Array.Empty<MatchDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TournamentStore.Changed += OnTournamentStoreChanged;
+        await TournamentStore.EnsureInitializedAsync();
+        await ReloadAsync();
+    }
+
+    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await ReloadAsync());
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        var tid = TournamentStore.SelectedTournamentId;
+        try { _items = tid is null ? Array.Empty<MatchDto>() : await Api.Matches.ListAsync(tid); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        _loading = false;
+    }
+
+    private async Task ScoreAsync(MatchDto m)
+    {
+        var parms = new DialogParameters { ["Match"] = m };
+        var dialog = await DialogService.ShowAsync<ScoreDialog>("Score match", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
+    }
+
+    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
+}

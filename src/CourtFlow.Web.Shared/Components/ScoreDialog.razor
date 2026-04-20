@@ -1,0 +1,63 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack>
+            @for (int i = 0; i < _sets.Count; i++)
+            {
+                var idx = i;
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Style="min-width:70px;">Set @(_sets[idx].SetNumber)</MudText>
+                    <MudNumericField Value="_sets[idx].HomeScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, v, _sets[idx].AwayScore))" />
+                    <MudText>-</MudText>
+                    <MudNumericField Value="_sets[idx].AwayScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, _sets[idx].HomeScore, v))" />
+                </MudStack>
+            }
+            <CfToolbarAddButton OnClick="AddSet" AriaLabel="Add set" />
+            <MudCheckBox T="bool" @bind-Value="_finalize" Label="Finalize match" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public MatchDto Match { get; set; } = default!;
+
+    private List<MatchSetDto> _sets = new();
+    private bool _finalize;
+
+    protected override void OnInitialized()
+    {
+        _sets = Match.Sets.ToList();
+        if (_sets.Count == 0) _sets.Add(new MatchSetDto(1, 0, 0));
+    }
+
+    private void AddSet() => _sets.Add(new MatchSetDto(_sets.Count + 1, 0, 0));
+    private void UpdateSet(int idx, int home, int away) => _sets[idx] = new MatchSetDto(_sets[idx].SetNumber, home, away);
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            Guid? winner = null;
+            if (_finalize)
+            {
+                var homeWins = _sets.Count(s => s.HomeScore > s.AwayScore);
+                var awayWins = _sets.Count(s => s.AwayScore > s.HomeScore);
+                if (homeWins > awayWins) winner = Match.HomeTeamId;
+                else if (awayWins > homeWins) winner = Match.AwayTeamId;
+            }
+            await Api.Matches.ScoreAsync(Match.Id, new ScoreMatchDto(_sets, _finalize, winner));
+            Snackbar.Add("Score saved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

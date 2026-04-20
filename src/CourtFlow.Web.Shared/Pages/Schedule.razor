@@ -1,0 +1,278 @@
+@page "/schedule"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject SelectedTournamentStore TournamentStore
+@implements IDisposable
+
+<PageTitle>Schedule · CourtFlow</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+    <MudText Typo="Typo.h4">Schedule</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudButton StartIcon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="cf-toolbar-btn" OnClick="GenerateAsync" Disabled="TournamentStore.SelectedTournamentId is null">Generate</MudButton>
+        <MudButton StartIcon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" Class="cf-toolbar-btn" OnClick="CheckAsync" Disabled="TournamentStore.SelectedTournamentId is null">Check conflicts</MudButton>
+    </MudStack>
+</MudStack>
+
+@if (_conflicts is { Count: > 0 })
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-3">
+        <MudText Typo="Typo.subtitle2">@_conflicts.Count conflict(s) detected</MudText>
+        <MudList T="ScheduleConflictDto" Dense="true">
+            @foreach (var c in _conflicts)
+            {
+                <MudListItem T="ScheduleConflictDto">
+                    <MudText Typo="Typo.body2">@c.Kind — @c.Message</MudText>
+                </MudListItem>
+            }
+        </MudList>
+    </MudAlert>
+}
+
+@{
+    RenderFragment<MatchDto> Cell = m => @<div class="match-cell">
+        <span class="teams">@TeamName(m.HomeTeamId) vs @TeamName(m.AwayTeamId)</span>
+        <span class="meta">
+            @m.State · @m.Wave
+            @if (m.RefTeamId is not null) { <span> · Ref: @TeamName(m.RefTeamId)</span> }
+        </span>
+        @if (m.PoolId is null)
+        {
+            <div><MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">Bracket</MudChip></div>
+        }
+        <div class="actions">
+            <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" aria-label="Move" OnClick="@(() => MoveAsync(m))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Scoreboard" Size="Size.Small" aria-label="Score" OnClick="@(() => ScoreAsync(m))" />
+        </div>
+    </div>;
+}
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_orderedCourts.Count == 0 || _slotStartsUtc.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Dense="true">
+        @(TournamentStore.SelectedTournamentId is null
+            ? "Select a tournament to view its schedule."
+            : "No scheduled matches yet. Use Generate to create pool-play matches.")
+    </MudAlert>
+}
+else
+{
+    <div class="schedule-scroller">
+        <table class="courtflow-schedule">
+            <thead>
+                <tr>
+                    <th class="court-col">Court</th>
+                    @foreach (var t in _slotStartsUtc)
+                    {
+                        <th>@FormatSlotHeader(t)</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var court in _orderedCourts)
+                {
+                    <tr>
+                        <td class="court-col">@court.Name</td>
+                        @foreach (var t in _slotStartsUtc)
+                        {
+                            <td>
+                                @if (_cellByCourtTime.TryGetValue((court.Id, t), out var m))
+                                {
+                                    @Cell(m)
+                                }
+                                else
+                                {
+                                    <span class="empty-cell">—</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (_unscheduled.Count > 0)
+{
+    <MudPaper Class="pa-3 mt-3" Outlined="true">
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Unscheduled matches (@_unscheduled.Count)</MudText>
+        <MudStack Spacing="1">
+            @foreach (var m in _unscheduled)
+            {
+                <MudPaper Class="pa-2" Elevation="0" Outlined="true">
+                    @Cell(m)
+                </MudPaper>
+            }
+        </MudStack>
+    </MudPaper>
+}
+
+<style>
+    .schedule-scroller { overflow-x: auto; width: 100%; }
+    .courtflow-schedule { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+    .courtflow-schedule th, .courtflow-schedule td {
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        padding: 4px 8px; vertical-align: top; white-space: nowrap;
+    }
+    .courtflow-schedule thead th {
+        position: sticky; top: 0; background: var(--mud-palette-surface); z-index: 2;
+        text-align: left; font-weight: 600;
+    }
+    .courtflow-schedule th.court-col, .courtflow-schedule td.court-col {
+        position: sticky; left: 0; background: var(--mud-palette-surface); z-index: 3; font-weight: 600;
+    }
+    .courtflow-schedule thead th.court-col { z-index: 4; }
+    .match-cell { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
+    .match-cell .teams { font-weight: 500; }
+    .match-cell .meta  { opacity: 0.7; font-size: 0.75rem; }
+    .match-cell .actions { margin-top: 2px; }
+    .empty-cell { color: var(--mud-palette-text-disabled); }
+</style>
+
+@code {
+    private IReadOnlyList<MatchDto> _matches = Array.Empty<MatchDto>();
+    private IReadOnlyList<CourtDto> _courts = Array.Empty<CourtDto>();
+    private Dictionary<Guid, string> _teamNames = new();
+    private IReadOnlyList<ScheduleConflictDto> _conflicts = Array.Empty<ScheduleConflictDto>();
+    private bool _loading = true;
+
+    private TimeZoneInfo _tz = TimeZoneInfo.Utc;
+    private List<DateTime> _slotStartsUtc = new();
+    private List<CourtDto> _orderedCourts = new();
+    private Dictionary<(Guid courtId, DateTime startUtc), MatchDto> _cellByCourtTime = new();
+    private List<MatchDto> _unscheduled = new();
+    private bool _spansMultipleDays;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TournamentStore.Changed += OnTournamentStoreChanged;
+        try
+        {
+            await TournamentStore.EnsureInitializedAsync();
+            await ReloadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); _loading = false; }
+    }
+
+    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await ReloadAsync());
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        var tid = TournamentStore.SelectedTournamentId;
+        try
+        {
+            if (tid is null)
+            {
+                _matches = Array.Empty<MatchDto>();
+                _courts = Array.Empty<CourtDto>();
+                _teamNames = new();
+                RebuildGrid();
+                _loading = false;
+                return;
+            }
+            _matches = await Api.Matches.ListAsync(tid);
+            var venues = await Api.Venues.ListAsync(tid);
+            var courts = new List<CourtDto>();
+            foreach (var v in venues) courts.AddRange(await Api.Courts.ListAsync(v.Id));
+            _courts = courts;
+            var divisions = await Api.Divisions.ListAsync(tid);
+            _teamNames = new Dictionary<Guid, string>();
+            foreach (var d in divisions)
+            {
+                var teams = await Api.Teams.ListAsync(d.Id);
+                foreach (var t in teams) _teamNames[t.Id] = t.Name;
+            }
+            RebuildGrid();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        _loading = false;
+    }
+
+    private void RebuildGrid()
+    {
+        _orderedCourts = _courts.OrderBy(c => c.Name).ToList();
+        _unscheduled = _matches.Where(m => m.CourtId is null)
+            .OrderBy(m => m.ScheduledStartUtc)
+            .ToList();
+        var scheduled = _matches.Where(m => m.CourtId is not null).ToList();
+        _slotStartsUtc = scheduled.Select(m => m.ScheduledStartUtc).Distinct().OrderBy(t => t).ToList();
+
+        _cellByCourtTime = new Dictionary<(Guid, DateTime), MatchDto>();
+        foreach (var m in scheduled)
+        {
+            _cellByCourtTime[(m.CourtId!.Value, m.ScheduledStartUtc)] = m;
+        }
+
+        var tid = TournamentStore.SelectedTournamentId;
+        var tzId = tid is null ? null
+            : TournamentStore.Tournaments.FirstOrDefault(t => t.Id == tid)?.TimeZoneId;
+        _tz = TryGetTz(tzId) ?? TimeZoneInfo.Utc;
+
+        _spansMultipleDays = _slotStartsUtc.Count > 0 &&
+            TimeZoneInfo.ConvertTimeFromUtc(_slotStartsUtc.First(), _tz).Date
+            != TimeZoneInfo.ConvertTimeFromUtc(_slotStartsUtc.Last(), _tz).Date;
+    }
+
+    private static TimeZoneInfo? TryGetTz(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        try { return TimeZoneInfo.FindSystemTimeZoneById(id); } catch { return null; }
+    }
+
+    private string FormatSlotHeader(DateTime utc)
+    {
+        var source = utc.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(utc, DateTimeKind.Utc)
+            : utc;
+        var local = TimeZoneInfo.ConvertTimeFromUtc(source, _tz);
+        return _spansMultipleDays ? local.ToString("ddd h:mm tt") : local.ToString("h:mm tt");
+    }
+
+    private string CourtName(Guid? id) => id is null ? "-" : (_courts.FirstOrDefault(c => c.Id == id)?.Name ?? "?");
+    private string TeamName(Guid? id) => id is null ? "-" : (_teamNames.TryGetValue(id.Value, out var n) ? n : "?");
+
+    private async Task GenerateAsync()
+    {
+        if (TournamentStore.SelectedTournamentId is null) return;
+        var ok = await DialogService.ShowMessageBox("Generate schedule", "This will create pool-play matches. Continue?", yesText: "Generate", cancelText: "Cancel");
+        if (ok != true) return;
+        try { await Api.Schedule.GenerateAsync(TournamentStore.SelectedTournamentId.Value); Snackbar.Add("Schedule generated", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task CheckAsync()
+    {
+        if (TournamentStore.SelectedTournamentId is null) return;
+        try
+        {
+            var report = await Api.Schedule.CheckAsync(TournamentStore.SelectedTournamentId.Value);
+            _conflicts = report.Conflicts;
+            Snackbar.Add($"Found {report.Conflicts.Count} conflict(s)", report.Conflicts.Count == 0 ? Severity.Success : Severity.Warning);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task MoveAsync(MatchDto m)
+    {
+        var parms = new DialogParameters { ["Match"] = m, ["Courts"] = _courts };
+        var dialog = await DialogService.ShowAsync<MatchMoveDialog>("Move match", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
+    }
+
+    private async Task ScoreAsync(MatchDto m)
+    {
+        var parms = new DialogParameters { ["Match"] = m };
+        var dialog = await DialogService.ShowAsync<ScoreDialog>("Score match", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
+    }
+
+    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
+}

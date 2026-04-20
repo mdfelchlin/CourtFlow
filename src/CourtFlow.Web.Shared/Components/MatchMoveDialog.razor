@@ -1,0 +1,60 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack>
+            <MudDatePicker @bind-Date="_date" Label="Date" />
+            <MudTimePicker @bind-Time="_time" Label="Time" />
+            <MudNumericField @bind-Value="_duration" Label="Duration (min)" Min="15" Max="240" />
+            <MudSelect T="Guid?" @bind-Value="_courtId" Label="Court" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md" ToStringFunc="_courtName">
+                @foreach (var c in Courts)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">@c.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Move</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public MatchDto Match { get; set; } = default!;
+    [Parameter] public IReadOnlyList<CourtDto> Courts { get; set; } = Array.Empty<CourtDto>();
+
+    private DateTime? _date;
+    private TimeSpan? _time;
+    private int _duration;
+    private Guid? _courtId;
+
+    private Func<Guid?, string> _courtName =>
+        id => id is null ? string.Empty
+            : Courts.FirstOrDefault(c => c.Id == id)?.Name ?? string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var local = Match.ScheduledStartUtc.ToLocalTime();
+        _date = local.Date;
+        _time = local.TimeOfDay;
+        _duration = Match.DurationMinutes;
+        _courtId = Match.CourtId;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            var dt = (_date ?? DateTime.Today).Add(_time ?? TimeSpan.Zero).ToUniversalTime();
+            await Api.Matches.MoveAsync(Match.Id, new MoveMatchDto(_courtId, dt, _duration));
+            Snackbar.Add("Match moved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

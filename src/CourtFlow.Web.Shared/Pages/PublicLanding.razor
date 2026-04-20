@@ -1,0 +1,142 @@
+@page "/"
+@layout PublicLayout
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Events · CourtFlow</PageTitle>
+
+<MudStack Spacing="6">
+    <MudPaper Elevation="0" Class="pa-8" Style="background: linear-gradient(135deg, #3949AB 0%, #5C6BC0 100%); color: white; border-radius: 16px;">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h3" Style="font-weight: 700;">Volleyball tournaments, live.</MudText>
+            <MudText Typo="Typo.subtitle1" Style="opacity: 0.9; max-width: 640px;">
+                Browse current and upcoming events, follow schedules, and check standings in real time.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h5">Current &amp; upcoming events</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" aria-label="Refresh" OnClick="LoadAsync" />
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_events.Count == 0)
+    {
+        <MudPaper Class="pa-8" Outlined="true">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6">No events scheduled right now</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">Check back soon — new tournaments are added regularly.</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var e in _events)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Outlined="true" Class="h-100 d-flex flex-column" Style="cursor: pointer;" @onclick="() => View(e.Id)">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@e.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@e.OrganizationName</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(e)" Variant="Variant.Filled">@StatusLabel(e)</MudChip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent Class="flex-grow-1">
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Color="Color.Primary" />
+                                    <MudText Typo="Typo.body2">@FormatDates(e.StartDate, e.EndDate)</MudText>
+                                </MudStack>
+                                @if (!string.IsNullOrWhiteSpace(e.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Style="opacity: 0.8;">@Truncate(e.Description!, 120)</MudText>
+                                }
+                                <MudStack Row="true" Spacing="4" Class="mt-2">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Venues</MudText>
+                                        <MudText Typo="Typo.subtitle2">@e.VenueCount</MudText>
+                                    </MudStack>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Divisions</MudText>
+                                        <MudText Typo="Typo.subtitle2">@e.DivisionCount</MudText>
+                                    </MudStack>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Teams</MudText>
+                                        <MudText Typo="Typo.subtitle2">@e.TeamCount</MudText>
+                                    </MudStack>
+                                </MudStack>
+                            </MudStack>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => View(e.Id))">View event</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudStack>
+
+@code {
+    private IReadOnlyList<CourtFlow.ApiClient.PublicEventDto> _events = Array.Empty<CourtFlow.ApiClient.PublicEventDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _events = await Api.PublicEvents.ListAsync();
+        }
+        catch
+        {
+            _events = Array.Empty<CourtFlow.ApiClient.PublicEventDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void View(Guid id) => Nav.NavigateTo($"/events/{id}");
+
+    private static string FormatDates(DateOnly start, DateOnly end)
+    {
+        if (start == end) return start.ToString("MMM d, yyyy");
+        if (start.Year == end.Year && start.Month == end.Month)
+            return $"{start:MMM d}-{end:d}, {end.Year}";
+        return $"{start:MMM d, yyyy} - {end:MMM d, yyyy}";
+    }
+
+    private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n].TrimEnd() + "...";
+
+    private static string StatusLabel(CourtFlow.ApiClient.PublicEventDto e)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (today < e.StartDate) return "Upcoming";
+        if (today > e.EndDate) return "Completed";
+        return "Live";
+    }
+
+    private static Color StatusColor(CourtFlow.ApiClient.PublicEventDto e)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (today < e.StartDate) return Color.Info;
+        if (today > e.EndDate) return Color.Default;
+        return Color.Success;
+    }
+}
