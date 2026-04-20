@@ -3,8 +3,6 @@
 @inject CourtFlow.ApiClient.CourtFlowApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject SelectedTournamentStore TournamentStore
-@implements IDisposable
 
 <PageTitle>Matches · CourtFlow</PageTitle>
 
@@ -29,17 +27,16 @@
 </MudDataGrid>
 
 @code {
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
+
     private IReadOnlyList<MatchDto> _items = Array.Empty<MatchDto>();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        TournamentStore.Changed += OnTournamentStoreChanged;
         await TournamentStore.EnsureInitializedAsync();
         await ReloadAsync();
     }
-
-    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await ReloadAsync());
 
     private async Task ReloadAsync()
     {
@@ -57,5 +54,4 @@
         if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
     }
 
-    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
 }

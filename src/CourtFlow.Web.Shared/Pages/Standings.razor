@@ -2,8 +2,6 @@
 @attribute [Authorize]
 @inject CourtFlow.ApiClient.CourtFlowApiClient Api
 @inject ISnackbar Snackbar
-@inject SelectedTournamentStore TournamentStore
-@implements IDisposable
 
 <PageTitle>Standings · CourtFlow</PageTitle>
 
@@ -64,6 +62,8 @@ else
 }
 
 @code {
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
+
     private IReadOnlyList<DivisionDto> _divisions = Array.Empty<DivisionDto>();
     private IReadOnlyList<PoolStandingsDto> _standings = Array.Empty<PoolStandingsDto>();
     private Guid? _divisionId;
@@ -74,7 +74,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        TournamentStore.Changed += OnTournamentStoreChanged;
         try
         {
             await TournamentStore.EnsureInitializedAsync();
@@ -82,8 +81,6 @@ else
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
-
-    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await OnTournamentChanged());
 
     private async Task OnTournamentChanged()
     {
@@ -104,5 +101,4 @@ else
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
-    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
 }

@@ -157,57 +157,11 @@ else
                     }
                 </MudStack>
             </MudPaper>
-
-            <MudPaper Class="pa-5" Elevation="1">
-                <MudStack Spacing="3">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.h6">Divisions</MudText>
-                        <CfToolbarAddButton OnClick="AddDivisionAsync" AriaLabel="Add division" />
-                    </MudStack>
-
-                    @if (_loadingDivisions)
-                    {
-                        <MudProgressLinear Indeterminate="true" />
-                    }
-                    else if (_divisions.Count == 0)
-                    {
-                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
-                            No divisions yet. Use Add above.
-                        </MudAlert>
-                    }
-                    else
-                    {
-                        <MudList T="DivisionDto" Dense="true">
-                            @foreach (var d in _divisions)
-                            {
-                                <MudListItem T="DivisionDto">
-                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
-                                        <MudText Typo="Typo.body1">@d.Name</MudText>
-                                        <MudStack Row="true" Spacing="0">
-                                            <MudIconButton
-                                                Icon="@Icons.Material.Filled.OpenInNew"
-                                                Size="Size.Small"
-                                                aria-label="Manage division"
-                                                OnClick="@(() => ManageDivision(d))" />
-                                            <MudIconButton
-                                                Icon="@Icons.Material.Filled.Delete"
-                                                Color="Color.Error"
-                                                Size="Size.Small"
-                                                aria-label="Delete division"
-                                                OnClick="@(() => DeleteDivisionAsync(d))" />
-                                        </MudStack>
-                                    </MudStack>
-                                </MudListItem>
-                            }
-                        </MudList>
-                    }
-                </MudStack>
-            </MudPaper>
         }
         else
         {
             <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
-                Save tournament details to manage venues, courts, and divisions.
+                Save tournament details to manage venues and courts.
             </MudAlert>
         }
     </MudStack>
@@ -232,9 +186,6 @@ else
     private Dictionary<Guid, List<CourtDto>> _courtsByVenue = new();
     private Dictionary<Guid, string> _newCourtNameByVenue = new();
 
-    private List<DivisionDto> _divisions = new();
-    private bool _loadingDivisions;
-
     private Guid? _lastLoadedId;
 
     protected override async Task OnParametersSetAsync()
@@ -255,7 +206,6 @@ else
         if (_current is not null)
         {
             await ReloadVenuesAsync();
-            await ReloadDivisionsAsync();
         }
     }
 
@@ -271,7 +221,6 @@ else
         _venues = new();
         _courtsByVenue = new();
         _newCourtNameByVenue = new();
-        _divisions = new();
     }
 
     private async Task LoadTournamentAsync(Guid id)
@@ -321,7 +270,6 @@ else
                 _lastLoadedId = created.Id;
                 Snackbar.Add("Tournament created", Severity.Success);
                 await ReloadVenuesAsync();
-                await ReloadDivisionsAsync();
                 Nav.NavigateTo($"/tournaments/{created.Id}", replace: true);
             }
             else
@@ -488,64 +436,4 @@ else
         }
     }
 
-    private async Task ReloadDivisionsAsync()
-    {
-        if (_current is null) return;
-        _loadingDivisions = true;
-        try
-        {
-            var divisions = await Api.Divisions.ListAsync(_current.Id);
-            _divisions = divisions.OrderBy(d => d.Name).ToList();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _loadingDivisions = false;
-        }
-    }
-
-    private async Task AddDivisionAsync()
-    {
-        if (_current is null) return;
-
-        var parms = new DialogParameters
-        {
-            ["TournamentId"] = _current.Id
-        };
-        var dialog = await DialogService.ShowAsync<DivisionDialog>("Add division", parms);
-        if ((await dialog.Result) is { Canceled: false })
-        {
-            await ReloadDivisionsAsync();
-        }
-    }
-
-    private async Task DeleteDivisionAsync(DivisionDto d)
-    {
-        var ok = await DialogService.ShowMessageBox(
-            "Delete division",
-            $"Delete '{d.Name}'?",
-            yesText: "Delete",
-            cancelText: "Cancel");
-        if (ok != true) return;
-
-        try
-        {
-            await Api.Divisions.DeleteAsync(d.Id);
-            Snackbar.Add("Deleted", Severity.Success);
-            await ReloadDivisionsAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    private void ManageDivision(DivisionDto d)
-    {
-        if (_current is null) return;
-        Nav.NavigateTo($"/divisions?tournamentId={_current.Id}&divisionId={d.Id}");
-    }
 }

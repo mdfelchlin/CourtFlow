@@ -33,6 +33,14 @@ public class Team : Entity, ITenantScoped
         Touch();
     }
 
+    public void MoveToDivision(Guid divisionId)
+    {
+        if (divisionId == Guid.Empty) throw new ArgumentException("Division required", nameof(divisionId));
+        DivisionId = divisionId;
+        PoolId = null;
+        Touch();
+    }
+
     public void AssignPool(Guid? poolId) { PoolId = poolId; Touch(); }
     public void SetWave(Wave wave) { Wave = wave; Touch(); }
     public void SetSeedHint(int? seedHint) { SeedHint = seedHint; Touch(); }

@@ -42,8 +42,9 @@ public sealed record CreatePoolDto(Guid DivisionId, string Name);
 public sealed record UpdatePoolDto(Guid Id, string Name);
 
 public sealed record TeamDto(Guid Id, Guid DivisionId, Guid? PoolId, string Name, string? Club, WaveDto Wave, int? SeedHint);
-public sealed record CreateTeamDto(Guid DivisionId, Guid? PoolId, string Name, string? Club, WaveDto Wave, int? SeedHint);
-public sealed record UpdateTeamDto(Guid Id, Guid? PoolId, string Name, string? Club, WaveDto Wave, int? SeedHint);
+public sealed record CreateTeamDto(Guid DivisionId, string Name, string? Club);
+public sealed record UpdateTeamDto(Guid Id, string Name, string? Club);
+public sealed record MoveTeamDto(Guid DivisionId);
 
 public sealed record PredefinedPoolImportRowDto(
     int RowNumber,

@@ -15,8 +15,8 @@ public class TeamsController : ControllerBase
     public TeamsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] Guid? divisionId, [FromQuery] Guid? poolId, CancellationToken ct) =>
-        Ok(await _mediator.Send(new ListTeamsQuery(divisionId, poolId), ct));
+    public async Task<IActionResult> List([FromQuery] Guid? tournamentId, [FromQuery] Guid? divisionId, [FromQuery] Guid? poolId, CancellationToken ct) =>
+        Ok(await _mediator.Send(new ListTeamsQuery(tournamentId, divisionId, poolId), ct));
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateTeamCommand cmd, CancellationToken ct)
@@ -33,7 +33,16 @@ public class TeamsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpPut("{id:guid}/division")]
+    public async Task<IActionResult> MoveDivision(Guid id, [FromBody] MoveTeamDivisionBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new MoveTeamCommand(id, body.DivisionId), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
         await _mediator.Send(new DeleteTeamCommand(id), ct) ? NoContent() : NotFound();
 }
+
+public sealed record MoveTeamDivisionBody(Guid DivisionId);

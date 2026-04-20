@@ -3,8 +3,6 @@
 @inject CourtFlow.ApiClient.CourtFlowApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject SelectedTournamentStore TournamentStore
-@implements IDisposable
 
 <PageTitle>Brackets · CourtFlow</PageTitle>
 
@@ -39,6 +37,8 @@ else
 }
 
 @code {
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
+
     private IReadOnlyList<DivisionDto> _divisions = Array.Empty<DivisionDto>();
     private IReadOnlyList<BracketDto> _brackets = Array.Empty<BracketDto>();
     private Guid? _divisionId;
@@ -49,12 +49,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        TournamentStore.Changed += OnTournamentStoreChanged;
         await TournamentStore.EnsureInitializedAsync();
         await OnTournamentChanged();
     }
-
-    private void OnTournamentStoreChanged() => _ = InvokeAsync(async () => await OnTournamentChanged());
 
     private async Task OnTournamentChanged()
     {
@@ -83,5 +80,4 @@ else
         if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
     }
 
-    public void Dispose() => TournamentStore.Changed -= OnTournamentStoreChanged;
 }

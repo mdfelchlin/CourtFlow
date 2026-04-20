@@ -1,5 +1,4 @@
 @implements IDisposable
-@inject SelectedTournamentStore Store
 @inject NavigationManager Nav
 
 @if (_show)
@@ -21,6 +20,8 @@
 }
 
 @code {
+    [CascadingParameter] public SelectedTournamentStore Store { get; set; } = default!;
+
     private bool _show;
     private Func<Guid?, string> _tournamentName =>
         id => id is null ? string.Empty

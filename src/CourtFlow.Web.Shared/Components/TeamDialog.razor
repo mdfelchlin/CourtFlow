@@ -3,20 +3,46 @@
 
 <MudDialog>
     <DialogContent>
-        <MudStack>
-            <MudTextField @bind-Value="_name" Label="Team name" Required="true" />
-            <MudTextField @bind-Value="_club" Label="Club" />
-            <MudSelect T="WaveDto" @bind-Value="_wave" Label="Wave" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
-                <MudSelectItem Value="WaveDto.AM">AM</MudSelectItem>
-                <MudSelectItem Value="WaveDto.PM">PM</MudSelectItem>
-            </MudSelect>
-            <MudSelect T="Guid?" @bind-Value="_poolId" Label="Pool" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md" ToStringFunc="_poolName">
-                @foreach (var p in Pools)
+        <MudStack Spacing="2" Class="mud-width-full">
+            <MudSelect T="Guid"
+                       @bind-Value="_divisionId"
+                       Label="Division"
+                       Dense="true"
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="mud-width-full"
+                       Required="true">
+                @foreach (var d in Divisions)
                 {
-                    <MudSelectItem T="Guid?" Value="@((Guid?)p.Id)">@p.Name</MudSelectItem>
+                    <MudSelectItem Value="d.Id">@d.Name</MudSelectItem>
                 }
             </MudSelect>
-            <MudNumericField T="int?" @bind-Value="_seed" Label="Seed hint" Min="1" Max="128" />
+            <MudTextField @bind-Value="_name"
+                          Label="Team name"
+                          Required="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          FullWidth="true"
+                          InputType="InputType.Text"
+                          Lines="1"
+                          AutoGrow="false" />
+            <MudStack Spacing="0">
+                <MudAutocomplete T="string"
+                                 @bind-Value="_clubText"
+                                 Label="Club"
+                                 Dense="true"
+                                 Margin="Margin.Dense"
+                                 Variant="Variant.Outlined"
+                                 Class="mud-width-full"
+                                 Clearable="true"
+                                 Strict="false"
+                                 CoerceText="true"
+                                 ResetValueOnEmptyText="true"
+                                 Placeholder="Existing club or new name"
+                                 MaxItems="30"
+                                 SearchFunc="SearchClubsAsync" />
+                <MudText Typo="Typo.caption" Class="mud-opacity-70 mt-1">Pick from the list or type to add a new club for this tournament.</MudText>
+            </MudStack>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -28,43 +54,79 @@
 @code {
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public TeamDto? Existing { get; set; }
-    [Parameter] public Guid DivisionId { get; set; }
-    [Parameter] public IReadOnlyList<PoolDto> Pools { get; set; } = Array.Empty<PoolDto>();
+    [Parameter] public IReadOnlyList<DivisionDto> Divisions { get; set; } = Array.Empty<DivisionDto>();
+    [Parameter] public IReadOnlyList<string> ClubOptions { get; set; } = Array.Empty<string>();
+    [Parameter] public Guid? InitialDivisionId { get; set; }
 
+    private Guid _divisionId;
     private string _name = "";
-    private string? _club;
-    private WaveDto _wave = WaveDto.AM;
-    private Guid? _poolId;
-    private int? _seed;
+    /// <summary>Empty = no club. May be a new name not yet in <see cref="ClubOptions"/>.</summary>
+    private string _clubText = "";
 
-    private Func<Guid?, string> _poolName =>
-        id => id is null ? string.Empty
-            : Pools.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
+    private string? ClubForApi => string.IsNullOrWhiteSpace(_clubText) ? null : _clubText.Trim();
 
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
         if (Existing is not null)
         {
+            _divisionId = Existing.DivisionId;
             _name = Existing.Name;
-            _club = Existing.Club;
-            _wave = Existing.Wave;
-            _poolId = Existing.PoolId;
-            _seed = Existing.SeedHint;
+            _clubText = string.IsNullOrWhiteSpace(Existing.Club) ? "" : Existing.Club.Trim();
         }
+        else
+        {
+            _name = "";
+            _clubText = "";
+            _divisionId = InitialDivisionId ?? Divisions.FirstOrDefault()?.Id ?? Guid.Empty;
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchClubsAsync(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(ClubOptions.AsEnumerable());
+
+        var v = value.Trim();
+        var matches = ClubOptions
+            .Where(c => c.Contains(v, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var hasExact = matches.Exists(s => string.Equals(s, v, StringComparison.OrdinalIgnoreCase))
+            || ClubOptions.Any(c => string.Equals(c, v, StringComparison.OrdinalIgnoreCase));
+        if (!hasExact)
+            matches.Insert(0, v);
+
+        return Task.FromResult<IEnumerable<string>>(matches);
     }
 
     private void Cancel() => Dialog.Cancel();
 
     private async Task Save()
     {
+        if (_divisionId == Guid.Empty || string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Division and team name are required.", Severity.Warning);
+            return;
+        }
+        var club = ClubForApi;
+        if (club is { Length: > 200 })
+        {
+            Snackbar.Add("Club name must be 200 characters or less.", Severity.Warning);
+            return;
+        }
         try
         {
+            TeamDto saved;
             if (Existing is null)
-                await Api.Teams.CreateAsync(new CreateTeamDto(DivisionId, _poolId, _name, _club, _wave, _seed));
+                saved = await Api.Teams.CreateAsync(new CreateTeamDto(_divisionId, _name.Trim(), club));
             else
-                await Api.Teams.UpdateAsync(new UpdateTeamDto(Existing.Id, _poolId, _name, _club, _wave, _seed));
+            {
+                if (_divisionId != Existing.DivisionId)
+                    await Api.Teams.MoveDivisionAsync(Existing.Id, new MoveTeamDto(_divisionId));
+                saved = await Api.Teams.UpdateAsync(new UpdateTeamDto(Existing.Id, _name.Trim(), club));
+            }
             Snackbar.Add("Saved", Severity.Success);
-            Dialog.Close(DialogResult.Ok(true));
+            Dialog.Close(DialogResult.Ok(saved));
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }

@@ -43,7 +43,7 @@ else
     {
         _data = await Api.Brackets.GetAsync(BracketId);
         if (_data is null) return;
-        var teams = await Api.Teams.ListAsync(_data.Bracket.DivisionId);
+        var teams = await Api.Teams.ListAsync(divisionId: _data.Bracket.DivisionId);
         _teamNames = teams.ToDictionary(t => t.Id, t => t.Name);
         _rounds = _data.Nodes
             .GroupBy(n => n.Branch)

@@ -189,9 +189,10 @@ public class TeamEndpoints
     private readonly HttpClient _http;
     public TeamEndpoints(HttpClient http) => _http = http;
 
-    public Task<IReadOnlyList<TeamDto>> ListAsync(Guid? divisionId = null, Guid? poolId = null, CancellationToken ct = default)
+    public Task<IReadOnlyList<TeamDto>> ListAsync(Guid? tournamentId = null, Guid? divisionId = null, Guid? poolId = null, CancellationToken ct = default)
     {
         var qs = new List<string>();
+        if (tournamentId is { }) qs.Add($"tournamentId={tournamentId}");
         if (divisionId is { }) qs.Add($"divisionId={divisionId}");
         if (poolId is { }) qs.Add($"poolId={poolId}");
         var url = qs.Count == 0 ? "api/v1/teams" : "api/v1/teams?" + string.Join("&", qs);
@@ -208,6 +209,13 @@ public class TeamEndpoints
     public async Task<TeamDto> UpdateAsync(UpdateTeamDto dto, CancellationToken ct = default)
     {
         var res = await _http.PutAsJsonAsync($"api/v1/teams/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
+
+    public async Task<TeamDto> MoveDivisionAsync(Guid teamId, MoveTeamDto dto, CancellationToken ct = default)
+    {
+        var res = await _http.PutAsJsonAsync($"api/v1/teams/{teamId}/division", dto, CourtFlowApiClient.JsonOptions, ct);
         res.EnsureSuccessStatusCode();
         return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
     }

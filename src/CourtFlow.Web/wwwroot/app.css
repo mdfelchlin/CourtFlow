@@ -89,3 +89,15 @@ h1:focus {
 .mud-button-root.cf-toolbar-add.mud-button-filled-size-small {
     min-height: 2rem;
 }
+
+/* Teams filters: keep one-line name field from growing taller than dense selects */
+.cf-teams-filters .cf-teams-filter-name .mud-input-slot textarea.mud-input-root {
+    min-height: 1.5rem;
+    max-height: 2.25rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.cf-teams-filters .cf-teams-filter-name .mud-input-slot input.mud-input-root {
+    line-height: 1.375;
+}
