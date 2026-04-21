@@ -150,6 +150,34 @@ public class DivisionEndpoints
         var res = await _http.DeleteAsync($"api/v1/divisions/{id}", ct);
         res.EnsureSuccessStatusCode();
     }
+
+    public async Task<IReadOnlyList<TeamDto>> ReorderTeamsAsync(Guid divisionId, ReorderDivisionTeamsDto dto, CancellationToken ct = default)
+    {
+        var res = await _http.PutAsJsonAsync($"api/v1/divisions/{divisionId}/team-order", dto, CourtFlowApiClient.JsonOptions, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<IReadOnlyList<TeamDto>>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
+
+    public async Task<IReadOnlyList<TeamDto>> RandomizeSeedsAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _http.PostAsync($"api/v1/divisions/{divisionId}/randomize-seeds", null, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<IReadOnlyList<TeamDto>>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
+
+    public async Task<ApplyDivisionSeedingResultDto> ApplySeedingAsync(Guid divisionId, ApplyDivisionSeedingDto dto, CancellationToken ct = default)
+    {
+        var res = await _http.PostAsJsonAsync($"api/v1/divisions/{divisionId}/apply-seeding", dto, CourtFlowApiClient.JsonOptions, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<ApplyDivisionSeedingResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
+
+    public async Task<GenerateAdvancementBracketsResultDto> GenerateAdvancementBracketsAsync(Guid divisionId, GenerateAdvancementBracketsDto dto, CancellationToken ct = default)
+    {
+        var res = await _http.PostAsJsonAsync($"api/v1/divisions/{divisionId}/advancement-brackets", dto, CourtFlowApiClient.JsonOptions, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<GenerateAdvancementBracketsResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
 }
 
 public class PoolEndpoints
@@ -216,6 +244,13 @@ public class TeamEndpoints
     public async Task<TeamDto> MoveDivisionAsync(Guid teamId, MoveTeamDto dto, CancellationToken ct = default)
     {
         var res = await _http.PutAsJsonAsync($"api/v1/teams/{teamId}/division", dto, CourtFlowApiClient.JsonOptions, ct);
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
+    }
+
+    public async Task<TeamDto> AssignPoolAsync(Guid teamId, AssignTeamPoolDto dto, CancellationToken ct = default)
+    {
+        var res = await _http.PutAsJsonAsync($"api/v1/teams/{teamId}/pool", dto, CourtFlowApiClient.JsonOptions, ct);
         res.EnsureSuccessStatusCode();
         return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
     }

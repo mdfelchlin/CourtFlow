@@ -30,7 +30,15 @@ public sealed class ListTeamsHandler : IRequestHandler<ListTeamsQuery, IReadOnly
         }
         if (request.DivisionId is { } d) q = q.Where(t => t.DivisionId == d);
         if (request.PoolId is { } p) q = q.Where(t => t.PoolId == p);
-        var items = await q.OrderBy(t => t.Name).ToListAsync(ct);
+        var items = await q.ToListAsync(ct);
+        // Ranking views: numeric SeedHint first. Do not tie-break by Name on division lists — when all seeds are
+        // null or equal, ThenBy(Name) looks like "alphabetical sorting" instead of numeric seed order.
+        if (request.PoolId is not null)
+            items = items.OrderBy(t => t.SeedHint ?? int.MaxValue).ThenBy(t => t.Name).ToList();
+        else if (request.DivisionId is not null)
+            items = items.OrderBy(t => t.SeedHint ?? int.MaxValue).ThenBy(t => t.Id).ToList();
+        else
+            items = items.OrderBy(t => t.Name).ToList();
         return items.Select(TeamMapping.ToDto).ToList();
     }
 }
@@ -115,6 +123,105 @@ public sealed class MoveTeamHandler : IRequestHandler<MoveTeamCommand, TeamDto?>
         team.MoveToDivision(request.DivisionId);
         await _db.SaveChangesAsync(ct);
         return team.ToDto();
+    }
+}
+
+public sealed record AssignTeamPoolCommand(Guid TeamId, Guid? PoolId) : IRequest<TeamDto?>;
+
+public sealed class AssignTeamPoolValidator : AbstractValidator<AssignTeamPoolCommand>
+{
+    public AssignTeamPoolValidator()
+    {
+        RuleFor(x => x.TeamId).NotEmpty();
+    }
+}
+
+public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolCommand, TeamDto?>
+{
+    private readonly IAppDbContext _db;
+    public AssignTeamPoolHandler(IAppDbContext db) => _db = db;
+
+    public async Task<TeamDto?> Handle(AssignTeamPoolCommand request, CancellationToken ct)
+    {
+        var team = await _db.Teams.FirstOrDefaultAsync(t => t.Id == request.TeamId, ct);
+        if (team is null) return null;
+
+        if (request.PoolId is { } pid)
+        {
+            var pool = await _db.Pools.FirstOrDefaultAsync(p => p.Id == pid, ct);
+            if (pool is null || pool.DivisionId != team.DivisionId) return null;
+        }
+
+        team.AssignPool(request.PoolId);
+        await _db.SaveChangesAsync(ct);
+        return team.ToDto();
+    }
+}
+
+public sealed record ReorderDivisionTeamsCommand(Guid DivisionId, IReadOnlyList<Guid> OrderedTeamIds) : IRequest<IReadOnlyList<TeamDto>?>;
+
+public sealed class ReorderDivisionTeamsValidator : AbstractValidator<ReorderDivisionTeamsCommand>
+{
+    public ReorderDivisionTeamsValidator()
+    {
+        RuleFor(x => x.DivisionId).NotEmpty();
+        RuleFor(x => x.OrderedTeamIds).NotEmpty();
+    }
+}
+
+public sealed class ReorderDivisionTeamsHandler : IRequestHandler<ReorderDivisionTeamsCommand, IReadOnlyList<TeamDto>?>
+{
+    private readonly IAppDbContext _db;
+    public ReorderDivisionTeamsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<TeamDto>?> Handle(ReorderDivisionTeamsCommand request, CancellationToken ct)
+    {
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == request.DivisionId, ct);
+        if (division is null) return null;
+
+        var teams = await _db.Teams.Where(t => t.DivisionId == request.DivisionId).ToListAsync(ct);
+        var idSet = teams.Select(t => t.Id).ToHashSet();
+        if (request.OrderedTeamIds.Count != teams.Count || request.OrderedTeamIds.Any(id => !idSet.Contains(id)))
+            return null;
+
+        for (var i = 0; i < request.OrderedTeamIds.Count; i++)
+        {
+            var team = teams.Single(t => t.Id == request.OrderedTeamIds[i]);
+            team.SetSeedHint(i + 1);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return teams.OrderBy(t => t.SeedHint).ThenBy(t => t.Id).Select(TeamMapping.ToDto).ToList();
+    }
+}
+
+public sealed record RandomizeDivisionSeedsCommand(Guid DivisionId) : IRequest<IReadOnlyList<TeamDto>?>;
+
+public sealed class RandomizeDivisionSeedsValidator : AbstractValidator<RandomizeDivisionSeedsCommand>
+{
+    public RandomizeDivisionSeedsValidator() => RuleFor(x => x.DivisionId).NotEmpty();
+}
+
+public sealed class RandomizeDivisionSeedsHandler : IRequestHandler<RandomizeDivisionSeedsCommand, IReadOnlyList<TeamDto>?>
+{
+    private readonly IAppDbContext _db;
+    public RandomizeDivisionSeedsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<TeamDto>?> Handle(RandomizeDivisionSeedsCommand request, CancellationToken ct)
+    {
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == request.DivisionId, ct);
+        if (division is null) return null;
+
+        var teams = await _db.Teams.Where(t => t.DivisionId == request.DivisionId).ToListAsync(ct);
+        if (teams.Count == 0) return Array.Empty<TeamDto>();
+
+        var rnd = new Random();
+        var shuffled = teams.OrderBy(_ => rnd.Next()).ToList();
+        for (var i = 0; i < shuffled.Count; i++)
+            shuffled[i].SetSeedHint(i + 1);
+
+        await _db.SaveChangesAsync(ct);
+        return shuffled.OrderBy(t => t.SeedHint).ThenBy(t => t.Id).Select(TeamMapping.ToDto).ToList();
     }
 }
 

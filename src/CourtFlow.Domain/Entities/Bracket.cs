@@ -11,13 +11,14 @@ public class Bracket : Entity, ITenantScoped
     public BracketType Type { get; private set; } = BracketType.SingleElimination;
     public bool IfNecessaryFinal { get; private set; }
     public int TeamCapacity { get; private set; }
+    public string? DisplayName { get; private set; }
 
     private readonly List<BracketNode> _nodes = new();
     public IReadOnlyCollection<BracketNode> Nodes => _nodes.AsReadOnly();
 
     private Bracket() { }
 
-    public Bracket(Guid organizationId, Guid tournamentId, Guid divisionId, BracketType type, int teamCapacity, bool ifNecessaryFinal = false)
+    public Bracket(Guid organizationId, Guid tournamentId, Guid divisionId, BracketType type, int teamCapacity, bool ifNecessaryFinal = false, string? displayName = null)
     {
         OrganizationId = organizationId;
         TournamentId = tournamentId;
@@ -25,6 +26,7 @@ public class Bracket : Entity, ITenantScoped
         Type = type;
         TeamCapacity = teamCapacity;
         IfNecessaryFinal = ifNecessaryFinal;
+        DisplayName = displayName;
     }
 
     public BracketNode AddNode(BracketNode node)

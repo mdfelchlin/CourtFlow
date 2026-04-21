@@ -46,6 +46,18 @@ public sealed record CreateTeamDto(Guid DivisionId, string Name, string? Club);
 public sealed record UpdateTeamDto(Guid Id, string Name, string? Club);
 public sealed record MoveTeamDto(Guid DivisionId);
 
+public sealed record AssignTeamPoolDto(Guid? PoolId);
+public sealed record ReorderDivisionTeamsDto(IReadOnlyList<Guid> OrderedTeamIds);
+public sealed record ApplyDivisionSeedingDto(RankedSeedStrategyDto Strategy);
+public sealed record ApplyDivisionSeedingResultDto(bool Ok, string? Error);
+public sealed record GenerateAdvancementBracketsDto(
+    int TopNPerPool,
+    BracketTypeDto Type,
+    bool IfNecessaryFinal,
+    IReadOnlyList<Guid>? GoldTeamIds,
+    IReadOnlyList<Guid>? SilverTeamIds);
+public sealed record GenerateAdvancementBracketsResultDto(IReadOnlyList<BracketDto> Brackets, string? Error);
+
 public sealed record PredefinedPoolImportRowDto(
     int RowNumber,
     string DivisionName,
@@ -92,10 +104,10 @@ public sealed record MatchDto(
 public sealed record MoveMatchDto(Guid? CourtId, DateTime ScheduledStartUtc, int? DurationMinutes);
 public sealed record ScoreMatchDto(IReadOnlyList<MatchSetDto> Sets, bool Finalize, Guid? WinnerTeamId);
 
-public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity);
+public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName);
 public sealed record BracketNodeDto(Guid Id, Guid BracketId, BracketBranchDto Branch, int Round, int Slot, Guid? MatchId, Guid? HomeTeamId, Guid? AwayTeamId, int? HomeSeed, int? AwaySeed, Guid? WinsToNodeId, Guid? LosesToNodeId);
 public sealed record BracketWithNodesDto(BracketDto Bracket, IReadOnlyList<BracketNodeDto> Nodes);
-public sealed record GenerateBracketDto(Guid TournamentId, Guid DivisionId, BracketTypeDto Type, int TeamCapacity, bool IfNecessaryFinal);
+public sealed record GenerateBracketDto(Guid TournamentId, Guid DivisionId, BracketTypeDto Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null);
 
 public enum ConflictKindDto { TeamDoubleBooking = 1, RefConflict = 2, CourtDoubleBooking = 3, WaveViolation = 4, PartnerTournamentConflict = 5 }
 public sealed record ScheduleConflictDto(ConflictKindDto Kind, Guid MatchId, Guid? OtherMatchId, Guid? TeamId, Guid? CourtId, DateTime StartUtc, DateTime EndUtc, string Message);

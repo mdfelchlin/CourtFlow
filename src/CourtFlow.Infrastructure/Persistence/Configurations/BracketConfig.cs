@@ -12,6 +12,7 @@ public class BracketConfig : IEntityTypeConfiguration<Bracket>
         b.HasKey(x => x.Id);
         b.Property(x => x.Type).HasConversion<int>();
         b.HasMany(x => x.Nodes).WithOne().HasForeignKey(n => n.BracketId).OnDelete(DeleteBehavior.Cascade);
+        b.Property(x => x.DisplayName).HasMaxLength(100);
         b.HasIndex(x => x.DivisionId);
         b.HasIndex(x => x.TournamentId);
     }

@@ -1,5 +1,9 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Application.Features.Divisions;
 using CourtFlow.Application.Features.Imports;
+using CourtFlow.Application.Features.Pools;
+using CourtFlow.Application.Features.Teams;
+using CourtFlow.Application.Seeding;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +16,7 @@ public class ImportFeaturesTests
     public void SnakeAssignment_UsesSerpentinePattern()
     {
         var actual = Enumerable.Range(0, 6)
-            .Select(i => ImportRankedTeamsHandler.GetSnakePoolIndex(i, 3))
+            .Select(i => PoolSeeding.GetSnakePoolIndex(i, 3))
             .ToArray();
 
         Assert.Equal(new[] { 0, 1, 2, 2, 1, 0 }, actual);
@@ -94,7 +98,7 @@ public class ImportFeaturesTests
     [MemberData(nameof(PoolSizeCases))]
     public void BuildPoolSizes_UsesExpectedLayout(int teamCount, int expectedPools, int[] expectedSizes)
     {
-        var sizes = ImportRankedTeamsHandler.BuildPoolSizes(teamCount);
+        var sizes = PoolSeeding.BuildPoolSizes(teamCount);
         Assert.Equal(expectedPools, sizes.Count);
         Assert.Equal(expectedSizes, sizes);
     }
@@ -185,6 +189,82 @@ public class ImportFeaturesTests
         Assert.Contains(result.Errors, e => e.RowNumber == 2);
         Assert.Contains(result.Errors, e => e.RowNumber == 3);
         Assert.Contains(result.Errors, e => e.Message.Contains("at least 3 teams", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ApplyDivisionSeeding_SnakeAssignsPoolsFromSeedOrder()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        for (var i = 1; i <= 6; i++)
+            db.Teams.Add(new Team(orgId, division.Id, $"Team {i}", Wave.AM, poolId: null, club: null, seedHint: i));
+        await db.SaveChangesAsync();
+
+        var handler = new ApplyDivisionSeedingHandler(db);
+        var r = await handler.Handle(new ApplyDivisionSeedingCommand(division.Id, RankedSeedStrategy.Snake), CancellationToken.None);
+
+        Assert.True(r.Ok);
+        var pools = await db.Pools.Where(p => p.DivisionId == division.Id).OrderBy(p => p.Name).ToListAsync();
+        var teams = await db.Teams.Where(t => t.DivisionId == division.Id).OrderBy(t => t.SeedHint).ToListAsync();
+        Assert.Equal(2, pools.Count);
+        var expectedBySeed = new[] { "Pool A", "Pool B", "Pool B", "Pool A", "Pool A", "Pool B" };
+        for (var i = 0; i < teams.Count; i++)
+        {
+            var poolName = pools.Single(p => p.Id == teams[i].PoolId).Name;
+            Assert.Equal(expectedBySeed[i], poolName);
+        }
+    }
+
+    [Fact]
+    public async Task ReorderDivisionTeams_RewritesSeedHints()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        var a = new Team(orgId, division.Id, "A", Wave.AM, null, null, 1);
+        var b = new Team(orgId, division.Id, "B", Wave.AM, null, null, 2);
+        db.Teams.AddRange(a, b);
+        await db.SaveChangesAsync();
+
+        var handler = new ReorderDivisionTeamsHandler(db);
+        var result = await handler.Handle(new ReorderDivisionTeamsCommand(division.Id, new[] { b.Id, a.Id }), CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal("B", result[0].Name);
+        Assert.Equal(1, result[0].SeedHint);
+        Assert.Equal("A", result[1].Name);
+        Assert.Equal(2, result[1].SeedHint);
+    }
+
+    [Fact]
+    public async Task DeletePool_UnassignsTeams()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        var pool = new Pool(orgId, division.Id, "Pool A");
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        db.Pools.Add(pool);
+        var team = new Team(orgId, division.Id, "T1", Wave.AM, pool.Id, null, 1);
+        db.Teams.Add(team);
+        await db.SaveChangesAsync();
+
+        var handler = new DeletePoolHandler(db);
+        var ok = await handler.Handle(new DeletePoolCommand(pool.Id), CancellationToken.None);
+        Assert.True(ok);
+
+        var t = await db.Teams.FirstAsync(x => x.Id == team.Id);
+        Assert.Null(t.PoolId);
     }
 
     private static TestAppDbContext BuildDb()

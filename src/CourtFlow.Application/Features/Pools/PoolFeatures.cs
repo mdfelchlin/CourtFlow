@@ -80,6 +80,9 @@ public sealed class DeletePoolHandler : IRequestHandler<DeletePoolCommand, bool>
     {
         var p = await _db.Pools.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
         if (p is null) return false;
+        var assigned = await _db.Teams.Where(t => t.PoolId == p.Id).ToListAsync(ct);
+        foreach (var t in assigned)
+            t.AssignPool(null);
         _db.Pools.Remove(p);
         await _db.SaveChangesAsync(ct);
         return true;

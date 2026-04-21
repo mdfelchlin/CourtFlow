@@ -33,6 +33,11 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
                     b.Property<Guid>("DivisionId")
                         .HasColumnType("uuid")
                         .HasColumnName("division_id");

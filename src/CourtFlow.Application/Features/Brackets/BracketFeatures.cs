@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Application.Features.Brackets;
 
-public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketType Type, bool IfNecessaryFinal, int TeamCapacity);
+public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketType Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName);
 public sealed record BracketNodeDto(Guid Id, Guid BracketId, BracketBranch Branch, int Round, int Slot, Guid? MatchId, Guid? HomeTeamId, Guid? AwayTeamId, int? HomeSeed, int? AwaySeed, Guid? WinsToNodeId, Guid? LosesToNodeId);
 public sealed record BracketWithNodesDto(BracketDto Bracket, IReadOnlyList<BracketNodeDto> Nodes);
 
 internal static class BracketMapping
 {
-    public static BracketDto ToDto(this Bracket b) => new(b.Id, b.TournamentId, b.DivisionId, b.Type, b.IfNecessaryFinal, b.TeamCapacity);
+    public static BracketDto ToDto(this Bracket b) => new(b.Id, b.TournamentId, b.DivisionId, b.Type, b.IfNecessaryFinal, b.TeamCapacity, b.DisplayName);
     public static BracketNodeDto ToDto(this BracketNode n) => new(
         n.Id, n.BracketId, n.Branch, n.Round, n.Slot, n.MatchId,
         n.HomeTeamId, n.AwayTeamId, n.HomeSeed, n.AwaySeed,
@@ -50,7 +50,7 @@ public sealed class GetBracketHandler : IRequestHandler<GetBracketQuery, Bracket
     }
 }
 
-public sealed record GenerateBracketCommand(Guid TournamentId, Guid DivisionId, BracketType Type, int TeamCapacity, bool IfNecessaryFinal) : IRequest<BracketDto>;
+public sealed record GenerateBracketCommand(Guid TournamentId, Guid DivisionId, BracketType Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null) : IRequest<BracketDto>;
 
 public sealed class GenerateBracketHandler : IRequestHandler<GenerateBracketCommand, BracketDto>
 {
@@ -59,7 +59,7 @@ public sealed class GenerateBracketHandler : IRequestHandler<GenerateBracketComm
     public async Task<BracketDto> Handle(GenerateBracketCommand request, CancellationToken ct)
     {
         var bracket = await _builder.BuildAsync(request.TournamentId, request.DivisionId,
-            new BracketBuildOptions(request.Type, request.TeamCapacity, request.IfNecessaryFinal), ct);
+            new BracketBuildOptions(request.Type, request.TeamCapacity, request.IfNecessaryFinal, request.DisplayName), ct);
         return bracket.ToDto();
     }
 }

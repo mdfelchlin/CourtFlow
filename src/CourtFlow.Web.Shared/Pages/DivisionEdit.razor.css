@@ -1,0 +1,47 @@
+/* Rankings: stable columns so # / team / club align; numeric rank from SeedHint */
+.cf-ranking-table {
+    width: 100%;
+}
+
+.cf-ranking-head {
+    display: grid;
+    grid-template-columns: 2rem 2.25rem minmax(0, 1fr) minmax(7rem, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0 0.5rem 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.75;
+}
+
+.cf-ranking-card {
+    margin-bottom: 0.35rem !important;
+}
+
+.cf-ranking-row {
+    display: grid;
+    grid-template-columns: 2rem 2.25rem minmax(0, 1fr) minmax(7rem, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    min-height: 2.5rem;
+}
+
+.cf-ranking-num {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    font-weight: 600;
+}
+
+.cf-ranking-team,
+.cf-ranking-club {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cf-ranking-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

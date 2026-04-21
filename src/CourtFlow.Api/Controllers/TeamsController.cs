@@ -40,9 +40,17 @@ public class TeamsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpPut("{id:guid}/pool")]
+    public async Task<IActionResult> AssignPool(Guid id, [FromBody] AssignTeamPoolBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new AssignTeamPoolCommand(id, body.PoolId), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
         await _mediator.Send(new DeleteTeamCommand(id), ct) ? NoContent() : NotFound();
 }
 
 public sealed record MoveTeamDivisionBody(Guid DivisionId);
+public sealed record AssignTeamPoolBody(Guid? PoolId);

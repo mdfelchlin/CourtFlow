@@ -24,7 +24,7 @@ public class BracketBuilder : IBracketBuilder
         var orgId = _tenant.RequireOrganizationId();
 
         var size = NextPowerOfTwo(options.TeamCapacity);
-        var bracket = new Bracket(orgId, tournamentId, divisionId, options.Type, size, options.IfNecessaryFinal);
+        var bracket = new Bracket(orgId, tournamentId, divisionId, options.Type, size, options.IfNecessaryFinal, options.DisplayName);
         _db.Brackets.Add(bracket);
 
         var winners = new Dictionary<(int round, int slot), BracketNode>();

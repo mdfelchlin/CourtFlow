@@ -11,63 +11,32 @@
     <CfToolbarAddButton OnClick="NewAsync" Disabled="TournamentStore.SelectedTournamentId is null" AriaLabel="Add division" />
 </MudStack>
 
-<MudGrid>
-    <MudItem xs="12" md="6">
-        <MudDataGrid T="DivisionDto"
-                     Items="_items"
-                     Loading="_loading"
-                     Dense="true"
-                     Hover="true"
-                     MultiSelection="false"
-                     @bind-SelectedItem="_selected"
-                     @bind-SelectedItem:after="LoadPoolsAsync">
+<MudDataGrid T="DivisionDto"
+             Items="_items"
+             Loading="_loading"
+             Dense="true"
+             Hover="true"
+             MultiSelection="false">
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Name" />
                 <PropertyColumn Property="x => x.Format" Title="Format" />
                 <PropertyColumn Property="x => x.MaxTeams" Title="Max teams" />
                 <TemplateColumn Title="Actions">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" />
+                        <MudTooltip Text="Manage pools & brackets">
+                            <MudIconButton Icon="@Icons.Material.Filled.Dashboard" Size="Size.Small" Href="@($"/divisions/{context.Item.Id}")" aria-label="Manage division" />
+                        </MudTooltip>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" aria-label="Edit division" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" aria-label="Delete division" />
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
         </MudDataGrid>
-    </MudItem>
-    <MudItem xs="12" md="6">
-        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
-                <MudText Typo="Typo.h6">Pools @(_selected is null ? "" : $"· {_selected.Name}")</MudText>
-                <CfToolbarAddButton OnClick="NewPoolAsync" Disabled="_selected is null" AriaLabel="Add pool" />
-            </MudStack>
-            @if (_selected is null)
-            {
-                <MudAlert Severity="Severity.Info" Dense="true">Select a division.</MudAlert>
-            }
-            else
-            {
-                <MudList T="PoolDto" Dense="true">
-                    @foreach (var p in _pools)
-                    {
-                        <MudListItem T="PoolDto" Value="p">
-                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                <MudText>@p.Name</MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeletePoolAsync(p))" />
-                            </MudStack>
-                        </MudListItem>
-                    }
-                </MudList>
-            }
-        </MudPaper>
-    </MudItem>
-</MudGrid>
 
 @code {
     [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
 
     private IReadOnlyList<DivisionDto> _items = Array.Empty<DivisionDto>();
-    private IReadOnlyList<PoolDto> _pools = Array.Empty<PoolDto>();
-    private DivisionDto? _selected;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -87,22 +56,6 @@
         try { _items = tid is null ? Array.Empty<DivisionDto>() : await Api.Divisions.ListAsync(tid); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         _loading = false;
-        _selected = null;
-        _pools = Array.Empty<PoolDto>();
-    }
-
-    private async Task LoadPoolsAsync()
-    {
-        try
-        {
-            _pools = _selected is null
-                ? Array.Empty<PoolDto>()
-                : await Api.Pools.ListAsync(_selected.Id);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
     }
 
     private async Task NewAsync()
@@ -125,22 +78,6 @@
         var ok = await DialogService.ShowMessageBox("Delete division", $"Delete '{d.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
         try { await Api.Divisions.DeleteAsync(d.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-    }
-
-    private async Task NewPoolAsync()
-    {
-        if (_selected is null) return;
-        var parms = new DialogParameters { ["DivisionId"] = _selected.Id };
-        var dialog = await DialogService.ShowAsync<PoolDialog>("New pool", parms);
-        if ((await dialog.Result) is { Canceled: false }) await LoadPoolsAsync();
-    }
-
-    private async Task DeletePoolAsync(PoolDto p)
-    {
-        var ok = await DialogService.ShowMessageBox("Delete pool", $"Delete '{p.Name}'?", yesText: "Delete", cancelText: "Cancel");
-        if (ok != true) return;
-        try { await Api.Pools.DeleteAsync(p.Id); Snackbar.Add("Deleted", Severity.Success); await LoadPoolsAsync(); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
