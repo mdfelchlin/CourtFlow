@@ -45,9 +45,9 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
                 publishableKey,
                 frontendApi);
         }
-        catch (JSException)
+        catch
         {
-            // Keep the app running even if Clerk CDN/config load lags.
+            // JSException or failure before Clerk is ready: keep the app running.
             return await GetAsync();
         }
 

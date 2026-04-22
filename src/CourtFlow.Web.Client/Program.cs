@@ -4,9 +4,24 @@ using CourtFlow.Web.Shared.Services;
 using CourtFlow.Web.Shared.Theming;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Configuration;
 using MudBlazor.Services;
+using System.Net.Http;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+// On static hosts, embedded appsettings in IConfiguration is sometimes empty; always merge from
+// the deployed wwwroot file so Api:BaseUrl and Clerk are available before Build().
+try
+{
+    using var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+    await using var stream = await http.GetStreamAsync("appsettings.json");
+    builder.Configuration.AddJsonStream(stream);
+}
+catch (HttpRequestException)
+{
+    // Fall back to CreateDefault / embedded only.
+}
 
 builder.Services.AddMudServices();
 builder.Services.AddAuthorizationCore();

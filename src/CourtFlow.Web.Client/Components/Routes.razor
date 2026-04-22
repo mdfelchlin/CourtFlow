@@ -2,6 +2,8 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(CourtFlow.Web.Shared.Components.AppShell)">
             <Authorizing>
+                <MudProgressLinear Indeterminate="true" />
+                <MudText Class="ma-4">Preparing sign-in…</MudText>
             </Authorizing>
             <NotAuthorized>
                 <RedirectToLogin />

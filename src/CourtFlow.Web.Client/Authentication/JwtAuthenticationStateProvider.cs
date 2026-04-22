@@ -11,8 +11,17 @@ public sealed class JwtAuthenticationStateProvider(AuthTokenStore tokenStore) : 
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var snapshot = await tokenStore.RefreshFromClerkAsync();
-        _cachedPrincipal = BuildPrincipal(snapshot);
+        try
+        {
+            var snapshot = await tokenStore.RefreshFromClerkAsync();
+            _cachedPrincipal = BuildPrincipal(snapshot);
+        }
+        catch
+        {
+            // Never block routing/layout on Clerk or JS interop failures; user can retry sign-in.
+            _cachedPrincipal = Anonymous;
+        }
+
         return new AuthenticationState(_cachedPrincipal);
     }
 
