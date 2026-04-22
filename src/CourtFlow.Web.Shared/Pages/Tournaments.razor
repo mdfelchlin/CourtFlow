@@ -12,7 +12,7 @@
     <CfToolbarAddButton OnClick="New" AriaLabel="Add tournament" />
 </MudStack>
 
-<MudDataGrid T="TournamentDto" Items="_items" Loading="_loading" Dense="true" Hover="true" Striped="true">
+<MudDataGrid T="TournamentDto" Items="_items" Loading="_loading" Dense="true" Hover="true" Striped="false" Class="cf-tournaments-grid">
     <Columns>
         <PropertyColumn Property="x => x.Name" Title="Name" />
         <PropertyColumn Property="x => x.StartDate" Title="Start" />

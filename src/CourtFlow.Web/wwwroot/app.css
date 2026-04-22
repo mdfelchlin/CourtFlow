@@ -101,3 +101,36 @@ h1:focus {
 .cf-teams-filters .cf-teams-filter-name .mud-input-slot input.mud-input-root {
     line-height: 1.375;
 }
+
+/* Teams page filters: force white input background for clarity. */
+.cf-teams-filters .cf-teams-filter-control .mud-input-control > .mud-input-control-input-container,
+.cf-teams-filters .cf-teams-filter-control .mud-input-slot,
+.cf-teams-filters .cf-teams-filter-control .mud-input-outlined,
+.cf-teams-filters .cf-teams-filter-control .mud-input-root,
+.cf-teams-filters .cf-teams-filter-control input.mud-input-slot,
+.cf-teams-filters .cf-teams-filter-control input.mud-input-root {
+    background-color: #ffffff !important;
+}
+
+.cf-teams-filters .cf-teams-filter-control .mud-input-outlined {
+    border-radius: 10px !important;
+    overflow: hidden;
+}
+
+.cf-teams-filters .cf-teams-filter-control .mud-input-control-input-container,
+.cf-teams-filters .cf-teams-filter-control .mud-input-slot {
+    border-radius: inherit;
+}
+
+/* Keep text readable when filters are white in dark mode. */
+.cf-teams-filters .cf-teams-filter-control .mud-input-root,
+.cf-teams-filters .cf-teams-filter-control .mud-select-input,
+.cf-teams-filters .cf-teams-filter-control .mud-input-slot input {
+    color: #1f2a30 !important;
+}
+
+/* Teams table: remove trailing bottom divider on last row. */
+.cf-teams-grid .mud-table-body .mud-table-row:last-child .mud-table-cell,
+.cf-teams-grid .mud-table-container tbody tr:last-child td {
+    border-bottom: none !important;
+}

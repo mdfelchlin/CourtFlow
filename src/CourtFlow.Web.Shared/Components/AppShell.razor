@@ -1,7 +1,11 @@
 @inherits LayoutComponentBase
 @inject SelectedTournamentStore TournamentStore
+@inject CourtFlow.Web.Shared.Theming.ThemeState Theme
+@inject IJSRuntime JS
 
-<MudThemeProvider />
+@implements IDisposable
+
+<MudThemeProvider Theme="Theme.CurrentTheme" IsDarkMode="Theme.IsDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -12,6 +16,13 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h6" Class="ml-2">CourtFlow</MudText>
         <MudSpacer />
+        <MudTooltip Text="@(Theme.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+            <MudIconButton
+                Icon="@(Theme.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                Color="Color.Inherit"
+                aria-label="Toggle theme"
+                OnClick="ToggleThemeAsync" />
+        </MudTooltip>
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body2" Class="mr-3">@context.User.Identity?.Name</MudText>
@@ -36,5 +47,27 @@
 @code {
     private bool _drawerOpen = true;
 
+    protected override void OnInitialized()
+    {
+        Theme.OnChanged += OnThemeChanged;
+    }
+
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task ToggleThemeAsync()
+    {
+        Theme.Toggle();
+        try
+        {
+            await JS.InvokeVoidAsync("courtflowTheme.setCookie", Theme.IsDarkMode ? "dark" : "light");
+        }
+        catch (InvalidOperationException)
+        {
+            // JS interop not available during prerender.
+        }
+    }
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Theme.OnChanged -= OnThemeChanged;
 }

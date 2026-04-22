@@ -112,18 +112,23 @@ else
 }
 
 <style>
-    .schedule-scroller { overflow-x: auto; width: 100%; }
-    .courtflow-schedule { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+    .schedule-scroller {
+        overflow-x: auto;
+        width: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .courtflow-schedule { border-collapse: separate; border-spacing: 0; min-width: 100%; background: #ffffff; }
     .courtflow-schedule th, .courtflow-schedule td {
         border-bottom: 1px solid var(--mud-palette-lines-default);
-        padding: 4px 8px; vertical-align: top; white-space: nowrap;
+        padding: 4px 8px; vertical-align: top; white-space: nowrap; background: #ffffff;
     }
     .courtflow-schedule thead th {
-        position: sticky; top: 0; background: var(--mud-palette-surface); z-index: 2;
+        position: sticky; top: 0; background: #ffffff; z-index: 2;
         text-align: left; font-weight: 600;
     }
     .courtflow-schedule th.court-col, .courtflow-schedule td.court-col {
-        position: sticky; left: 0; background: var(--mud-palette-surface); z-index: 3; font-weight: 600;
+        position: sticky; left: 0; background: #ffffff; z-index: 3; font-weight: 600;
     }
     .courtflow-schedule thead th.court-col { z-index: 4; }
     .match-cell { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }

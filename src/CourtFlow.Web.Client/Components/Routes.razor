@@ -1,6 +1,8 @@
 <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(CourtFlow.Web.Shared.Components.AppShell).Assembly }">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(CourtFlow.Web.Shared.Components.AppShell)">
+            <Authorizing>
+            </Authorizing>
             <NotAuthorized>
                 <RedirectToLogin />
             </NotAuthorized>

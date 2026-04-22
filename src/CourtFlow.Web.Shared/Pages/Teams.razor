@@ -71,7 +71,7 @@
     </MudItem>
 </MudGrid>
 
-<MudDataGrid T="TeamDto" Items="FilteredItems" Loading="_loading" Dense="true" Hover="true">
+<MudDataGrid T="TeamDto" Items="FilteredItems" Loading="_loading" Dense="true" Hover="true" Class="cf-teams-grid">
     <Columns>
         <TemplateColumn Title="Division">
             <CellTemplate>@(_divisions.FirstOrDefault(d => d.Id == context.Item.DivisionId)?.Name ?? "-")</CellTemplate>
