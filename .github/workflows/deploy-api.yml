@@ -1,12 +1,6 @@
 name: Deploy API
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'src/**'
-      - 'deploy/**'
-      - '.github/workflows/deploy-api.yml'
   workflow_dispatch:
     inputs:
       target_environment:
@@ -31,7 +25,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production' }}
+    environment: ${{ inputs.target_environment }}
     steps:
       - uses: actions/checkout@v4
 
