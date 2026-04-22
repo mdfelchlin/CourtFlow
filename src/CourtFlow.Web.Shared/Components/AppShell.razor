@@ -14,7 +14,12 @@
 <MudLayout>
     <MudAppBar Elevation="1" Color="Color.Primary">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2">CourtFlow</MudText>
+        <MudLink Href="/" Underline="Underline.None" Color="Color.Inherit" Class="ml-2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <img src="/CourtFlow.png" alt="CourtFlow logo" style="width: 44px; height: 44px; border-radius: 4px;" />
+                <MudText Typo="Typo.h6">CourtFlow</MudText>
+            </MudStack>
+        </MudLink>
         <MudSpacer />
         <MudTooltip Text="@(Theme.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")">
             <MudIconButton

@@ -1,5 +1,4 @@
 using CourtFlow.ApiClient;
-using CourtFlow.Web.Client.Authentication;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Shared.Services;
 using CourtFlow.Web.Shared.Theming;
