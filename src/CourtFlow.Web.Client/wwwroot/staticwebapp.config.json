@@ -2,6 +2,12 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
+      "/appsettings.json",
+      "/clerkInterop.js",
+      "/service-worker.js",
+      "/service-worker.published.js",
+      "/manifest.webmanifest",
+      "/index.html",
       "/images/*.{png,jpg,gif,webp,svg}",
       "/css/*",
       "/_framework/*",
