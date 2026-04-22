@@ -23,7 +23,8 @@
     </div>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_content/CourtFlow.Web.Shared/courtflowTheme.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+    <!-- Do not load @clerk/clerk-js here: it can throw before publishableKey is set and block Blazor.
+         clerkInterop.js loads the Clerk bundle after /appsettings.json is read. -->
     <script src="clerkInterop.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
