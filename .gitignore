@@ -32,6 +32,26 @@ logs/
 *.sqlite
 *.sqlite3
 
+## Terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+*.tfplan
+# Sensitive / machine-specific; keep *.example tracked
+*.tfvars
+!*.tfvars.example
+**/backend.hcl
+!**/backend.hcl.example
+
 ## OS
 Thumbs.db
 .DS_Store

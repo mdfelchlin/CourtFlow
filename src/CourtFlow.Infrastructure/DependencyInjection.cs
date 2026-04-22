@@ -22,12 +22,21 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddCourtFlowInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        var connection = config.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured");
+        var connection = ResolveConnectionString(config);
 
-        services.AddDbContext<AppDbContext>(opts => opts
-            .UseSqlite(connection)
-            .UseSnakeCaseNamingConvention());
+        services.AddDbContext<AppDbContext>(opts =>
+        {
+            if (IsLibSqlConnection(connection))
+            {
+                opts.UseLibSql(connection);
+            }
+            else
+            {
+                opts.UseSqlite(connection);
+            }
+
+            opts.UseSnakeCaseNamingConvention();
+        });
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
@@ -64,5 +73,38 @@ public static class DependencyInjection
         services.AddScoped<ICourtStatusService, CourtStatusService>();
 
         return services;
+    }
+
+    private static bool IsLibSqlConnection(string connection)
+    {
+        return connection.StartsWith("libsql://", StringComparison.OrdinalIgnoreCase)
+            || connection.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || connection.Contains("authToken=", StringComparison.OrdinalIgnoreCase)
+            || connection.Contains("jwt=", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveConnectionString(IConfiguration config)
+    {
+        var connection = config.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            return connection;
+        }
+
+        var tursoUrl = config["Turso:Url"];
+        if (string.IsNullOrWhiteSpace(tursoUrl))
+        {
+            throw new InvalidOperationException(
+                "Either ConnectionStrings:Default or Turso:Url must be configured.");
+        }
+
+        var token = config["Turso:AuthToken"];
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return tursoUrl;
+        }
+
+        var separator = tursoUrl.Contains('?') ? "&" : "?";
+        return $"{tursoUrl}{separator}authToken={token}";
     }
 }

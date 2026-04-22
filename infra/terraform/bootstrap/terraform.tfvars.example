@@ -1,0 +1,5 @@
+subscription_id            = "00000000-0000-0000-0000-000000000000"
+location                   = "westus2"
+resource_group_name        = "courtflow-tfstate-rg"
+storage_account_name_prefix = "courtflowtf"
+container_name             = "tfstate"

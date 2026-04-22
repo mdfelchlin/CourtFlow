@@ -32,7 +32,14 @@ See the PRD: [Volleyball Tournament Management API + Blazor Web App PRD (V1, Adm
 
 ## Configuration
 
-Connection string: `ConnectionStrings:Default` in API and Web `appsettings.Development.json` (or user secrets). Default API config now uses a local SQLite file (`Data Source=courtflow.db`).
+Database configuration for API:
+
+- Local default: set `ConnectionStrings:Default` (current default is `Data Source=courtflow.db`).
+- Turso/libSQL: either set `ConnectionStrings:Default` to your libSQL URL, or set:
+  - `Turso:Url`
+  - `Turso:AuthToken` (optional if URL already contains token/query auth)
+
+`ConnectionStrings:Default` takes precedence when both are present.
 
 Clerk is the only auth provider:
 
@@ -48,6 +55,6 @@ Legacy password sign-in is intentionally disabled. `POST /api/v1/auth/sign-in` n
 
 ## Deployment (Azure SWA + Container Apps + Turso + Clerk)
 
-The **architecture, Azure/Turso/Clerk setup, GitHub secrets, CI/CD YAML/Dockerfile templates, Postgres → Turso cleanup, and go-live checklist** are all in a single plan: [`docs/CourtFlow-Azure-Plan.md`](docs/CourtFlow-Azure-Plan.md) (and the Cursor plan `azure_swa_hardening` mirrors it). **§3.1** is the detailed Postgres removal checklist.
+The **architecture, Azure/Turso/Clerk setup, GitHub secrets, CI/CD YAML/Dockerfile templates, libSQL migration notes, and go-live checklist** are all in a single plan: [`docs/CourtFlow-Azure-Plan.md`](docs/CourtFlow-Azure-Plan.md) (and the Cursor plan `azure_swa_hardening` mirrors it). **§3.1** tracks legacy database decommission guidance.
 
 > **Pipeline files:** add `.github/workflows/*.yml`, `deploy/Dockerfile.api`, and `.dockerignore` from **§10** of that plan, or use Agent mode to materialize them as real files in the repo.

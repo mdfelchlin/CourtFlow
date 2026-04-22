@@ -1,6 +1,6 @@
 ﻿# CourtFlow — Azure stack, deployment, and CI/CD
 
-> **Canonical copy in this repository.** Covers architecture, Turso migration, Postgres cleanup, Azure provisioning, GitHub Actions templates, and go-live checklist. Keep in sync with the Cursor plan `azure_swa_hardening` (or treat this file as source of truth and refresh Cursor from it).
+> **Canonical copy in this repository.** Covers architecture, Turso migration, legacy DB cleanup, Azure provisioning, GitHub Actions templates, and go-live checklist. Keep in sync with the Cursor plan `azure_swa_hardening` (or treat this file as source of truth and refresh Cursor from it).
 
 ## Load pattern (drives design)
 
@@ -18,11 +18,11 @@
 |--------|--------|--------|
 | **UI** | **Azure Static Web Apps** + Blazor **WASM** **PWA** | Free tier where it fits; Standard if you outgrow limits. |
 | **API** | **Azure Container Apps** (containerized [`CourtFlow.Api`](../src/CourtFlow.Api/CourtFlow.Api.csproj)) | **Scale to zero** + **capped max replicas** + **budgets**. |
-| **Data** | **Turso** (libSQL) | Npgsql → libSQL/EF port; read-heavy **refresh** model. |
+| **Data** | **Turso** (libSQL) | SQLite-compatible libSQL/EF model; read-heavy **refresh** model. |
 | **Auth** | **Clerk** | Org-aware; API validates **JWTs**; map to `OrganizationId` / roles in your DB. |
 | **Realtime** | **None** (v1) | Refresh or optional **HTTP** poll only. |
 
-**Optional fallback (only if Turso blocks a hard deadline):** a small **managed Postgres** (e.g. Neon) is the lowest-friction **escape hatch** to ship WASM + Clerk on Azure; treat as **plan B**, not the default.
+**Optional fallback (only if Turso blocks a hard deadline):** a short-lived SQLite/local fallback can unblock delivery; keep Turso as the deployment target.
 
 ---
 
@@ -94,43 +94,43 @@ Current stack: cookie auth on web + [`BearerTokenHandler`](../src/CourtFlow.Web/
 You accept **single-writer** semantics and migration work. For **weekend, few tournaments**, read-heavy refresh traffic fits Turso’s **read-optimized** story.
 
 - **Provider:** Follow Turso **.NET / libSQL** + EF Core guidance; confirm remote + optional **embedded replica** only if you want lower read latency on busy weekends.
-- **Migrations:** Replace Npgsql-specific model ([`UseNpgsql`](../src/CourtFlow.Infrastructure/DependencyInjection.cs)) with SQLite/libSQL–compatible types and a fresh migration path.
+- **Migrations:** Keep migrations aligned to the SQLite/libSQL-compatible model and validate against Turso development/staging before production cutover.
 - **Concurrency:** A **couple of tournaments** lowers write overlap risk; still avoid **one hot row** for every score change if you see lock waits in tests.
 - **Identity:** If Clerk owns users, you may **slim** local Identity to service accounts or mapping only.
 
-### 3.1 Postgres removal (cleanup after Turso is working)
+### 3.1 Legacy database cleanup (after Turso is working)
 
-Do this **on a dedicated branch/PR** once the libSQL provider and new migrations are **green** in CI and you have run against a real Turso database (at least dev + staging). Order matters: **do not delete** old migrations until the new model is the only one you need, or you keep a `release/postgres` tag for history.
+Do this **on a dedicated branch/PR** once the libSQL provider and migrations are **green** in CI and you have run against a real Turso database (at least dev + staging). Keep legacy migration history only if needed for audit.
 
 **Summary table (areas):**
 
 | Area | What to clean up |
 |--------|------------------|
-| **EF / packages** | Remove `Npgsql.EntityFrameworkCore.PostgreSQL` and any `UseNpgsql` in [`DependencyInjection`](../src/CourtFlow.Infrastructure/DependencyInjection.cs). Add Turso/libSQL + SQLite-compatible EF per Turso’s docs. Remove or replace anything **PostgreSQL-only** in migrations (e.g. `uuid` type mapping) when you **replace** migration history. |
-| **Migrations** | **Typical path:** one-time **new initial migration** for SQLite/libSQL after the model is adjusted, and **remove** old `Migrations` that target Npgsql **only** when the team agrees (or archive the old folder in a `legacy/postgres-migrations` branch for audit). `dotnet ef migrations` must target the new provider. |
-| **Local Docker** | [`deploy/docker-compose.dev.yml`](../deploy/docker-compose.dev.yml) and README “start Postgres” steps: either **remove** the `postgres` service, or replace with **Turso dev URL** or **local `libsql`/SQLite file** for machine-offline work—document the new default. |
-| **Config** | `ConnectionStrings:Default` in `appsettings*.json`, [user secrets](https://docs.microsoft.com/aspnet/core/security/app-secrets), and environment files: point at **Turso** (or a local libSQL file); delete leftover Postgres URLs from laptops and CI. |
-| **CI/CD** | GitHub Actions: no Postgres service container unless you need it for tests; if integration tests use a live DB, switch them to **Turso branch DB** or **SQLite in-memory** for unit-style tests. |
-| **Cloud** | If you ever created **Azure Database for PostgreSQL** for CourtFlow, **export** anything needed, then **delete** the server (or downscale) so it is not billing. Remove VNet rules / firewall rules tied to it. |
-| **Tooling** | `dotnet-ef` global/local tool stays; you may keep `psql` only if you still have admin scripts. Remove one-off **SQL** scripts that use Postgres-only syntax (`::uuid`, `jsonb`, etc.) or rewrite for SQLite. |
-| **Observability** | Dashboards and alerts that referenced a Postgres **connection** or **Azure PG** resource—update to Turso/ACA metrics. |
+| **EF / packages** | Keep only Turso/libSQL and SQLite-compatible EF packages in [`DependencyInjection`](../src/CourtFlow.Infrastructure/DependencyInjection.cs). |
+| **Migrations** | Keep a single active SQLite/libSQL migration lineage; archive legacy migration history only if needed for compliance/audit. |
+| **Local Docker** | [`deploy/docker-compose.dev.yml`](../deploy/docker-compose.dev.yml) should stay DB-agnostic (or use local SQLite only). |
+| **Config** | `ConnectionStrings:Default` or `Turso:*` config should point at Turso (or local SQLite fallback for offline work). |
+| **CI/CD** | Keep workflows DB-service-agnostic; use Turso branch DB or SQLite in-memory for tests that require persistence. |
+| **Cloud** | Remove any no-longer-used managed relational instances/resources from billing scope. |
+| **Tooling** | Keep `dotnet-ef`; retire one-off SQL scripts tied to old providers or rewrite for SQLite compatibility. |
+| **Observability** | Dashboards/alerts should target Turso + ACA metrics only. |
 
 **Detailed step order (execution):**
 
 | Step | Action |
 |------|--------|
-| 1. **Code** | Remove the `Npgsql` EF provider and `UseNpgsql`; add Turso/libSQL + the EF-compatible provider per current [Turso / libSQL documentation for .NET](https://docs.turso.tech/sdk/csharp/quickstart) (search *Turso .NET* if the link moves). Update [`CourtFlow.Infrastructure`](../src/CourtFlow.Infrastructure/DependencyInjection.cs). |
-| 2. **Migrations** | Add **new** EF migrations for the libSQL model. When the team is ready, **retire** Npgsql-specific files under `Persistence/Migrations` (or replace with a single new baseline in a controlled PR). |
-| 3. **Local dev** | **Stop** using the `postgres` service in `docker-compose.dev.yml`: remove that service, or point dev `ConnectionStrings__Default` at **Turso** (dev) or a local **file/SQLite** for offline work. Update the root [README](../README.md) “Start Postgres” steps. |
-| 4. **Secrets** | Remove Postgres connection strings from **user secrets**, `.env` files, and any **GitHub** environment / variables that pointed at a Postgres host. |
-| 5. **CI** | If a workflow used `services: postgres:`, **delete** the service; use Turso in CI, in-memory SQLite for fast tests, or a Turso test DB URL via secrets. |
-| 6. **Azure** | If you created **Azure Database for PostgreSQL** for this app, **back up** / **export** what you need, then **delete** the flexible server (or the whole RG if it was a throwaway). Remove firewall and private endpoint rules. |
-| 7. **Repo search** | Search the repo for `postgres`, `npgsql`, `5432`, and `Npgsql` and update or remove snippets, including in this plan if migration is done. |
-| 8. **Data** | One-time **ETL** from old Postgres → Turso if you had real data; validate row counts and critical org/tournament links before dropping Postgres. |
+| 1. **Code** | Use Turso/libSQL + SQLite-compatible EF wiring per [Turso / libSQL documentation for .NET](https://docs.turso.tech/sdk/csharp/quickstart). Update [`CourtFlow.Infrastructure`](../src/CourtFlow.Infrastructure/DependencyInjection.cs). |
+| 2. **Migrations** | Keep migrations targeted to the active libSQL-compatible model. |
+| 3. **Local dev** | Keep `docker-compose.dev.yml` DB-free and use `ConnectionStrings__Default` or `Turso:*` for local/dev data access. |
+| 4. **Secrets** | Keep only active Turso/libSQL secrets in user secrets, `.env`, and GitHub environments. |
+| 5. **CI** | Keep workflows free of legacy DB service containers; use Turso test DB or SQLite in-memory where needed. |
+| 6. **Azure** | Decommission any no-longer-used managed database infrastructure and related network rules. |
+| 7. **Repo search** | Search for legacy provider keywords and remove outdated guidance. |
+| 8. **Data** | Run one-time ETL from any legacy store to Turso and verify row counts/relationships before final decommission. |
 
-**Order:** get **Turso + new migrations** working in **at least** one non-production environment first; then decommission **Azure** Postgres, then **compose** and **code** removal in the same release train as you are comfortable with.
+**Order:** get **Turso + migrations** working in **at least** one non-production environment first, then decommission legacy DB infrastructure, then finish docs/config cleanup.
 
-**Data:** If you have **irreplaceable** data in an old Postgres only, run a one-time **ETL** (or export from staging) into Turso **before** turning off the old instance.
+**Data:** If you have **irreplaceable** data in a legacy relational store, run a one-time **ETL** (or export from staging) into Turso **before** turning off the old instance.
 
 ---
 
@@ -158,7 +158,7 @@ Without SignalR, attack surface is **ACA (CPU)**, **Turso/API rate limits**, and
 
 ## 6. Suggested implementation order (revised)
 
-1. **Turso + EF** on a branch until core flows and migrations pass; in the **same** PR series, apply **Postgres removal** (packages, compose, old migrations) once the new path is proven—see **§3** and **§3.1**.
+1. **Turso + EF** on a branch until core flows and migrations pass; in the **same** PR series, apply **legacy DB cleanup** (packages, compose, old migrations) once the new path is proven—see **§3** and **§3.1**.
 2. **WASM + SWA + PWA** shell, then **Clerk** end-to-end.
 3. **ACA** productionization (image, secrets, scale rules, alerts) and **§7–10** (provision + CI/CD + checklist).
 4. **Hardening pass:** rate limits, max replicas, budgets, optional WAF.
@@ -208,9 +208,9 @@ This section is what to **set up in portals** (not the repo) so the workflows in
 
 1. Account + **libSQL** database.
 2. R/W token for the API (on ACA, not the WASM client). Separate creds for CI if migrations run in pipeline.
-3. Map the connection to `ConnectionStrings__Default` in ACA (see [DependencyInjection](../src/CourtFlow.Infrastructure/DependencyInjection.cs) after Npgsql is removed). **Do not** commit the token to git.
+3. Map the connection to `ConnectionStrings__Default` (or `Turso:*`) in ACA (see [DependencyInjection](../src/CourtFlow.Infrastructure/DependencyInjection.cs)). **Do not** commit the token to git.
 
-**Postgres cleanup** after cutover: **§3.1** (and detailed steps in the second table there).
+**Legacy DB cleanup** after cutover: **§3.1** (and detailed steps in the second table there).
 
 ### 7.5 Clerk
 
@@ -436,7 +436,7 @@ Configure routes, headers, and **navigation fallback** for the SPA. Omit `platfo
 - [ ] `deploy/Dockerfile.api` + **§10.2–10.4** YAML files + **`.dockerignore`**
 - [ ] **WASM** project path correct in **10.4** before enabling SWA on `push`
 - [ ] **Budgets**; **max replicas** on ACA; **rate limits** on public API
-- [ ] **Postgres → Turso** per **§3.1** (code, compose, Azure PG, secrets, data)
+- [ ] **Legacy DB → Turso** per **§3.1** (code, compose, cloud resources, secrets, data)
 
 ---
 
@@ -447,4 +447,4 @@ Configure routes, headers, and **navigation fallback** for the SPA. Omit `platfo
 - **Single-writer** SQLite: lower risk with **few** concurrent tournaments; still test concurrent writes to **one** match/row.
 - **No SignalR** simplifies ops and cost; reintroduce only on **product** need, not infrastructure default.
 
-**Escape hatch only:** if **Turso** blocks a critical deadline, you may use **Neon (or small Postgres)** temporarily, then reattempt **Turso**. Committed direction remains **SWA + ACA + Turso + Clerk**.
+**Escape hatch only:** if **Turso** blocks a critical deadline, temporarily use local SQLite while keeping Turso as the target database. Committed direction remains **SWA + ACA + Turso + Clerk**.

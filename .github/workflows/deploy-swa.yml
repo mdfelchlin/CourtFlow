@@ -1,13 +1,22 @@
 name: Deploy PWA
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "GitHub environment containing SWA deploy token"
+        required: true
+        default: production
+        type: choice
+        options:
+          - dev
+          - production
   # After WASM path is stable in your repo, enable push:
-  # push:
-  #   branches: [ main ]
-  #   paths:
-  #     - 'src/CourtFlow.Web.Client/**'
-  #     - '.github/workflows/deploy-swa.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/CourtFlow.Web.Client/**'
+      - '.github/workflows/deploy-swa.yml'
 
 permissions:
   id-token: write
@@ -22,6 +31,7 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     name: Build and deploy SWA
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'production' }}
     steps:
       - uses: actions/checkout@v4
 

@@ -1,0 +1,23 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+location        = "westus2"
+project_name    = "courtflow"
+environment     = "prod"
+
+min_replicas = 0
+max_replicas = 5
+api_image    = "mcr.microsoft.com/k8se/quickstart:latest"
+
+cors_origins = [
+  "https://example-prod.azurestaticapps.net",
+]
+
+budget_amount = 100
+budget_contact_emails = [
+  "owner@example.com",
+]
+
+connection_string_default = ""
+clerk_authority           = ""
+clerk_audience            = ""
+
+secrets = {}

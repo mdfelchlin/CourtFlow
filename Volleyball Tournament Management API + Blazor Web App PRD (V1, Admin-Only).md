@@ -210,7 +210,7 @@ In this version, only authenticated admins use the application; coaches, players
 
 - ASP.NET Core Web API.
 - Entity Framework Core for data access.
-- Relational database (SQL Server or PostgreSQL).
+- Relational database (Turso/libSQL with SQLite-compatible EF model).
 - ASP.NET Core Identity for auth and roles.
 
 ### 7.2 Web Front End

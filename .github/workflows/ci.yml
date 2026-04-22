@@ -29,3 +29,33 @@ jobs:
 
       - name: Publish API (artifact sanity, no deploy)
         run: dotnet publish src/CourtFlow.Api/CourtFlow.Api.csproj -c Release -o /tmp/courtflow-api-out
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt check
+        working-directory: infra/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init/validate (bootstrap)
+        working-directory: infra/terraform/bootstrap
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Terraform init/validate (dev)
+        working-directory: infra/terraform/envs/dev
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Terraform init/validate (prod)
+        working-directory: infra/terraform/envs/prod
+        run: |
+          terraform init -backend=false
+          terraform validate
