@@ -25,6 +25,13 @@ appsettings.*.Local.json
 logs/
 *.log
 
+## Local SQLite / dev data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
 ## OS
 Thumbs.db
 .DS_Store
