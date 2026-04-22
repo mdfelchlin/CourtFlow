@@ -7,20 +7,25 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using MudBlazor.Services;
 using System.Net.Http;
+using System.Text;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-// On static hosts, embedded appsettings in IConfiguration is sometimes empty; always merge from
-// the deployed wwwroot file so Api:BaseUrl and Clerk are available before Build().
+// On static hosts, IConfiguration from CreateDefault is sometimes empty. Merge from wwwroot.
+// Blazor WebAssembly: do not use GetStreamAsync+AddJsonStream (HTTP response streams are async-only
+// in the browser; AddJsonStream reads sync → net_http_synchronous_reads_not_supported).
 try
 {
     using var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-    await using var stream = await http.GetStreamAsync("appsettings.json");
-    builder.Configuration.AddJsonStream(stream);
+    var json = await http.GetStringAsync("appsettings.json");
+    if (!string.IsNullOrWhiteSpace(json))
+    {
+        builder.Configuration.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(json)));
+    }
 }
-catch (HttpRequestException)
+catch
 {
-    // Fall back to CreateDefault / embedded only.
+    // Keep CreateDefault/embedded only.
 }
 
 builder.Services.AddMudServices();
