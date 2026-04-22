@@ -1,13 +1,12 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace CourtFlow.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSqlite : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,10 +15,10 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetRoles",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    normalized_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    concurrency_stamp = table.Column<string>(type: "text", nullable: true)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    concurrency_stamp = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -30,23 +29,23 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetUsers",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    display_name = table.Column<string>(type: "text", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    normalized_user_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    normalized_email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    email_confirmed = table.Column<bool>(type: "boolean", nullable: false),
-                    password_hash = table.Column<string>(type: "text", nullable: true),
-                    security_stamp = table.Column<string>(type: "text", nullable: true),
-                    concurrency_stamp = table.Column<string>(type: "text", nullable: true),
-                    phone_number = table.Column<string>(type: "text", nullable: true),
-                    phone_number_confirmed = table.Column<bool>(type: "boolean", nullable: false),
-                    two_factor_enabled = table.Column<bool>(type: "boolean", nullable: false),
-                    lockout_end = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    lockout_enabled = table.Column<bool>(type: "boolean", nullable: false),
-                    access_failed_count = table.Column<int>(type: "integer", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    display_name = table.Column<string>(type: "TEXT", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    email_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    password_hash = table.Column<string>(type: "TEXT", nullable: true),
+                    security_stamp = table.Column<string>(type: "TEXT", nullable: true),
+                    concurrency_stamp = table.Column<string>(type: "TEXT", nullable: true),
+                    phone_number = table.Column<string>(type: "TEXT", nullable: true),
+                    phone_number_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    two_factor_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    lockout_end = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    lockout_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    access_failed_count = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -57,15 +56,16 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "brackets",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tournament_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    division_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    type = table.Column<int>(type: "integer", nullable: false),
-                    if_necessary_final = table.Column<bool>(type: "boolean", nullable: false),
-                    team_capacity = table.Column<int>(type: "integer", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tournament_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    division_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    type = table.Column<int>(type: "INTEGER", nullable: false),
+                    if_necessary_final = table.Column<bool>(type: "INTEGER", nullable: false),
+                    team_capacity = table.Column<int>(type: "INTEGER", nullable: false),
+                    display_name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -76,26 +76,26 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "matches",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tournament_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    division_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    pool_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    bracket_node_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    court_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    home_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    away_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    ref_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    wave = table.Column<int>(type: "integer", nullable: false),
-                    scheduled_start_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    duration_minutes = table.Column<int>(type: "integer", nullable: false),
-                    actual_start_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    last_score_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    finalized_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    state = table.Column<int>(type: "integer", nullable: false),
-                    winner_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tournament_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    division_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    pool_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    bracket_node_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    court_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    home_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    away_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    ref_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    wave = table.Column<int>(type: "INTEGER", nullable: false),
+                    scheduled_start_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    duration_minutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    actual_start_utc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    last_score_at_utc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    finalized_at_utc = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    state = table.Column<int>(type: "INTEGER", nullable: false),
+                    winner_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -106,11 +106,11 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "organizations",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    slug = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    slug = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -121,15 +121,15 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "scheduling_time_slots",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tournament_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    court_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    wave = table.Column<int>(type: "integer", nullable: false),
-                    start_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    duration_minutes = table.Column<int>(type: "integer", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tournament_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    court_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    wave = table.Column<int>(type: "INTEGER", nullable: false),
+                    start_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    duration_minutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -140,11 +140,11 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    role_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    claim_type = table.Column<string>(type: "text", nullable: true),
-                    claim_value = table.Column<string>(type: "text", nullable: true)
+                    id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    role_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    claim_type = table.Column<string>(type: "TEXT", nullable: true),
+                    claim_value = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -161,11 +161,11 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetUserClaims",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    claim_type = table.Column<string>(type: "text", nullable: true),
-                    claim_value = table.Column<string>(type: "text", nullable: true)
+                    id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    claim_type = table.Column<string>(type: "TEXT", nullable: true),
+                    claim_value = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -182,10 +182,10 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetUserLogins",
                 columns: table => new
                 {
-                    login_provider = table.Column<string>(type: "text", nullable: false),
-                    provider_key = table.Column<string>(type: "text", nullable: false),
-                    provider_display_name = table.Column<string>(type: "text", nullable: true),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    login_provider = table.Column<string>(type: "TEXT", nullable: false),
+                    provider_key = table.Column<string>(type: "TEXT", nullable: false),
+                    provider_display_name = table.Column<string>(type: "TEXT", nullable: true),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -202,8 +202,8 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    role_id = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -226,10 +226,10 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    login_provider = table.Column<string>(type: "text", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    value = table.Column<string>(type: "text", nullable: true)
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    login_provider = table.Column<string>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", nullable: false),
+                    value = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -246,23 +246,23 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "bracket_nodes",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    bracket_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    branch = table.Column<int>(type: "integer", nullable: false),
-                    round = table.Column<int>(type: "integer", nullable: false),
-                    slot = table.Column<int>(type: "integer", nullable: false),
-                    match_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    wins_to_node_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    wins_to_slot = table.Column<int>(type: "integer", nullable: true),
-                    loses_to_node_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    loses_to_slot = table.Column<int>(type: "integer", nullable: true),
-                    home_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    away_team_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    home_seed = table.Column<int>(type: "integer", nullable: true),
-                    away_seed = table.Column<int>(type: "integer", nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    bracket_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    branch = table.Column<int>(type: "INTEGER", nullable: false),
+                    round = table.Column<int>(type: "INTEGER", nullable: false),
+                    slot = table.Column<int>(type: "INTEGER", nullable: false),
+                    match_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    wins_to_node_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    wins_to_slot = table.Column<int>(type: "INTEGER", nullable: true),
+                    loses_to_node_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    loses_to_slot = table.Column<int>(type: "INTEGER", nullable: true),
+                    home_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    away_team_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    home_seed = table.Column<int>(type: "INTEGER", nullable: true),
+                    away_seed = table.Column<int>(type: "INTEGER", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -279,14 +279,14 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "match_sets",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    match_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    set_number = table.Column<int>(type: "integer", nullable: false),
-                    home_score = table.Column<int>(type: "integer", nullable: false),
-                    away_score = table.Column<int>(type: "integer", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    match_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    set_number = table.Column<int>(type: "INTEGER", nullable: false),
+                    home_score = table.Column<int>(type: "INTEGER", nullable: false),
+                    away_score = table.Column<int>(type: "INTEGER", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -303,12 +303,12 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "organization_memberships",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    role = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -325,17 +325,17 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "tournaments",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    start_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    end_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    time_zone_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    default_match_duration_minutes = table.Column<int>(type: "integer", nullable: false),
-                    tournament_partner_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
+                    start_date = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    end_date = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    time_zone_id = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    default_match_duration_minutes = table.Column<int>(type: "INTEGER", nullable: false),
+                    tournament_partner_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -352,14 +352,14 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "divisions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tournament_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    format = table.Column<int>(type: "integer", nullable: false),
-                    max_teams = table.Column<int>(type: "integer", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tournament_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    format = table.Column<int>(type: "INTEGER", nullable: false),
+                    max_teams = table.Column<int>(type: "INTEGER", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -376,13 +376,13 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "venues",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tournament_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    tournament_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    address = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -399,12 +399,12 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "pools",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    division_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    division_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -421,16 +421,16 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "teams",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    division_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    pool_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    club = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    wave = table.Column<int>(type: "integer", nullable: false),
-                    seed_hint = table.Column<int>(type: "integer", nullable: true),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    division_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    pool_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    club = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
+                    wave = table.Column<int>(type: "INTEGER", nullable: false),
+                    seed_hint = table.Column<int>(type: "INTEGER", nullable: true),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -447,13 +447,13 @@ namespace CourtFlow.Infrastructure.Persistence.Migrations
                 name: "courts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    organization_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    venue_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    tags = table.Column<string[]>(type: "text[]", nullable: false),
-                    created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    organization_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    venue_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    tags = table.Column<string>(type: "text[]", nullable: false),
+                    created_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

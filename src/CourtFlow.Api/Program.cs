@@ -1,12 +1,13 @@
-using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using CourtFlow.Api.Infrastructure;
 using CourtFlow.Application;
 using CourtFlow.Infrastructure;
-using CourtFlow.Infrastructure.Identity;
 using CourtFlow.Infrastructure.Persistence;
 using CourtFlow.Infrastructure.Seed;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -30,24 +31,57 @@ public class Program
             .AddCourtFlowApplication()
             .AddCourtFlowInfrastructure(builder.Configuration);
 
-        var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
-            ?? throw new InvalidOperationException("JWT configuration missing");
+        var clerk = builder.Configuration.GetSection(ClerkOptions.SectionName).Get<ClerkOptions>()
+            ?? throw new InvalidOperationException("Clerk configuration is missing.");
+        if (!clerk.Enabled && !builder.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException("Clerk must be enabled outside development.");
+        }
+
+        if (string.IsNullOrWhiteSpace(clerk.Authority) && !builder.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException("Clerk:Authority must be configured outside development.");
+        }
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                if (!clerk.Enabled || string.IsNullOrWhiteSpace(clerk.Authority))
+                {
+                    // Keep startup unblocked in development even when Clerk config is missing,
+                    // but all authenticated requests will still fail until real Clerk values are configured.
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = "https://invalid.local",
+                        ValidateAudience = true,
+                        ValidAudience = "invalid",
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = false,
+                        ClockSkew = TimeSpan.Zero,
+                        NameClaimType = ClaimTypes.Name,
+                        RoleClaimType = ClaimTypes.Role
+                    };
+                    return;
+                }
+
+                var authority = clerk.Authority.TrimEnd('/');
+                options.Authority = authority;
+                options.RequireHttpsMetadata = true;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidateAudience = true,
+                    ValidIssuer = authority,
+                    ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
+                    ValidAudience = clerk.Audience,
                     ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwt.Issuer,
-                    ValidAudience = jwt.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
-                    ClockSkew = TimeSpan.FromMinutes(1)
+                    ValidateIssuerSigningKey = false,
+                    ClockSkew = TimeSpan.FromMinutes(1),
+                    NameClaimType = ClaimTypes.Name,
+                    RoleClaimType = ClaimTypes.Role
                 };
             });
+        builder.Services.AddScoped<IClaimsTransformation, ClerkClaimsTransformation>();
 
         builder.Services.AddAuthorization(options =>
         {
@@ -92,6 +126,31 @@ public class Program
         });
 
         builder.Services.AddProblemDetails();
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.AddPolicy("auth-signin", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+            options.AddPolicy("public-read", context =>
+                RateLimitPartition.GetSlidingWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new SlidingWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120,
+                        Window = TimeSpan.FromMinutes(1),
+                        SegmentsPerWindow = 4,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+        });
 
         var app = builder.Build();
 
@@ -110,6 +169,7 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+        app.UseRateLimiter();
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();

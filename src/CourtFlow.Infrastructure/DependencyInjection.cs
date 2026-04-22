@@ -26,7 +26,7 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured");
 
         services.AddDbContext<AppDbContext>(opts => opts
-            .UseNpgsql(connection)
+            .UseSqlite(connection)
             .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -40,6 +40,9 @@ public static class DependencyInjection
             options.Password.RequireNonAlphanumeric = true;
             options.User.RequireUniqueEmail = true;
             options.SignIn.RequireConfirmedEmail = false;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            options.Lockout.AllowedForNewUsers = true;
         })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>()

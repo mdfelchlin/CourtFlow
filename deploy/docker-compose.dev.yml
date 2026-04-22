@@ -1,15 +1,1 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: courtflow-postgres
-    environment:
-      POSTGRES_USER: courtflow
-      POSTGRES_PASSWORD: courtflow_dev
-      POSTGRES_DB: courtflow
-    ports:
-      - "5432:5432"
-    volumes:
-      - courtflow_pgdata:/var/lib/postgresql/data
-
-volumes:
-  courtflow_pgdata:
+services: {}

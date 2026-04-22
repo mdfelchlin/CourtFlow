@@ -17,10 +17,10 @@ public sealed class ThemeState
     public MudTheme CurrentTheme { get; }
     public event Action? OnChanged;
 
-    public ThemeState(IHttpContextAccessor accessor)
+    public ThemeState(IHttpContextAccessor? accessor = null)
     {
         CurrentTheme = BuildTheme();
-        var cookie = accessor.HttpContext?.Request.Cookies[CookieName];
+        var cookie = accessor?.HttpContext?.Request.Cookies[CookieName];
         IsDarkMode = string.Equals(cookie, "dark", StringComparison.OrdinalIgnoreCase);
     }
 

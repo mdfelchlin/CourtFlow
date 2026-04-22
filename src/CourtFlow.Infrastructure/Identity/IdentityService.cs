@@ -30,8 +30,11 @@ public class IdentityService : IIdentityService
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null) return new(false, Error: "Invalid credentials");
 
-        var valid = await _userManager.CheckPasswordAsync(user, password);
-        if (!valid) return new(false, Error: "Invalid credentials");
+        var passwordResult = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (passwordResult.IsLockedOut)
+            return new(false, Error: "Account is temporarily locked. Try again later.");
+        if (!passwordResult.Succeeded)
+            return new(false, Error: "Invalid credentials");
 
         var memberships = await _db.OrganizationMemberships
             .IgnoreQueryFilters()

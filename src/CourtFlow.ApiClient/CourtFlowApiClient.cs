@@ -6,8 +6,6 @@ namespace CourtFlow.ApiClient;
 
 public class CourtFlowApiClient
 {
-    private readonly HttpClient _http;
-
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -17,8 +15,6 @@ public class CourtFlowApiClient
 
     public CourtFlowApiClient(HttpClient http)
     {
-        _http = http;
-        Auth = new AuthEndpoints(http);
         Tournaments = new TournamentEndpoints(http);
         Venues = new VenueEndpoints(http);
         Courts = new CourtEndpoints(http);
@@ -34,7 +30,6 @@ public class CourtFlowApiClient
         PublicEvents = new PublicEventEndpoints(http);
     }
 
-    public AuthEndpoints Auth { get; }
     public TournamentEndpoints Tournaments { get; }
     public VenueEndpoints Venues { get; }
     public CourtEndpoints Courts { get; }

@@ -1,6 +1,7 @@
 using CourtFlow.Application.Features.Public;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourtFlow.Api.Controllers;
@@ -8,6 +9,7 @@ namespace CourtFlow.Api.Controllers;
 [ApiController]
 [Route("api/v1/public/events")]
 [AllowAnonymous]
+[EnableRateLimiting("public-read")]
 public class PublicEventsController : ControllerBase
 {
     private readonly IMediator _mediator;

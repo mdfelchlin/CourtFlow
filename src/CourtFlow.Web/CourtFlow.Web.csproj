@@ -11,14 +11,13 @@
   <ItemGroup>
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="MudBlazor" Version="8.14.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CourtFlow.Web.Shared\CourtFlow.Web.Shared.csproj" />
     <ProjectReference Include="..\CourtFlow.ApiClient\CourtFlow.ApiClient.csproj" />
-    <ProjectReference Include="..\CourtFlow.Infrastructure\CourtFlow.Infrastructure.csproj" />
-    <ProjectReference Include="..\CourtFlow.Application\CourtFlow.Application.csproj" />
-    <ProjectReference Include="..\CourtFlow.Domain\CourtFlow.Domain.csproj" />
+    <ProjectReference Include="..\CourtFlow.Web.Client\CourtFlow.Web.Client.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,8 @@
+{
+  "name": "CourtFlow",
+  "short_name": "CourtFlow",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1320",
+  "theme_color": "#3949AB"
+}

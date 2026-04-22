@@ -8,9 +8,6 @@ public enum BracketBranchDto { Winners = 1, Losers = 2, GrandFinal = 3 }
 public enum CourtStatusKindDto { Idle = 0, OnTime = 1, SlightlyBehind = 2, Behind = 3, Ahead = 4 }
 public enum RankedSeedStrategyDto { Snake = 1 }
 
-public sealed record SignInRequestDto(string Email, string Password, Guid? OrganizationId);
-public sealed record SignInResponseDto(string Token, DateTime ExpiresUtc, Guid UserId, Guid OrganizationId);
-
 public sealed record TournamentDto(
     Guid Id,
     Guid OrganizationId,

@@ -2,19 +2,6 @@ using System.Net.Http.Json;
 
 namespace CourtFlow.ApiClient;
 
-public class AuthEndpoints
-{
-    private readonly HttpClient _http;
-    public AuthEndpoints(HttpClient http) => _http = http;
-
-    public async Task<SignInResponseDto> SignInAsync(SignInRequestDto req, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/auth/sign-in", req, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<SignInResponseDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
-}
-
 public class TournamentEndpoints
 {
     private readonly HttpClient _http;

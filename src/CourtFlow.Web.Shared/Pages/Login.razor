@@ -1,34 +1,66 @@
 @page "/login"
 @layout PublicLayout
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>Sign In · CourtFlow</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
-    <MudPaper Class="pa-6" Elevation="2">
-        <MudText Typo="Typo.h4" GutterBottom="true">Sign in to CourtFlow</MudText>
-
-        @if (Error is not null)
-        {
-            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@Error</MudAlert>
-        }
-
-        <form method="post" action="/auth/login">
-            <AntiforgeryToken />
-            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input class="form-control" type="email" name="email" required />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input class="form-control" type="password" name="password" required />
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Sign in</button>
-        </form>
-    </MudPaper>
-</MudContainer>
+@if (Error is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@Error</MudAlert>
+}
+<MudText Typo="Typo.body1">Redirecting to sign-in...</MudText>
 
 @code {
     [SupplyParameterFromQuery] public string? Error { get; set; }
     [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+    private bool _mounted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _mounted)
+        {
+            return;
+        }
+
+        var clerkConfig = await JS.InvokeAsync<ClerkClientConfig>("courtflowClerk.getConfig");
+        if (string.IsNullOrWhiteSpace(clerkConfig.PublishableKey))
+        {
+            Error = "Clerk publishable key is missing. Configure Clerk.PublishableKey in client appsettings.";
+            StateHasChanged();
+            return;
+        }
+
+        _mounted = true;
+        var target = string.IsNullOrWhiteSpace(ReturnUrl) || !ReturnUrl.StartsWith("/")
+            ? "/tournaments"
+            : ReturnUrl;
+
+        // Prevent redirect loops: if Clerk already has a session, continue into the app.
+        var session = await JS.InvokeAsync<ClerkSessionInfo?>("courtflowClerk.getSessionInfo", clerkConfig.PublishableKey, clerkConfig.FrontendApi);
+        if (!string.IsNullOrWhiteSpace(session?.Token))
+        {
+            Nav.NavigateTo(target, forceLoad: false);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("courtflowClerk.redirectToSignIn", clerkConfig.PublishableKey, clerkConfig.FrontendApi, target);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ValueTask.CompletedTask;
+    }
+
+    private sealed class ClerkClientConfig
+    {
+        public string PublishableKey { get; set; } = string.Empty;
+        public string FrontendApi { get; set; } = string.Empty;
+    }
+
+    private sealed class ClerkSessionInfo
+    {
+        public string? Token { get; set; }
+    }
 }

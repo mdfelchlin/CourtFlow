@@ -8,7 +8,7 @@
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
     <MudText Typo="Typo.h4">Divisions</MudText>
-    <CfToolbarAddButton OnClick="NewAsync" Disabled="TournamentStore.SelectedTournamentId is null" AriaLabel="Add division" />
+    <CfToolbarAddButton OnClick="NewAsync" Disabled="@(TournamentStore?.SelectedTournamentId is null)" AriaLabel="Add division" />
 </MudStack>
 
 <MudDataGrid T="DivisionDto"
@@ -43,6 +43,13 @@
     {
         try
         {
+            if (TournamentStore is null)
+            {
+                Snackbar.Add("Tournament context is unavailable.", Severity.Error);
+                _loading = false;
+                return;
+            }
+
             await TournamentStore.EnsureInitializedAsync();
             await ReloadAsync();
         }
