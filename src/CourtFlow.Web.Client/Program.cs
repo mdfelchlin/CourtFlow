@@ -3,6 +3,7 @@ using CourtFlow.Web.Client.Authentication;
 using CourtFlow.Web.Shared.Services;
 using CourtFlow.Web.Shared.Theming;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using MudBlazor.Services;
@@ -38,6 +39,9 @@ builder.Services.AddScoped<IAuthSessionService, AuthSessionService>();
 builder.Services.AddScoped<BearerTokenHandler>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
+
+builder.RootComponents.Add<CourtFlow.Web.Client.Components.App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBase = builder.Configuration["Api:BaseUrl"]
     ?? throw new InvalidOperationException("Api:BaseUrl is not configured");
