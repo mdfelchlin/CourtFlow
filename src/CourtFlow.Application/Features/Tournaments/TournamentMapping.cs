@@ -13,5 +13,8 @@ internal static class TournamentMapping
         t.EndDate,
         t.TimeZoneId,
         t.DefaultMatchDurationMinutes,
-        t.TournamentPartnerId);
+        t.TournamentPartnerId,
+        t.PublicationStatus,
+        t.PublishedAtUtc,
+        t.ArchivedAtUtc);
 }

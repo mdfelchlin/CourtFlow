@@ -1,3 +1,5 @@
+using CourtFlow.Domain.Enums;
+
 namespace CourtFlow.Application.Features.Tournaments;
 
 public sealed record TournamentDto(
@@ -9,4 +11,7 @@ public sealed record TournamentDto(
     DateOnly EndDate,
     string TimeZoneId,
     int DefaultMatchDurationMinutes,
-    Guid? TournamentPartnerId);
+    Guid? TournamentPartnerId,
+    TournamentPublicationStatus PublicationStatus,
+    DateTime? PublishedAtUtc,
+    DateTime? ArchivedAtUtc);

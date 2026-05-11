@@ -19,7 +19,7 @@ public sealed class ListPublicEventsHandler : IRequestHandler<ListPublicEventsQu
 
         var tournaments = await _db.Tournaments
             .IgnoreQueryFilters()
-            .Where(t => t.EndDate >= today)
+            .Where(t => t.PublicationStatus == TournamentPublicationStatus.Published && t.EndDate >= today)
             .OrderBy(t => t.StartDate)
             .ThenBy(t => t.Name)
             .ToListAsync(ct);
@@ -93,7 +93,7 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
         var t = await _db.Tournaments
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-        if (t is null) return null;
+        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
 
         var org = await _db.Organizations
             .IgnoreQueryFilters()
@@ -155,10 +155,11 @@ public sealed class GetPublicScheduleHandler : IRequestHandler<GetPublicSchedule
 
     public async Task<IReadOnlyList<PublicMatchDto>?> Handle(GetPublicScheduleQuery request, CancellationToken ct)
     {
-        var exists = await _db.Tournaments
+        var t = await _db.Tournaments
             .IgnoreQueryFilters()
-            .AnyAsync(t => t.Id == request.EventId, ct);
-        if (!exists) return null;
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
+        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
 
         var matches = await _db.Matches
             .IgnoreQueryFilters()
@@ -225,10 +226,11 @@ public sealed class GetPublicBracketsHandler : IRequestHandler<GetPublicBrackets
 
     public async Task<IReadOnlyList<PublicBracketDto>?> Handle(GetPublicBracketsQuery request, CancellationToken ct)
     {
-        var exists = await _db.Tournaments
+        var t = await _db.Tournaments
             .IgnoreQueryFilters()
-            .AnyAsync(t => t.Id == request.EventId, ct);
-        if (!exists) return null;
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
+        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
 
         var brackets = await _db.Brackets
             .IgnoreQueryFilters()
@@ -289,10 +291,11 @@ public sealed class GetPublicStandingsHandler : IRequestHandler<GetPublicStandin
 
     public async Task<IReadOnlyList<PublicPoolStandingsDto>?> Handle(GetPublicStandingsQuery request, CancellationToken ct)
     {
-        var exists = await _db.Tournaments
+        var t = await _db.Tournaments
             .IgnoreQueryFilters()
-            .AnyAsync(t => t.Id == request.EventId, ct);
-        if (!exists) return null;
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
+        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
 
         var divisions = await _db.Divisions
             .IgnoreQueryFilters()

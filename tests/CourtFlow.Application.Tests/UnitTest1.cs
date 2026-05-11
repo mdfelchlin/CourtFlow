@@ -293,4 +293,22 @@ internal sealed class TestAppDbContext : DbContext, IAppDbContext
     public DbSet<Bracket> Brackets => Set<Bracket>();
     public DbSet<BracketNode> BracketNodes => Set<BracketNode>();
     public DbSet<SchedulingTimeSlot> SchedulingTimeSlots => Set<SchedulingTimeSlot>();
+    public DbSet<ScheduleVersion> ScheduleVersions => Set<ScheduleVersion>();
+    public DbSet<Stage> Stages => Set<Stage>();
+    public DbSet<TournamentTeam> TournamentTeams => Set<TournamentTeam>();
+    public DbSet<DivisionRanking> DivisionRankings => Set<DivisionRanking>();
+    public DbSet<PoolEntry> PoolEntries => Set<PoolEntry>();
+    public DbSet<AdvancementRule> AdvancementRules => Set<AdvancementRule>();
+    public DbSet<BracketSeedSlot> BracketSeedSlots => Set<BracketSeedSlot>();
+    public DbSet<MatchAssignment> MatchAssignments => Set<MatchAssignment>();
+    public DbSet<MatchOfficials> MatchOfficials => Set<MatchOfficials>();
+    public DbSet<RepairJob> RepairJobs => Set<RepairJob>();
+    public DbSet<RepairAction> RepairActions => Set<RepairAction>();
+    public DbSet<CourtOutage> CourtOutages => Set<CourtOutage>();
+    public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<ImportRow> ImportRows => Set<ImportRow>();
+    public DbSet<TournamentTemplate> TournamentTemplates => Set<TournamentTemplate>();
+    public DbSet<WaveEntity> Waves => Set<WaveEntity>();
+
+    Task<int> IAppDbContext.SaveChangesAsync(CancellationToken cancellationToken) => SaveChangesAsync(cancellationToken);
 }

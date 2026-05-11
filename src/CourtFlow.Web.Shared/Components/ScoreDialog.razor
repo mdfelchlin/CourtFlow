@@ -3,24 +3,55 @@
 
 <MudDialog>
     <DialogContent>
-        <MudStack>
-            @for (int i = 0; i < _sets.Count; i++)
-            {
-                var idx = i;
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudText Style="min-width:70px;">Set @(_sets[idx].SetNumber)</MudText>
-                    <MudNumericField Value="_sets[idx].HomeScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, v, _sets[idx].AwayScore))" />
-                    <MudText>-</MudText>
-                    <MudNumericField Value="_sets[idx].AwayScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, _sets[idx].HomeScore, v))" />
+        <MudTabs Rounded="true" Border="true">
+            <MudTabPanel Text="Sets">
+                <MudStack Class="pa-2">
+                    @for (int i = 0; i < _sets.Count; i++)
+                    {
+                        var idx = i;
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudText Style="min-width:70px;">Set @(_sets[idx].SetNumber)</MudText>
+                            <MudNumericField Value="_sets[idx].HomeScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, v, _sets[idx].AwayScore))" />
+                            <MudText>-</MudText>
+                            <MudNumericField Value="_sets[idx].AwayScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, _sets[idx].HomeScore, v))" />
+                        </MudStack>
+                    }
+                    <CfToolbarAddButton OnClick="AddSet" AriaLabel="Add set" />
+                    <MudCheckBox T="bool" @bind-Value="_finalize" Label="Finalize match" />
                 </MudStack>
-            }
-            <CfToolbarAddButton OnClick="AddSet" AriaLabel="Add set" />
-            <MudCheckBox T="bool" @bind-Value="_finalize" Label="Finalize match" />
-        </MudStack>
+            </MudTabPanel>
+            <MudTabPanel Text="Forfeit">
+                <MudStack Class="pa-2" Spacing="3">
+                    @if (Match.HomeTeamId is null && Match.AwayTeamId is null)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">Both sides must be assigned to record a forfeit.</MudAlert>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">Select which side advances. Match is finalized immediately with no sets.</MudText>
+                        <MudRadioGroup @bind-Value="_forfeitWinner" T="Guid">
+                            @if (Match.HomeTeamId is { } h)
+                            {
+                                <MudRadio T="Guid" Value="h">Home (@ShortId(h))</MudRadio>
+                            }
+                            @if (Match.AwayTeamId is { } a)
+                            {
+                                <MudRadio T="Guid" Value="a">Away (@ShortId(a))</MudRadio>
+                            }
+                        </MudRadioGroup>
+                        <MudStack Row="true" Justify="Justify.FlexEnd">
+                            <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="SaveForfeitAsync" Disabled="_forfeitWinner == Guid.Empty">
+                                Confirm forfeit
+                            </MudButton>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveScoresAsync">Save sets</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -30,19 +61,23 @@
 
     private List<MatchSetDto> _sets = new();
     private bool _finalize;
+    private Guid _forfeitWinner;
 
     protected override void OnInitialized()
     {
         _sets = Match.Sets.ToList();
         if (_sets.Count == 0) _sets.Add(new MatchSetDto(1, 0, 0));
+        _forfeitWinner = Match.HomeTeamId ?? Match.AwayTeamId ?? Guid.Empty;
     }
+
+    private static string ShortId(Guid id) => $"{id:D}"[..8] + "…";
 
     private void AddSet() => _sets.Add(new MatchSetDto(_sets.Count + 1, 0, 0));
     private void UpdateSet(int idx, int home, int away) => _sets[idx] = new MatchSetDto(_sets[idx].SetNumber, home, away);
 
     private void Cancel() => Dialog.Cancel();
 
-    private async Task Save()
+    private async Task SaveScoresAsync()
     {
         try
         {
@@ -59,5 +94,21 @@
             Dialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task SaveForfeitAsync()
+    {
+        if (_forfeitWinner == Guid.Empty) return;
+
+        try
+        {
+            await Api.Matches.ForfeitAsync(Match.Id, new ForfeitMatchDto(_forfeitWinner));
+            Snackbar.Add("Forfeit recorded", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 }

@@ -1,46 +1,42 @@
-using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace CourtFlow.ApiClient;
 
-public class CourtFlowApiClient
+public sealed class CourtFlowApiClient(
+    ICourtFlowTournamentsApi tournaments,
+    ICourtFlowVenuesApi venues,
+    ICourtFlowCourtsApi courts,
+    ICourtFlowDivisionsApi divisions,
+    ICourtFlowPoolsApi pools,
+    ICourtFlowTeamsApi teams,
+    ICourtFlowImportsApi imports,
+    ICourtFlowMatchesApi matches,
+    ICourtFlowBracketsApi brackets,
+    ICourtFlowScheduleApi schedule,
+    ICourtFlowScheduleVersionsApi scheduleVersions,
+    ICourtFlowCourtStatusApi courtStatus,
+    ICourtFlowStandingsApi standings,
+    ICourtFlowPublicEventsApi publicEvents,
+    ICourtFlowRepairsApi repairs,
+    ICourtFlowTemplatesApi templates)
 {
-    internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    /// <summary>Compatible with legacy Blazor deserialization — same camelCase Web defaults.</summary>
+    public static JsonSerializerOptions JsonOptions => CourtFlowSerialization.JsonOptions;
 
-    public CourtFlowApiClient(HttpClient http)
-    {
-        Tournaments = new TournamentEndpoints(http);
-        Venues = new VenueEndpoints(http);
-        Courts = new CourtEndpoints(http);
-        Divisions = new DivisionEndpoints(http);
-        Pools = new PoolEndpoints(http);
-        Teams = new TeamEndpoints(http);
-        Imports = new ImportEndpoints(http);
-        Matches = new MatchEndpoints(http);
-        Brackets = new BracketEndpoints(http);
-        Schedule = new ScheduleEndpoints(http);
-        CourtStatus = new CourtStatusEndpoints(http);
-        Standings = new StandingsEndpoints(http);
-        PublicEvents = new PublicEventEndpoints(http);
-    }
-
-    public TournamentEndpoints Tournaments { get; }
-    public VenueEndpoints Venues { get; }
-    public CourtEndpoints Courts { get; }
-    public DivisionEndpoints Divisions { get; }
-    public PoolEndpoints Pools { get; }
-    public TeamEndpoints Teams { get; }
-    public ImportEndpoints Imports { get; }
-    public MatchEndpoints Matches { get; }
-    public BracketEndpoints Brackets { get; }
-    public ScheduleEndpoints Schedule { get; }
-    public CourtStatusEndpoints CourtStatus { get; }
-    public StandingsEndpoints Standings { get; }
-    public PublicEventEndpoints PublicEvents { get; }
+    public TournamentEndpoints Tournaments { get; } = new(tournaments);
+    public VenueEndpoints Venues { get; } = new(venues);
+    public CourtEndpoints Courts { get; } = new(courts);
+    public DivisionEndpoints Divisions { get; } = new(divisions);
+    public PoolEndpoints Pools { get; } = new(pools);
+    public TeamEndpoints Teams { get; } = new(teams);
+    public ImportEndpoints Imports { get; } = new(imports);
+    public MatchEndpoints Matches { get; } = new(matches);
+    public BracketEndpoints Brackets { get; } = new(brackets);
+    public ScheduleEndpoints Schedule { get; } = new(schedule);
+    public ScheduleVersionsEndpoints ScheduleVersions { get; } = new(scheduleVersions);
+    public CourtStatusEndpoints CourtStatus { get; } = new(courtStatus);
+    public StandingsEndpoints Standings { get; } = new(standings);
+    public PublicEventEndpoints PublicEvents { get; } = new(publicEvents);
+    public RepairsEndpoints Repairs { get; } = new(repairs);
+    public TemplatesEndpoints Templates { get; } = new(templates);
 }

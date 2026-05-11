@@ -1,16 +1,20 @@
-using System.Text.Json.Serialization;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using CourtFlow.Api.Infrastructure;
 using CourtFlow.Application;
 using CourtFlow.Infrastructure;
+using CourtFlow.Infrastructure.Options;
 using CourtFlow.Infrastructure.Persistence;
 using CourtFlow.Infrastructure.Seed;
+using CourtFlow.ServiceDefaults;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+
 using Serilog;
 
 namespace CourtFlow.Api;
@@ -27,60 +31,21 @@ public class Program
             .WriteTo.Console()
             .WriteTo.File("logs/courtflow-api-.log", rollingInterval: RollingInterval.Day));
 
+        builder.Services.AddCourtFlowApplication();
+        builder.AddCourtFlowServiceDefaults();
+
+        builder.Services.AddOptions<ClerkOptions>()
+            .Bind(builder.Configuration.GetSection(ClerkOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        builder.Services.AddSingleton<IValidateOptions<ClerkOptions>, ClerkOptionsValidator>();
+        builder.Services.AddSingleton<IConfigureNamedOptions<JwtBearerOptions>>(sp =>
+            new ConfigureCourtFlowJwtBearerOptions(sp.GetRequiredService<IOptionsMonitor<ClerkOptions>>()));
+
         builder.Services
-            .AddCourtFlowApplication()
-            .AddCourtFlowInfrastructure(builder.Configuration);
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
 
-        var clerk = builder.Configuration.GetSection(ClerkOptions.SectionName).Get<ClerkOptions>()
-            ?? throw new InvalidOperationException("Clerk configuration is missing.");
-        if (!clerk.Enabled && !builder.Environment.IsDevelopment())
-        {
-            throw new InvalidOperationException("Clerk must be enabled outside development.");
-        }
-
-        if (string.IsNullOrWhiteSpace(clerk.Authority) && !builder.Environment.IsDevelopment())
-        {
-            throw new InvalidOperationException("Clerk:Authority must be configured outside development.");
-        }
-
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                if (!clerk.Enabled || string.IsNullOrWhiteSpace(clerk.Authority))
-                {
-                    // Keep startup unblocked in development even when Clerk config is missing,
-                    // but all authenticated requests will still fail until real Clerk values are configured.
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = "https://invalid.local",
-                        ValidateAudience = true,
-                        ValidAudience = "invalid",
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = false,
-                        ClockSkew = TimeSpan.Zero,
-                        NameClaimType = ClaimTypes.Name,
-                        RoleClaimType = ClaimTypes.Role
-                    };
-                    return;
-                }
-
-                var authority = clerk.Authority.TrimEnd('/');
-                options.Authority = authority;
-                options.RequireHttpsMetadata = true;
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = authority,
-                    ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
-                    ValidAudience = clerk.Audience,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = false,
-                    ClockSkew = TimeSpan.FromMinutes(1),
-                    NameClaimType = ClaimTypes.Name,
-                    RoleClaimType = ClaimTypes.Role
-                };
-            });
         builder.Services.AddScoped<IClaimsTransformation, ClerkClaimsTransformation>();
 
         builder.Services.AddAuthorization(options =>
@@ -91,6 +56,11 @@ public class Program
                 policy.RequireAuthenticatedUser().RequireClaim("org_id"));
         });
 
+        builder.Services.AddCourtFlowInfrastructure(builder.Configuration);
+        builder.Services.AddCourtFlowOutboxDispatcher();
+
+        builder.Services.AddExceptionHandler<CourtFlowProblemExceptionHandler>();
+
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
             {
@@ -99,27 +69,13 @@ public class Program
         builder.Services.AddFluentValidationAutoValidation();
 
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options =>
-        {
-            options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo { Title = "CourtFlow API", Version = "v1" });
-            options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
-            {
-                In = Microsoft.OpenApi.ParameterLocation.Header,
-                Type = Microsoft.OpenApi.SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT",
-                Description = "JWT Authorization header using the Bearer scheme."
-            });
-            options.AddSecurityRequirement(_ => new Microsoft.OpenApi.OpenApiSecurityRequirement
-            {
-                [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", null)] = new List<string>()
-            });
-        });
+        builder.Services.AddSwaggerGen();
 
+        var corsBindings = builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>();
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(p => p
-                .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? new[] { "https://localhost:7178" })
+                .WithOrigins(corsBindings?.Origins ?? new[] { "https://localhost:7247", "http://localhost:5111" })
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials());
@@ -156,6 +112,7 @@ public class Program
 
         app.UseSerilogRequestLogging();
         app.UseExceptionHandler();
+        app.MapCourtFlowHealthChecks();
 
         if (app.Environment.IsDevelopment())
         {
@@ -176,5 +133,35 @@ public class Program
         app.MapControllers();
 
         await app.RunAsync();
+    }
+}
+
+internal sealed class ConfigureCourtFlowJwtBearerOptions(IOptionsMonitor<ClerkOptions> clerkMonitor)
+    : IConfigureNamedOptions<JwtBearerOptions>
+{
+    public void Configure(JwtBearerOptions options) =>
+        Configure(JwtBearerDefaults.AuthenticationScheme, options);
+
+    public void Configure(string? name, JwtBearerOptions options)
+    {
+        if (!string.Equals(name, JwtBearerDefaults.AuthenticationScheme, StringComparison.Ordinal))
+            return;
+
+        var clerk = clerkMonitor.CurrentValue;
+        var authority = clerk.Authority.TrimEnd('/');
+        options.Authority = authority;
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = authority,
+            ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
+            ValidAudience = clerk.Audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = false,
+            ClockSkew = TimeSpan.FromMinutes(1),
+            NameClaimType = ClaimTypes.NameIdentifier,
+            RoleClaimType = ClaimTypes.Role
+        };
     }
 }

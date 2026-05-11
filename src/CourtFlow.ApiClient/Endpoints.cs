@@ -1,378 +1,319 @@
-using System.Net.Http.Json;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace CourtFlow.ApiClient;
 
-public class TournamentEndpoints
+file static class ReadOnlyAdapt
 {
-    private readonly HttpClient _http;
-    public TournamentEndpoints(HttpClient http) => _http = http;
+    public static Task<IReadOnlyList<T>> From<T>(Task<List<T>> task) => Map(task);
 
-    public Task<IReadOnlyList<TournamentDto>> ListAsync(CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<TournamentDto>>("api/v1/tournaments", CourtFlowApiClient.JsonOptions, ct)!;
+    private static async Task<IReadOnlyList<T>> Map<T>(Task<List<T>> task) => await task.ConfigureAwait(false);
+}
 
-    public Task<TournamentDto?> GetAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<TournamentDto?>($"api/v1/tournaments/{id}", CourtFlowApiClient.JsonOptions, ct);
+public sealed class TournamentEndpoints(ICourtFlowTournamentsApi api)
+{
+    private readonly ICourtFlowTournamentsApi _api = api;
 
-    public async Task<TournamentDto> CreateAsync(CreateTournamentDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/tournaments", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TournamentDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<IReadOnlyList<TournamentDto>> ListAsync(CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(ct));
 
-    public async Task<TournamentDto> UpdateAsync(UpdateTournamentDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/tournaments/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TournamentDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<TournamentDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
+
+    public Task<TournamentDto> CreateAsync(CreateTournamentDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
+
+    public Task<TournamentDto> UpdateAsync(UpdateTournamentDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/tournaments/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
+
+    public Task<TournamentDto> PublishAsync(Guid id, CancellationToken ct = default)
+        => _api.PublishAsync(id, ct);
+
+    public Task<TournamentDto> UnpublishAsync(Guid id, CancellationToken ct = default)
+        => _api.UnpublishAsync(id, ct);
+
+    public Task<TournamentDto> ArchiveAsync(Guid id, CancellationToken ct = default)
+        => _api.ArchiveAsync(id, ct);
+
+    public Task<TournamentDto> RestoreAsync(Guid id, CancellationToken ct = default)
+        => _api.RestoreAsync(id, ct);
+
+    public Task<TournamentDto> CloneAsync(Guid id, CancellationToken ct = default)
+        => _api.CloneAsync(id, ct);
 }
 
-public class VenueEndpoints
+public sealed class VenueEndpoints(ICourtFlowVenuesApi api)
 {
-    private readonly HttpClient _http;
-    public VenueEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowVenuesApi _api = api;
 
     public Task<IReadOnlyList<VenueDto>> ListAsync(Guid? tournamentId = null, CancellationToken ct = default)
-    {
-        var url = tournamentId is null ? "api/v1/venues" : $"api/v1/venues?tournamentId={tournamentId}";
-        return _http.GetFromJsonAsync<IReadOnlyList<VenueDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, ct));
 
-    public Task<VenueDto?> GetAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<VenueDto?>($"api/v1/venues/{id}", CourtFlowApiClient.JsonOptions, ct);
+    public Task<VenueDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
 
-    public async Task<VenueDto> CreateAsync(CreateVenueDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/venues", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<VenueDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<VenueDto> CreateAsync(CreateVenueDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
 
-    public async Task<VenueDto> UpdateAsync(UpdateVenueDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/venues/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<VenueDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<VenueDto> UpdateAsync(UpdateVenueDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/venues/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 }
 
-public class CourtEndpoints
+public sealed class CourtEndpoints(ICourtFlowCourtsApi api)
 {
-    private readonly HttpClient _http;
-    public CourtEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowCourtsApi _api = api;
 
     public Task<IReadOnlyList<CourtDto>> ListAsync(Guid? venueId = null, CancellationToken ct = default)
-    {
-        var url = venueId is null ? "api/v1/courts" : $"api/v1/courts?venueId={venueId}";
-        return _http.GetFromJsonAsync<IReadOnlyList<CourtDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(venueId, ct));
 
-    public async Task<CourtDto> CreateAsync(CreateCourtDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/courts", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<CourtDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<CourtDto> CreateAsync(CreateCourtDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
 
-    public async Task<CourtDto> UpdateAsync(UpdateCourtDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/courts/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<CourtDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<CourtDto> UpdateAsync(UpdateCourtDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/courts/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 
     public async Task DelayAsync(Guid courtId, int slots, CancellationToken ct = default)
     {
-        var res = await _http.PostAsync($"api/v1/courts/{courtId}/delay?slots={slots}", null, ct);
+        var res = await _api.DelayCourtAsync(courtId, slots, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 }
 
-public class DivisionEndpoints
+public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
 {
-    private readonly HttpClient _http;
-    public DivisionEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowDivisionsApi _api = api;
 
     public Task<IReadOnlyList<DivisionDto>> ListAsync(Guid? tournamentId = null, CancellationToken ct = default)
-    {
-        var url = tournamentId is null ? "api/v1/divisions" : $"api/v1/divisions?tournamentId={tournamentId}";
-        return _http.GetFromJsonAsync<IReadOnlyList<DivisionDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, ct));
 
-    public async Task<DivisionDto> CreateAsync(CreateDivisionDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/divisions", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<DivisionDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<DivisionDto> CreateAsync(CreateDivisionDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
 
-    public async Task<DivisionDto> UpdateAsync(UpdateDivisionDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/divisions/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<DivisionDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<DivisionDto> UpdateAsync(UpdateDivisionDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/divisions/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 
-    public async Task<IReadOnlyList<TeamDto>> ReorderTeamsAsync(Guid divisionId, ReorderDivisionTeamsDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/divisions/{divisionId}/team-order", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<IReadOnlyList<TeamDto>>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<IReadOnlyList<TeamDto>> ReorderTeamsAsync(Guid divisionId, ReorderDivisionTeamsDto dto, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ReorderTeamsAsync(divisionId, dto, ct));
 
-    public async Task<IReadOnlyList<TeamDto>> RandomizeSeedsAsync(Guid divisionId, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsync($"api/v1/divisions/{divisionId}/randomize-seeds", null, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<IReadOnlyList<TeamDto>>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<IReadOnlyList<TeamDto>> RandomizeSeedsAsync(Guid divisionId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.RandomizeSeedsAsync(divisionId, ct));
 
-    public async Task<ApplyDivisionSeedingResultDto> ApplySeedingAsync(Guid divisionId, ApplyDivisionSeedingDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync($"api/v1/divisions/{divisionId}/apply-seeding", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<ApplyDivisionSeedingResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<ApplyDivisionSeedingResultDto> ApplySeedingAsync(Guid divisionId, ApplyDivisionSeedingDto dto, CancellationToken ct = default)
+        => _api.ApplySeedingAsync(divisionId, dto, ct);
 
-    public async Task<GenerateAdvancementBracketsResultDto> GenerateAdvancementBracketsAsync(Guid divisionId, GenerateAdvancementBracketsDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync($"api/v1/divisions/{divisionId}/advancement-brackets", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<GenerateAdvancementBracketsResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<GenerateAdvancementBracketsResultDto> GenerateAdvancementBracketsAsync(Guid divisionId, GenerateAdvancementBracketsDto dto, CancellationToken ct = default)
+        => _api.GenerateAdvancementBracketsAsync(divisionId, dto, ct);
 }
 
-public class PoolEndpoints
+public sealed class PoolEndpoints(ICourtFlowPoolsApi api)
 {
-    private readonly HttpClient _http;
-    public PoolEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowPoolsApi _api = api;
 
     public Task<IReadOnlyList<PoolDto>> ListAsync(Guid? divisionId = null, CancellationToken ct = default)
-    {
-        var url = divisionId is null ? "api/v1/pools" : $"api/v1/pools?divisionId={divisionId}";
-        return _http.GetFromJsonAsync<IReadOnlyList<PoolDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(divisionId, ct));
 
-    public async Task<PoolDto> CreateAsync(CreatePoolDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/pools", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<PoolDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<PoolDto> CreateAsync(CreatePoolDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
 
-    public async Task<PoolDto> UpdateAsync(UpdatePoolDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/pools/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<PoolDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<PoolDto> UpdateAsync(UpdatePoolDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/pools/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 }
 
-public class TeamEndpoints
+public sealed class TeamEndpoints(ICourtFlowTeamsApi api)
 {
-    private readonly HttpClient _http;
-    public TeamEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowTeamsApi _api = api;
 
     public Task<IReadOnlyList<TeamDto>> ListAsync(Guid? tournamentId = null, Guid? divisionId = null, Guid? poolId = null, CancellationToken ct = default)
-    {
-        var qs = new List<string>();
-        if (tournamentId is { }) qs.Add($"tournamentId={tournamentId}");
-        if (divisionId is { }) qs.Add($"divisionId={divisionId}");
-        if (poolId is { }) qs.Add($"poolId={poolId}");
-        var url = qs.Count == 0 ? "api/v1/teams" : "api/v1/teams?" + string.Join("&", qs);
-        return _http.GetFromJsonAsync<IReadOnlyList<TeamDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, divisionId, poolId, ct));
 
-    public async Task<TeamDto> CreateAsync(CreateTeamDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/teams", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<TeamDto> CreateAsync(CreateTeamDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
 
-    public async Task<TeamDto> UpdateAsync(UpdateTeamDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/teams/{dto.Id}", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<TeamDto> UpdateAsync(UpdateTeamDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(dto.Id, dto, ct);
 
-    public async Task<TeamDto> MoveDivisionAsync(Guid teamId, MoveTeamDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/teams/{teamId}/division", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<TeamDto> MoveDivisionAsync(Guid teamId, MoveTeamDto dto, CancellationToken ct = default)
+        => _api.MoveDivisionAsync(teamId, dto, ct);
 
-    public async Task<TeamDto> AssignPoolAsync(Guid teamId, AssignTeamPoolDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PutAsJsonAsync($"api/v1/teams/{teamId}/pool", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<TeamDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<TeamDto> AssignPoolAsync(Guid teamId, AssignTeamPoolDto dto, CancellationToken ct = default)
+        => _api.AssignPoolAsync(teamId, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var res = await _http.DeleteAsync($"api/v1/teams/{id}", ct);
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 }
 
-public class ImportEndpoints
+public sealed class ImportEndpoints(ICourtFlowImportsApi api)
 {
-    private readonly HttpClient _http;
-    public ImportEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowImportsApi _api = api;
 
-    public async Task<ImportResultDto> ImportPredefinedPoolsAsync(ImportPredefinedPoolsDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/imports/predefined-pools", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<ImportResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<ImportResultDto> ImportPredefinedPoolsAsync(ImportPredefinedPoolsDto dto, CancellationToken ct = default)
+        => _api.ImportPredefinedPoolsAsync(dto, ct);
 
-    public async Task<ImportResultDto> ImportRankedTeamsAsync(ImportRankedTeamsDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/imports/ranked-teams", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<ImportResultDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<ImportResultDto> ImportRankedTeamsAsync(ImportRankedTeamsDto dto, CancellationToken ct = default)
+        => _api.ImportRankedTeamsAsync(dto, ct);
 }
 
-public class MatchEndpoints
+public sealed class MatchEndpoints(ICourtFlowMatchesApi api)
 {
-    private readonly HttpClient _http;
-    public MatchEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowMatchesApi _api = api;
 
     public Task<IReadOnlyList<MatchDto>> ListAsync(Guid? tournamentId = null, Guid? divisionId = null, CancellationToken ct = default)
-    {
-        var qs = new List<string>();
-        if (tournamentId is { }) qs.Add($"tournamentId={tournamentId}");
-        if (divisionId is { }) qs.Add($"divisionId={divisionId}");
-        var url = qs.Count == 0 ? "api/v1/matches" : "api/v1/matches?" + string.Join("&", qs);
-        return _http.GetFromJsonAsync<IReadOnlyList<MatchDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, divisionId, ct));
 
-    public Task<MatchDto?> GetAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<MatchDto?>($"api/v1/matches/{id}", CourtFlowApiClient.JsonOptions, ct);
+    public Task<MatchDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
 
-    public async Task<MatchDto> MoveAsync(Guid id, MoveMatchDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync($"api/v1/matches/{id}/move", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<MatchDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<MatchDto> MoveAsync(Guid id, MoveMatchDto dto, CancellationToken ct = default)
+        => _api.MoveAsync(id, dto, ct);
 
-    public async Task<MatchDto> ScoreAsync(Guid id, ScoreMatchDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync($"api/v1/matches/{id}/score", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<MatchDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<MatchDto> ScoreAsync(Guid id, ScoreMatchDto dto, CancellationToken ct = default)
+        => _api.ScoreAsync(id, dto, ct);
+
+    public Task<MatchDto> ForfeitAsync(Guid id, ForfeitMatchDto dto, CancellationToken ct = default)
+        => _api.ForfeitAsync(id, dto, ct);
 }
 
-public class BracketEndpoints
+public sealed class BracketEndpoints(ICourtFlowBracketsApi api)
 {
-    private readonly HttpClient _http;
-    public BracketEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowBracketsApi _api = api;
 
     public Task<IReadOnlyList<BracketDto>> ListAsync(Guid? divisionId = null, CancellationToken ct = default)
-    {
-        var url = divisionId is null ? "api/v1/brackets" : $"api/v1/brackets?divisionId={divisionId}";
-        return _http.GetFromJsonAsync<IReadOnlyList<BracketDto>>(url, CourtFlowApiClient.JsonOptions, ct)!;
-    }
+        => ReadOnlyAdapt.From(_api.ListAsync(divisionId, ct));
 
-    public Task<BracketWithNodesDto?> GetAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<BracketWithNodesDto?>($"api/v1/brackets/{id}", CourtFlowApiClient.JsonOptions, ct);
+    public Task<BracketWithNodesDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
 
-    public async Task<BracketDto> GenerateAsync(GenerateBracketDto dto, CancellationToken ct = default)
-    {
-        var res = await _http.PostAsJsonAsync("api/v1/brackets/generate", dto, CourtFlowApiClient.JsonOptions, ct);
-        res.EnsureSuccessStatusCode();
-        return (await res.Content.ReadFromJsonAsync<BracketDto>(CourtFlowApiClient.JsonOptions, ct))!;
-    }
+    public Task<BracketDto> GenerateAsync(GenerateBracketDto dto, CancellationToken ct = default)
+        => _api.GenerateAsync(dto, ct);
 }
 
-public class ScheduleEndpoints
+public sealed class ScheduleEndpoints(ICourtFlowScheduleApi api)
 {
-    private readonly HttpClient _http;
-    public ScheduleEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowScheduleApi _api = api;
 
     public async Task GenerateAsync(Guid tournamentId, CancellationToken ct = default)
     {
-        var res = await _http.PostAsync($"api/v1/tournaments/{tournamentId}/schedule/generate", null, ct);
+        var res = await _api.GenerateAsync(tournamentId, ct).ConfigureAwait(false);
         res.EnsureSuccessStatusCode();
     }
 
-    public Task<ConflictReportDto> CheckAsync(Guid tournamentId, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<ConflictReportDto>($"api/v1/tournaments/{tournamentId}/schedule/check", CourtFlowApiClient.JsonOptions, ct)!;
+    public Task<ConflictReportDto> CheckAsync(Guid tournamentId, CancellationToken ct = default)
+        => _api.CheckAsync(tournamentId, ct);
 }
 
-public class CourtStatusEndpoints
+public sealed class ScheduleVersionsEndpoints(ICourtFlowScheduleVersionsApi api)
 {
-    private readonly HttpClient _http;
-    public CourtStatusEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowScheduleVersionsApi _api = api;
 
-    public Task<IReadOnlyList<CourtStatusDto>> GetAsync(Guid tournamentId, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<CourtStatusDto>>($"api/v1/tournaments/{tournamentId}/court-status", CourtFlowApiClient.JsonOptions, ct)!;
+    public Task<IReadOnlyList<ScheduleVersionSummaryDto>> ListAsync(Guid tournamentId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, ct));
+
+    public Task<PreviewScheduleMoveResponseDto> PreviewMoveAsync(Guid tournamentId, PreviewScheduleMoveRequestDto dto, CancellationToken ct = default)
+        => _api.PreviewMoveAsync(tournamentId, dto, ct);
+
+    public Task<MatchDto> ApplyMoveAsync(Guid tournamentId, ApplyScheduleMoveRequestDto dto, CancellationToken ct = default)
+        => _api.ApplyMoveAsync(tournamentId, dto, ct);
 }
 
-public class StandingsEndpoints
+public sealed class CourtStatusEndpoints(ICourtFlowCourtStatusApi api)
 {
-    private readonly HttpClient _http;
-    public StandingsEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowCourtStatusApi _api = api;
 
-    public Task<IReadOnlyList<PoolStandingsDto>> ForDivisionAsync(Guid divisionId, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<PoolStandingsDto>>($"api/v1/divisions/{divisionId}/standings", CourtFlowApiClient.JsonOptions, ct)!;
+    public Task<IReadOnlyList<CourtStatusDto>> GetAsync(Guid tournamentId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.GetAsync(tournamentId, ct));
 }
 
-public class PublicEventEndpoints
+public sealed class StandingsEndpoints(ICourtFlowStandingsApi api)
 {
-    private readonly HttpClient _http;
-    public PublicEventEndpoints(HttpClient http) => _http = http;
+    private readonly ICourtFlowStandingsApi _api = api;
 
-    public Task<IReadOnlyList<PublicEventDto>> ListAsync(CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<PublicEventDto>>("api/v1/public/events", CourtFlowApiClient.JsonOptions, ct)!;
+    public Task<IReadOnlyList<PoolStandingsDto>> ForDivisionAsync(Guid divisionId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ForDivisionAsync(divisionId, ct));
+}
 
-    public Task<PublicEventDetailDto?> GetAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<PublicEventDetailDto?>($"api/v1/public/events/{id}", CourtFlowApiClient.JsonOptions, ct);
+public sealed class PublicEventEndpoints(ICourtFlowPublicEventsApi api)
+{
+    private readonly ICourtFlowPublicEventsApi _api = api;
 
-    public Task<IReadOnlyList<PublicMatchDto>?> GetScheduleAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<PublicMatchDto>?>($"api/v1/public/events/{id}/schedule", CourtFlowApiClient.JsonOptions, ct);
+    public Task<IReadOnlyList<PublicEventDto>> ListAsync(CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(ct));
 
-    public Task<IReadOnlyList<PublicBracketDto>?> GetBracketsAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<PublicBracketDto>?>($"api/v1/public/events/{id}/brackets", CourtFlowApiClient.JsonOptions, ct);
+    public Task<PublicEventDetailDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
 
-    public Task<IReadOnlyList<PublicPoolStandingsDto>?> GetStandingsAsync(Guid id, CancellationToken ct = default) =>
-        _http.GetFromJsonAsync<IReadOnlyList<PublicPoolStandingsDto>?>($"api/v1/public/events/{id}/standings", CourtFlowApiClient.JsonOptions, ct);
+    public async Task<IReadOnlyList<PublicMatchDto>?> GetScheduleAsync(Guid id, CancellationToken ct = default)
+        => await _api.GetScheduleAsync(id, ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PublicBracketDto>?> GetBracketsAsync(Guid id, CancellationToken ct = default)
+        => await _api.GetBracketsAsync(id, ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PublicPoolStandingsDto>?> GetStandingsAsync(Guid id, CancellationToken ct = default)
+        => await _api.GetStandingsAsync(id, ct).ConfigureAwait(false);
+}
+
+public sealed class RepairsEndpoints(ICourtFlowRepairsApi api)
+{
+    private readonly ICourtFlowRepairsApi _api = api;
+
+    public Task<IReadOnlyList<RepairJobDto>> ListAsync(Guid tournamentId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, ct));
+
+    public Task<RepairJobDetailDto?> GetAsync(Guid tournamentId, Guid id, CancellationToken ct = default)
+        => _api.GetAsync(tournamentId, id, ct);
+
+    public Task<RepairJobDto> TeamWithdrawalAsync(Guid tournamentId, TeamWithdrawalDto dto, CancellationToken ct = default)
+        => _api.TeamWithdrawalAsync(tournamentId, dto, ct);
+
+    public Task<RepairJobDto> CourtOutageAsync(Guid tournamentId, CourtOutageDto dto, CancellationToken ct = default)
+        => _api.CourtOutageAsync(tournamentId, dto, ct);
+}
+
+public sealed class TemplatesEndpoints(ICourtFlowTemplatesApi api)
+{
+    private readonly ICourtFlowTemplatesApi _api = api;
+
+    public Task<IReadOnlyList<TemplateDto>> ListAsync(CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(ct));
+
+    public Task<TemplateDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
+
+    public Task<TemplateDto> CaptureAsync(CaptureTemplateDto dto, CancellationToken ct = default)
+        => _api.CaptureAsync(dto, ct);
+
+    public Task DeleteAsync(Guid id, CancellationToken ct = default)
+        => _api.DeleteAsync(id, ct);
 }

@@ -50,6 +50,43 @@ public class TournamentsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    [HttpPost("{id:guid}/publish")]
+    public async Task<IActionResult> Publish(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new PublishTournamentCommand(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/unpublish")]
+    public async Task<IActionResult> Unpublish(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UnpublishTournamentCommand(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/archive")]
+    public async Task<IActionResult> Archive(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ArchiveTournamentCommand(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new RestoreArchivedTournamentCommand(id), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{id:guid}/clone")]
+    [ProducesResponseType(typeof(TournamentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Clone(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CloneTournamentCommand(id), ct);
+        return result is null ? NotFound() : CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+    }
+
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

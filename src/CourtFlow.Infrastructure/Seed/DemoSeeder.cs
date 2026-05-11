@@ -2,34 +2,31 @@ using CourtFlow.Application.Brackets;
 using CourtFlow.Application.Scheduling;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
-using CourtFlow.Infrastructure.Identity;
 using CourtFlow.Infrastructure.MultiTenancy;
+using CourtFlow.Infrastructure.Options;
 using CourtFlow.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CourtFlow.Infrastructure.Seed;
 
 public static class DemoSeeder
 {
     public const string DemoOrgSlug = "courtflow-demo";
-    public const string DemoAdminEmail = "admin@courtflow.local";
-    public const string DemoAdminPassword = "Admin!234";
+    /// <summary>Stable external id for seeded membership (replace with your Clerk <c>sub</c> locally if needed).</summary>
+    public const string DemoAdminExternalUserId = "user_demo_seed";
 
     public static async Task SeedAsync(IServiceProvider services, CancellationToken ct = default)
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+        var databaseOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>();
+        if (!databaseOptions.Value.SeedDemoData)
+            return;
 
-        if (!await roleManager.RoleExistsAsync("Admin"))
-        {
-            await roleManager.CreateAsync(new IdentityRole<Guid>("Admin"));
-        }
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
 
         var org = await db.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Slug == DemoOrgSlug, ct);
         if (org is null)
@@ -40,30 +37,15 @@ public static class DemoSeeder
             logger.LogInformation("Seeded demo organization {OrgId}", org.Id);
         }
 
-        var admin = await userManager.FindByEmailAsync(DemoAdminEmail);
-        if (admin is null)
-        {
-            admin = new ApplicationUser
-            {
-                UserName = DemoAdminEmail,
-                Email = DemoAdminEmail,
-                EmailConfirmed = true,
-                DisplayName = "Demo Admin"
-            };
-            var result = await userManager.CreateAsync(admin, DemoAdminPassword);
-            if (!result.Succeeded) throw new InvalidOperationException("Failed to create demo admin: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-            await userManager.AddToRoleAsync(admin, "Admin");
-        }
-
         var hasMembership = await db.OrganizationMemberships.IgnoreQueryFilters()
-            .AnyAsync(m => m.OrganizationId == org.Id && m.UserId == admin.Id, ct);
+            .AnyAsync(m => m.OrganizationId == org.Id && m.ExternalUserId == DemoAdminExternalUserId, ct);
         if (!hasMembership)
         {
-            db.OrganizationMemberships.Add(new OrganizationMembership(org.Id, admin.Id, "Admin"));
+            db.OrganizationMemberships.Add(new OrganizationMembership(org.Id, DemoAdminExternalUserId, "Admin"));
             await db.SaveChangesAsync(ct);
         }
 
-        using var tenantScope = HttpTenantContext.BeginScope(org.Id, admin.Id);
+        using var tenantScope = HttpTenantContext.BeginScope(org.Id, DemoAdminExternalUserId);
 
         var tournament = await db.Tournaments.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.OrganizationId == org.Id, ct);
         if (tournament is null)
@@ -71,6 +53,7 @@ public static class DemoSeeder
             var start = DateOnly.FromDateTime(DateTime.UtcNow.Date);
             tournament = new Tournament(org.Id, "Spring Classic", start, start, "America/Los_Angeles", 60);
             db.Tournaments.Add(tournament);
+            db.ScheduleVersions.Add(new ScheduleVersion(org.Id, tournament.Id));
 
             var venue = new Venue(org.Id, tournament.Id, "Main Gym");
             db.Venues.Add(venue);
@@ -149,6 +132,7 @@ public static class DemoSeeder
                 db.MatchSets.Add(s2);
                 m.Finalize(m.HomeTeamId);
             }
+            tournament.Publish();
             await db.SaveChangesAsync(ct);
 
             logger.LogInformation("Seeded demo tournament {TournamentId}", tournament.Id);

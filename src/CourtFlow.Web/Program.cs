@@ -1,7 +1,11 @@
 using CourtFlow.ApiClient;
 using CourtFlow.Web.Components;
+using CourtFlow.Web.Shared.Options;
 using CourtFlow.Web.Shared.Services;
 using CourtFlow.Web.Shared.Theming;
+using CourtFlow.ServiceDefaults;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Serilog;
 
@@ -19,6 +23,13 @@ public class Program
             .WriteTo.Console()
             .WriteTo.File("logs/courtflow-web-.log", rollingInterval: RollingInterval.Day));
 
+        builder.AddCourtFlowServiceDefaults();
+
+        builder.Services.AddOptions<ApiOptions>()
+            .Bind(builder.Configuration.GetSection(ApiOptions.SectionName))
+            .ValidateOnStart();
+        builder.Services.AddSingleton<IValidateOptions<ApiOptions>, ApiOptionsValidator>();
+
         builder.Services.AddRazorComponents()
             .AddInteractiveWebAssemblyComponents();
 
@@ -29,23 +40,22 @@ public class Program
         builder.Services.AddScoped<ThemeState>();
         builder.Services.AddScoped<SelectedTournamentStore>();
 
-        var apiBase = builder.Configuration["Api:BaseUrl"]
-            ?? throw new InvalidOperationException("Api:BaseUrl is not configured");
-
-        builder.Services.AddHttpClient<CourtFlowApiClient>(client =>
-        {
-            client.BaseAddress = new Uri(apiBase);
-        })
-        .ConfigurePrimaryHttpMessageHandler(() =>
-        {
-            var handler = new HttpClientHandler();
-            if (builder.Environment.IsDevelopment())
+        builder.Services.AddHttpClient(CourtFlowApiDependencyInjection.HttpClientName)
+            .ConfigureHttpClient((sp, client) =>
             {
-                handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            }
-
-            return handler;
-        });
+                var api = sp.GetRequiredService<IOptions<ApiOptions>>().Value;
+                client.BaseAddress = new Uri(api.BaseUrl.TrimEnd('/') + '/');
+            })
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var handler = new HttpClientHandler();
+                var env = sp.GetRequiredService<IHostEnvironment>();
+                if (env.IsDevelopment())
+                    handler.ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                return handler;
+            });
+        builder.Services.AddCourtFlowRefitApiClients();
 
         var app = builder.Build();
 
@@ -55,6 +65,7 @@ public class Program
             app.UseHsts();
         }
 
+        app.MapCourtFlowHealthChecks();
         app.UseSerilogRequestLogging();
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
         app.UseHttpsRedirection();

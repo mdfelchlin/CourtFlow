@@ -8,12 +8,12 @@ namespace CourtFlow.Infrastructure.MultiTenancy;
 public sealed class ScopedTenantContext : ITenantContext
 {
     public Guid? OrganizationId { get; set; }
-    public Guid? UserId { get; set; }
+    public string? UserId { get; set; }
     public bool IsAuthenticated => OrganizationId.HasValue;
 
     public Guid RequireOrganizationId() =>
         OrganizationId ?? throw new InvalidOperationException("No organization context available");
 
-    public Guid RequireUserId() =>
+    public string RequireUserId() =>
         UserId ?? throw new InvalidOperationException("No user context available");
 }

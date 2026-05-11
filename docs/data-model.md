@@ -1,6 +1,6 @@
 # Data Model
 
-> **Status:** Target schema. This document is the canonical source of truth for CourtFlow's data layer. The implementation may lag this design; new work should move toward this model. Companion docs: [`architecture.md`](architecture.md), [`architectural-prd.md`](architectural-prd.md), [`product-overview.md`](product-overview.md).
+> **Status:** Implemented schema. This document is the canonical source of truth for CourtFlow's data layer. All aggregates, entities, and enums described here have corresponding domain classes and EF Core configurations. Companion docs: [`architecture.md`](architecture.md), [`architectural-prd.md`](architectural-prd.md), [`product-overview.md`](product-overview.md).
 
 This document defines the data-layer scope for an admin-first volleyball tournament management application focused on organizer setup, division configuration, pool and bracket construction, scheduling, result reporting, and operational flexibility during tournament changes.
 

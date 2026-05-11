@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="CourtFlow.AppHost/CourtFlow.AppHost.csproj" />
+  <Project Path="CourtFlow.DbMigrator/CourtFlow.DbMigrator.csproj" />
+  <Project Path="CourtFlow.ServiceDefaults/CourtFlow.ServiceDefaults.csproj" />
   <Project Path="CourtFlow.Api/CourtFlow.Api.csproj" />
   <Project Path="CourtFlow.ApiClient/CourtFlow.ApiClient.csproj" />
   <Project Path="CourtFlow.Application/CourtFlow.Application.csproj" />

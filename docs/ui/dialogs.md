@@ -107,7 +107,7 @@ Used by the Division detail surface (out of scope for V1 feature docs).
   - **Duration (min)** numeric field, range 15–240.
   - **Court** select (Courts list passed in as a parameter).
 - **Save button label:** **Move**.
-- **Save behavior:** combines date+time, converts to UTC, then **reassigns the match** by creating or amending a `MatchAssignment` against the current `ScheduleVersion` with the new court id, start, and duration. The match's identity, participants, and stage are unchanged. Target endpoint shape: `POST /schedule-versions/{currentVersionId}/assignments` (see [`../features/schedule.md`](../features/schedule.md#gap-from-current-v1-implementation) for the current V1 shim, `POST /matches/{id}:move`).
+- **Save behavior:** combines date+time, converts to UTC, then **`POST /api/v1/tournaments/{tournamentId}/schedule-versions/preview-move`** with `{ matchId, courtId?, scheduledStartUtc, durationMinutes }`; on success when `CanApply`, **`POST .../apply-move`** with the returned `applyToken`. The API updates **`match_assignments`** and bumps **`ScheduleVersion.MutationSequence`**; RFC 7807 responses cover validation failures, stale apply (`409`), bad token (`400`), and conflicts after preview (`422`). Match identity/participants/stage are unchanged. The **full** target still includes `POST /schedule-versions/{id}/assignments` and fork-on-published — see [`../features/schedule.md`](../features/schedule.md#gap-from-target-implementation).
 
 ## ScoreDialog
 

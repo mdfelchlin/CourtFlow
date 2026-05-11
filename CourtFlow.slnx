@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CourtFlow.AppHost/CourtFlow.AppHost.csproj" />
+    <Project Path="src/CourtFlow.DbMigrator/CourtFlow.DbMigrator.csproj" />
+    <Project Path="src/CourtFlow.ServiceDefaults/CourtFlow.ServiceDefaults.csproj" />
     <Project Path="src/CourtFlow.Api/CourtFlow.Api.csproj" />
     <Project Path="src/CourtFlow.ApiClient/CourtFlow.ApiClient.csproj" />
     <Project Path="src/CourtFlow.Application/CourtFlow.Application.csproj" />

@@ -17,7 +17,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Move</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="_busy">Move</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -30,6 +30,7 @@
     private TimeSpan? _time;
     private int _duration;
     private Guid? _courtId;
+    private bool _busy;
 
     private Func<Guid?, string> _courtName =>
         id => id is null ? string.Empty
@@ -48,13 +49,35 @@
 
     private async Task Save()
     {
+        _busy = true;
         try
         {
             var dt = (_date ?? DateTime.Today).Add(_time ?? TimeSpan.Zero).ToUniversalTime();
-            await Api.Matches.MoveAsync(Match.Id, new MoveMatchDto(_courtId, dt, _duration));
+            var preview = await Api.ScheduleVersions.PreviewMoveAsync(
+                Match.TournamentId,
+                new PreviewScheduleMoveRequestDto(Match.Id, _courtId, dt, _duration));
+
+            if (!preview.CanApply || string.IsNullOrEmpty(preview.ApplyToken))
+            {
+                var sample = preview.Conflicts.Conflicts.Take(3).Select(c => c.Message).ToList();
+                var msg = preview.Conflicts.Conflicts.Count == 0
+                    ? "Move not allowed."
+                    : string.Join("; ", sample) + (preview.Conflicts.Conflicts.Count > 3 ? " …" : "");
+                Snackbar.Add(msg, Severity.Warning);
+                return;
+            }
+
+            await Api.ScheduleVersions.ApplyMoveAsync(Match.TournamentId, new ApplyScheduleMoveRequestDto(preview.ApplyToken));
             Snackbar.Add("Match moved", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 }

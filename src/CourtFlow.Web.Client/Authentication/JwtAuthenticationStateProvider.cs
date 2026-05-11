@@ -18,7 +18,6 @@ public sealed class JwtAuthenticationStateProvider(AuthTokenStore tokenStore) : 
         }
         catch
         {
-            // Never block routing/layout on Clerk or JS interop failures; user can retry sign-in.
             _cachedPrincipal = Anonymous;
         }
 
@@ -42,14 +41,10 @@ public sealed class JwtAuthenticationStateProvider(AuthTokenStore tokenStore) : 
     private static ClaimsPrincipal BuildPrincipal(AuthTokenSnapshot? snapshot)
     {
         if (snapshot is null || string.IsNullOrWhiteSpace(snapshot.AccessToken))
-        {
             return Anonymous;
-        }
 
         if (snapshot.ExpiresUtc is not null && snapshot.ExpiresUtc <= DateTimeOffset.UtcNow)
-        {
             return Anonymous;
-        }
 
         var claims = new List<Claim>();
         if (!string.IsNullOrWhiteSpace(snapshot.Email))
@@ -58,26 +53,18 @@ public sealed class JwtAuthenticationStateProvider(AuthTokenStore tokenStore) : 
             claims.Add(new Claim(ClaimTypes.Email, snapshot.Email));
         }
 
-        if (snapshot.UserId is not null)
-        {
-            claims.Add(new Claim(ClaimTypes.NameIdentifier, snapshot.UserId.Value.ToString()));
-        }
+        if (!string.IsNullOrWhiteSpace(snapshot.UserId))
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, snapshot.UserId));
 
         if (snapshot.OrganizationId is not null)
-        {
             claims.Add(new Claim("org_id", snapshot.OrganizationId.Value.ToString()));
-        }
 
         if (!string.IsNullOrWhiteSpace(snapshot.Role))
-        {
             claims.Add(new Claim(ClaimTypes.Role, snapshot.Role));
-        }
 
         claims.Add(new Claim("access_token", snapshot.AccessToken));
         if (snapshot.ExpiresUtc is not null)
-        {
             claims.Add(new Claim("access_token_expires", snapshot.ExpiresUtc.Value.ToString("O")));
-        }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer"));
     }

@@ -17,8 +17,8 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
             await jsRuntime.InvokeVoidAsync("localStorage.setItem", UserEmailKey, snapshot.Email);
         if (snapshot.ExpiresUtc is not null)
             await jsRuntime.InvokeVoidAsync("localStorage.setItem", AccessTokenExpiresKey, snapshot.ExpiresUtc.Value.ToString("O"));
-        if (snapshot.UserId is not null)
-            await jsRuntime.InvokeVoidAsync("localStorage.setItem", UserIdKey, snapshot.UserId.Value.ToString());
+        if (!string.IsNullOrWhiteSpace(snapshot.UserId))
+            await jsRuntime.InvokeVoidAsync("localStorage.setItem", UserIdKey, snapshot.UserId);
         if (snapshot.OrganizationId is not null)
             await jsRuntime.InvokeVoidAsync("localStorage.setItem", OrgIdKey, snapshot.OrganizationId.Value.ToString());
         if (!string.IsNullOrWhiteSpace(snapshot.Role))
@@ -47,7 +47,6 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
         }
         catch
         {
-            // JSException or failure before Clerk is ready: keep the app running.
             return await GetAsync();
         }
 
@@ -60,9 +59,6 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
         DateTimeOffset? expiresUtc = DateTimeOffset.TryParse(sessionInfo.ExpiresUtc, out var parsedExpires)
             ? parsedExpires
             : null;
-        Guid? userId = Guid.TryParse(sessionInfo.UserId, out var parsedUserId)
-            ? parsedUserId
-            : null;
         Guid? organizationId = Guid.TryParse(sessionInfo.OrganizationId, out var parsedOrgId)
             ? parsedOrgId
             : null;
@@ -71,7 +67,7 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
             sessionInfo.Token,
             expiresUtc,
             sessionInfo.Email,
-            userId,
+            UserId: string.IsNullOrWhiteSpace(sessionInfo.UserId) ? null : sessionInfo.UserId,
             organizationId,
             sessionInfo.Role);
 
@@ -83,9 +79,7 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
     {
         var token = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", AccessTokenKey);
         if (string.IsNullOrWhiteSpace(token))
-        {
             return null;
-        }
 
         var expiresRaw = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", AccessTokenExpiresKey);
         var email = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", UserEmailKey);
@@ -94,10 +88,10 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime)
         var role = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", RoleKey);
 
         DateTimeOffset? expiresUtc = DateTimeOffset.TryParse(expiresRaw, out var parsedExpires) ? parsedExpires : null;
-        Guid? userId = Guid.TryParse(userIdRaw, out var parsedUserId) ? parsedUserId : null;
         Guid? orgId = Guid.TryParse(orgIdRaw, out var parsedOrgId) ? parsedOrgId : null;
 
-        return new AuthTokenSnapshot(token, expiresUtc, email, userId, orgId, role);
+        return new AuthTokenSnapshot(token, expiresUtc, email,
+            UserId: string.IsNullOrWhiteSpace(userIdRaw) ? null : userIdRaw, orgId, role);
     }
 }
 
@@ -105,7 +99,7 @@ public sealed record AuthTokenSnapshot(
     string AccessToken,
     DateTimeOffset? ExpiresUtc,
     string? Email,
-    Guid? UserId,
+    string? UserId,
     Guid? OrganizationId,
     string? Role);
 

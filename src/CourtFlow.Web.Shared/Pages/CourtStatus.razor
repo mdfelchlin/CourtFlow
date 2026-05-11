@@ -1,0 +1,103 @@
+@page "/court-status"
+@attribute [Authorize]
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Court status · CourtFlow</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h4">Court status</MudText>
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            @(TournamentStore.SelectedTournamentId is null
+                ? "Select a tournament in the toolbar to load venues."
+                : TournamentStore.Tournaments.FirstOrDefault(t => t.Id == TournamentStore.SelectedTournamentId)?.Name)
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" aria-label="Refresh court status" OnClick="ReloadAsync" Disabled="_loading" />
+    </MudStack>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (TournamentStore.SelectedTournamentId is null)
+{
+    <MudAlert Severity="Severity.Info">Pick a tournament to see live pacing per court.</MudAlert>
+}
+else if (_items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No courts found for this tournament.</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-2" Outlined="true" Elevation="0">
+        <MudTable Items="_items" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Court</MudTh>
+                <MudTh>Venue</MudTh>
+                <MudTh>Pacing</MudTh>
+                <MudTh>Minutes Δ</MudTh>
+                <MudTh>Division</MudTh>
+                <MudTh>Match</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Court">@context.CourtName</MudTd>
+                <MudTd DataLabel="Venue">@context.VenueName</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@StatusChipColor(context.Status)">@context.Status</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Delta">@context.MinutesBehind</MudTd>
+                <MudTd DataLabel="Division">@(context.DivisionName ?? "—")</MudTd>
+                <MudTd DataLabel="Match">@(context.CurrentMatchLabel ?? "—")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
+
+    private IReadOnlyList<CourtStatusDto> _items = Array.Empty<CourtStatusDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TournamentStore.EnsureInitializedAsync();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var tid = TournamentStore.SelectedTournamentId;
+            if (tid is null)
+            {
+                _items = Array.Empty<CourtStatusDto>();
+                return;
+            }
+
+            _items = await Api.CourtStatus.GetAsync(tid.Value);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static Color StatusChipColor(CourtStatusKindDto k) =>
+        k switch
+        {
+            CourtStatusKindDto.Behind => Color.Error,
+            CourtStatusKindDto.SlightlyBehind => Color.Warning,
+            CourtStatusKindDto.OnTime => Color.Success,
+            CourtStatusKindDto.Ahead => Color.Info,
+            _ => Color.Default
+        };
+}

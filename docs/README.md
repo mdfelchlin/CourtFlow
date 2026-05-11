@@ -25,7 +25,7 @@ This is the canonical home for everything about CourtFlow that isn't code. The g
 
 | Doc | Use it for |
 | --- | --- |
-| [`data-model.md`](data-model.md) | Canonical target schema: aggregates, bounded contexts, every table and field, status lifecycles, domain events, audit/concurrency rules. |
+| [`data-model.md`](data-model.md) | Canonical schema reference: aggregates, bounded contexts, every table and field, status lifecycles, domain events, audit/concurrency rules. |
 
 ## Deployment
 
@@ -105,5 +105,5 @@ graph TD
 
 - **Filenames** are lowercase kebab-case.
 - **Per-feature PRDs** are UI-only. Anything about schema, API contract, or domain rules belongs in `data-model.md` (or the architectural PRD) and is linked from the feature.
-- **`data-model.md` is the canonical schema source of truth.** When the implementation lags, work moves toward this model; when the model changes, the doc is updated first.
+- **`data-model.md` is the canonical schema source of truth.** When the model changes, the doc is updated first.
 - **Don't duplicate.** Cross-link instead. If you find yourself restating something from another doc, link to it.

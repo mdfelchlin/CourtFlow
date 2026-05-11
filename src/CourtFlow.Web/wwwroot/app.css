@@ -1,3 +1,74 @@
+:root {
+    --cf-space-page: 1rem;
+    --cf-radius-card: 8px;
+    --cf-toolbar-icon-size: 20px;
+    --cf-muted: #6b7280;
+
+    /* Semantic surfaces — Court Status Grid & schedule cues (mud palette resolves at runtime) */
+    --cf-surface-0: var(--mud-palette-background-grey, #e8eaf0);
+    --cf-surface-1: var(--mud-palette-surface, #ffffff);
+    --cf-tint-success-pale: color-mix(in srgb, var(--mud-palette-success) 12%, transparent);
+    --cf-tint-info-pale: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
+    --cf-tint-warning-pale: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent);
+    --cf-tint-warning-solid: color-mix(in srgb, var(--mud-palette-warning) 55%, transparent);
+    --cf-tint-error-solid: color-mix(in srgb, var(--mud-palette-error) 65%, transparent);
+    --cf-tint-success-solid: color-mix(in srgb, var(--mud-palette-success) 70%, transparent);
+    --cf-wave-band-am: color-mix(in srgb, var(--mud-palette-info) 4%, transparent);
+    --cf-wave-band-pm: color-mix(in srgb, var(--mud-palette-secondary) 4%, transparent);
+    --cf-wave-band-numeric: color-mix(in srgb, currentColor 3%, transparent);
+    --cf-stripe-outage: repeating-linear-gradient(
+        45deg,
+        transparent 0 6px,
+        color-mix(in srgb, var(--mud-palette-text-disabled) 25%, transparent) 6px 12px);
+    --cf-stripe-canceled: repeating-linear-gradient(
+        45deg,
+        transparent 0 6px,
+        color-mix(in srgb, var(--mud-palette-error) 20%, transparent) 6px 12px);
+
+    /* Division chips — pairing per docs/ui/design-system.md */
+    --cf-division-1-bg: #3d778c;
+    --cf-division-1-fg: #f8fafc;
+    --cf-division-2-bg: #a56747;
+    --cf-division-2-fg: #f8fafc;
+    --cf-division-3-bg: #7e6bc4;
+    --cf-division-3-fg: #f8fafc;
+    --cf-division-4-bg: #4f8a52;
+    --cf-division-4-fg: #f8fafc;
+    --cf-division-5-bg: #c97e3c;
+    --cf-division-5-fg: #0f172a;
+    --cf-division-6-bg: #b85c7a;
+    --cf-division-6-fg: #f8fafc;
+    --cf-division-7-bg: #5b7f9b;
+    --cf-division-7-fg: #f8fafc;
+    --cf-division-8-bg: #6e8e76;
+    --cf-division-8-fg: #0f172a;
+}
+
+[data-cf-tv-mode="true"] {
+    --cf-tint-warning-solid: color-mix(in srgb, var(--mud-palette-warning) 65%, transparent);
+    --cf-tint-error-solid: color-mix(in srgb, var(--mud-palette-error) 75%, transparent);
+}
+
+@media print {
+    :root {
+        --cf-tint-success-pale: transparent;
+        --cf-tint-info-pale: transparent;
+        --cf-tint-warning-pale: transparent;
+        --cf-tint-warning-solid: transparent;
+        --cf-tint-error-solid: transparent;
+        --cf-tint-success-solid: transparent;
+        --cf-wave-band-am: transparent;
+        --cf-wave-band-pm: transparent;
+        --cf-wave-band-numeric: transparent;
+        --cf-stripe-outage: none;
+        --cf-stripe-canceled: none;
+    }
+
+    .mud-appbar, .mud-drawer {
+        display: none !important;
+    }
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }

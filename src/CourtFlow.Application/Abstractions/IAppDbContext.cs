@@ -18,6 +18,22 @@ public interface IAppDbContext
     DbSet<Bracket> Brackets { get; }
     DbSet<BracketNode> BracketNodes { get; }
     DbSet<SchedulingTimeSlot> SchedulingTimeSlots { get; }
+    DbSet<ScheduleVersion> ScheduleVersions { get; }
+    DbSet<Stage> Stages { get; }
+    DbSet<TournamentTeam> TournamentTeams { get; }
+    DbSet<DivisionRanking> DivisionRankings { get; }
+    DbSet<PoolEntry> PoolEntries { get; }
+    DbSet<AdvancementRule> AdvancementRules { get; }
+    DbSet<BracketSeedSlot> BracketSeedSlots { get; }
+    DbSet<MatchAssignment> MatchAssignments { get; }
+    DbSet<MatchOfficials> MatchOfficials { get; }
+    DbSet<RepairJob> RepairJobs { get; }
+    DbSet<RepairAction> RepairActions { get; }
+    DbSet<CourtOutage> CourtOutages { get; }
+    DbSet<ImportJob> ImportJobs { get; }
+    DbSet<ImportRow> ImportRows { get; }
+    DbSet<TournamentTemplate> TournamentTemplates { get; }
+    DbSet<WaveEntity> Waves { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

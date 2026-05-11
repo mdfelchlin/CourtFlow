@@ -4,8 +4,7 @@ A volleyball **Match** (the participants, the **Stage** it belongs to, the sets 
 
 ## Status
 
-proposed — target model per [`../data-model.md`](../data-model.md#9-scheduling-and-assignment); current V1 ships a single `POST /matches/{id}:move` shim that mutates the match in place. Migration to versioned endpoints is tracked in [`../features/schedule.md`](../features/schedule.md#gap-from-current-v1-implementation).
-
+proposed — target model per [`../data-model.md`](../data-model.md#9-scheduling-and-assignment). In production code today, grid **Move** uses **`POST …/schedule-versions/preview-move`** + **`POST …/apply-move`** (`match_assignments` + `MutationSequence`); broader **draft → published** versioning and granular assignment endpoints are tracked in [`../features/schedule.md`](../features/schedule.md#gap-from-target-implementation).
 ## Considered alternatives
 
 - **Mutate `matches` directly on move/reschedule.** Simpler reads, no joins, fits the V1 shim shape. Rejected because every reflow becomes a destructive rewrite — repair history, "undo this regeneration", and conflict diagnostics across schedule revisions all get harder or impossible.

@@ -40,4 +40,13 @@ public class MatchesController : ControllerBase
         var r = await _mediator.Send(cmd, ct);
         return r is null ? NotFound() : Ok(r);
     }
+
+    [HttpPost("{id:guid}/forfeit")]
+    public async Task<IActionResult> Forfeit(Guid id, [FromBody] ForfeitMatchRequest body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new ForfeitMatchCommand(id, body.WinningTeamId), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
 }
+
+public sealed record ForfeitMatchRequest(Guid WinningTeamId);

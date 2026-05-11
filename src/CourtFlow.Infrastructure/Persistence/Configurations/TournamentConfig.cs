@@ -1,4 +1,5 @@
 using CourtFlow.Domain.Entities;
+using CourtFlow.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,6 +14,13 @@ public class TournamentConfig : IEntityTypeConfiguration<Tournament>
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
         b.Property(x => x.Description).HasMaxLength(2000);
         b.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+        b.Property(x => x.PublicationStatus)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired()
+            .HasDefaultValue(TournamentPublicationStatus.Draft);
+        b.Property(x => x.PublishedAtUtc);
+        b.Property(x => x.ArchivedAtUtc);
         b.HasIndex(x => new { x.OrganizationId, x.Name });
         b.HasMany(x => x.Venues).WithOne().HasForeignKey(v => v.TournamentId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Divisions).WithOne().HasForeignKey(d => d.TournamentId).OnDelete(DeleteBehavior.Cascade);

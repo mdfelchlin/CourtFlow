@@ -15,6 +15,11 @@
 <MudDataGrid T="TournamentDto" Items="_items" Loading="_loading" Dense="true" Hover="true" Striped="false" Class="cf-tournaments-grid">
     <Columns>
         <PropertyColumn Property="x => x.Name" Title="Name" />
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Item.PublicationStatus</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="x => x.StartDate" Title="Start" />
         <PropertyColumn Property="x => x.EndDate" Title="End" />
         <TemplateColumn Title="Time zone">
@@ -24,6 +29,7 @@
         <TemplateColumn Title="Actions">
             <CellTemplate>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Edit tournament" OnClick="@(() => Edit(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Size="Size.Small" aria-label="Clone tournament" OnClick="@(() => CloneAsync(context.Item))" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Delete tournament" OnClick="@(() => DeleteAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>
@@ -47,6 +53,23 @@
     private void New() => Nav.NavigateTo("/tournaments/new");
 
     private void Edit(TournamentDto t) => Nav.NavigateTo($"/tournaments/{t.Id}");
+
+    private async Task CloneAsync(TournamentDto t)
+    {
+        var ok = await DialogService.ShowMessageBox(
+            "Clone tournament",
+            $"Create a duplicate of '{t.Name}' (structures and teams copied; schedules and brackets are not).",
+            yesText: "Clone",
+            cancelText: "Cancel");
+        if (ok != true) return;
+        try
+        {
+            var created = await Api.Tournaments.CloneAsync(t.Id);
+            Snackbar.Add("Tournament cloned", Severity.Success);
+            Nav.NavigateTo($"/tournaments/{created.Id}");
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
 
     private async Task DeleteAsync(TournamentDto t)
     {

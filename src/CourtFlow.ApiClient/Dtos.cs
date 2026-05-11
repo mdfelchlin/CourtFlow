@@ -8,6 +8,8 @@ public enum BracketBranchDto { Winners = 1, Losers = 2, GrandFinal = 3 }
 public enum CourtStatusKindDto { Idle = 0, OnTime = 1, SlightlyBehind = 2, Behind = 3, Ahead = 4 }
 public enum RankedSeedStrategyDto { Snake = 1 }
 
+public enum TournamentPublicationStatusDto { Draft, Published, Archived }
+
 public sealed record TournamentDto(
     Guid Id,
     Guid OrganizationId,
@@ -17,7 +19,10 @@ public sealed record TournamentDto(
     DateOnly EndDate,
     string TimeZoneId,
     int DefaultMatchDurationMinutes,
-    Guid? TournamentPartnerId);
+    Guid? TournamentPartnerId,
+    TournamentPublicationStatusDto PublicationStatus,
+    DateTime? PublishedAtUtc,
+    DateTime? ArchivedAtUtc);
 
 public sealed record CreateTournamentDto(string Name, string? Description, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes);
 public sealed record UpdateTournamentDto(Guid Id, string Name, string? Description, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes, Guid? TournamentPartnerId);
@@ -100,6 +105,7 @@ public sealed record MatchDto(
 
 public sealed record MoveMatchDto(Guid? CourtId, DateTime ScheduledStartUtc, int? DurationMinutes);
 public sealed record ScoreMatchDto(IReadOnlyList<MatchSetDto> Sets, bool Finalize, Guid? WinnerTeamId);
+public sealed record ForfeitMatchDto(Guid WinningTeamId);
 
 public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName);
 public sealed record BracketNodeDto(Guid Id, Guid BracketId, BracketBranchDto Branch, int Round, int Slot, Guid? MatchId, Guid? HomeTeamId, Guid? AwayTeamId, int? HomeSeed, int? AwaySeed, Guid? WinsToNodeId, Guid? LosesToNodeId);
@@ -109,6 +115,11 @@ public sealed record GenerateBracketDto(Guid TournamentId, Guid DivisionId, Brac
 public enum ConflictKindDto { TeamDoubleBooking = 1, RefConflict = 2, CourtDoubleBooking = 3, WaveViolation = 4, PartnerTournamentConflict = 5 }
 public sealed record ScheduleConflictDto(ConflictKindDto Kind, Guid MatchId, Guid? OtherMatchId, Guid? TeamId, Guid? CourtId, DateTime StartUtc, DateTime EndUtc, string Message);
 public sealed record ConflictReportDto(IReadOnlyList<ScheduleConflictDto> Conflicts);
+
+public sealed record ScheduleVersionSummaryDto(Guid Id, long MutationSequence);
+public sealed record PreviewScheduleMoveRequestDto(Guid MatchId, Guid? CourtId, DateTime ScheduledStartUtc, int? DurationMinutes);
+public sealed record PreviewScheduleMoveResponseDto(Guid ScheduleVersionId, long MutationSequence, ConflictReportDto Conflicts, string ApplyToken, bool CanApply);
+public sealed record ApplyScheduleMoveRequestDto(string ApplyToken);
 
 public sealed record CourtStatusDto(
     Guid CourtId,
@@ -223,3 +234,18 @@ public sealed record PublicPoolStandingsDto(
     Guid DivisionId,
     string DivisionName,
     IReadOnlyList<PublicStandingsRowDto> Rows);
+
+// --- Repairs ---
+public enum RepairTriggerTypeDto { TeamWithdrawal = 1, CourtOutage = 2, RefereeReassignment = 3, WorkTeamReassignment = 4, ScheduleReflow = 5, PoolCourtSwap = 6 }
+public enum RepairJobStatusDto { Pending = 1, Previewing = 2, Applied = 3, Rejected = 4 }
+public enum RepairActionTypeDto { MatchAssignmentMove = 1, MatchCancellation = 2, TeamWithdrawal = 3, WorkTeamReassignment = 4, PoolCourtAllocationChange = 5, ScheduleReflow = 6, CourtOutageMarked = 7 }
+
+public sealed record RepairJobDto(Guid Id, RepairTriggerTypeDto TriggerType, RepairJobStatusDto Status, Guid? DivisionId, DateTime CreatedAt);
+public sealed record RepairActionDto(Guid Id, RepairActionTypeDto ActionType, string? TargetId, string? Before, string? After);
+public sealed record RepairJobDetailDto(Guid Id, RepairTriggerTypeDto TriggerType, RepairJobStatusDto Status, Guid? DivisionId, DateTime CreatedAt, string? PreviewDiagnosticsJson, IReadOnlyList<RepairActionDto> Actions);
+public sealed record TeamWithdrawalDto(Guid TournamentTeamId, string? Reason, Guid? EffectiveAfterMatchId);
+public sealed record CourtOutageDto(Guid CourtId, DateTime StartsAt, DateTime EndsAt, string? Reason);
+
+// --- Templates ---
+public sealed record TemplateDto(Guid Id, string Name, string? Description, Guid? SourceTournamentId, int UsageCount, DateTime CreatedAt);
+public sealed record CaptureTemplateDto(Guid SourceTournamentId, string? Name);

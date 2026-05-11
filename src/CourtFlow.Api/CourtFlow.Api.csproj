@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -23,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CourtFlow.ServiceDefaults\CourtFlow.ServiceDefaults.csproj" />
     <ProjectReference Include="..\CourtFlow.Application\CourtFlow.Application.csproj" />
     <ProjectReference Include="..\CourtFlow.Infrastructure\CourtFlow.Infrastructure.csproj" />
     <ProjectReference Include="..\CourtFlow.Domain\CourtFlow.Domain.csproj" />

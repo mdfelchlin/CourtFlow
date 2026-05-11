@@ -25,6 +25,7 @@ public class OrganizationMembershipConfig : IEntityTypeConfiguration<Organizatio
         b.ToTable("organization_memberships");
         b.HasKey(x => x.Id);
         b.Property(x => x.Role).HasMaxLength(50).IsRequired();
-        b.HasIndex(x => new { x.OrganizationId, x.UserId }).IsUnique();
+        b.Property(x => x.ExternalUserId).HasMaxLength(450).IsRequired();
+        b.HasIndex(x => new { x.OrganizationId, x.ExternalUserId }).IsUnique();
     }
 }

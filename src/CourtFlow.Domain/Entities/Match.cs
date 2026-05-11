@@ -105,6 +105,17 @@ public class Match : Entity, ITenantScoped
         Touch();
     }
 
+    /// <summary>Declare a winner without set scores (forfeit).</summary>
+    public void ForfeitTo(Guid winningTeamId)
+    {
+        if (State == MatchState.Final || State == MatchState.Canceled)
+            throw new InvalidOperationException($"Cannot forfeit match in state {State}.");
+        if (HomeTeamId != winningTeamId && AwayTeamId != winningTeamId)
+            throw new ArgumentException("Winning team must be the home or away side.");
+
+        Finalize(winningTeamId);
+    }
+
     public void Cancel()
     {
         State = MatchState.Canceled;

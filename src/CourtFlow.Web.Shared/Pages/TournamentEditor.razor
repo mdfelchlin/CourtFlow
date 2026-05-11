@@ -58,6 +58,41 @@ else
         {
             <MudPaper Class="pa-5" Elevation="1">
                 <MudStack Spacing="3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                        <MudText Typo="Typo.h6">Publication</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@PublicationChipColor()"
+                                 Variant="Variant.Filled">@(_current.PublicationStatus.ToString())</MudChip>
+                    </MudStack>
+                    <MudText Typo="Typo.body2">
+                        Published tournaments appear on the public event list and feeds. Archived tournaments lock structure edits until restored.
+                    </MudText>
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Public"
+                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Draft"
+                                   OnClick="PublishAsync">Publish</MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.VisibilityOff"
+                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Published"
+                                   OnClick="UnpublishAsync">Unpublish</MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Archive"
+                                   Disabled="_busyPublication || _current.PublicationStatus == TournamentPublicationStatusDto.Archived"
+                                   OnClick="ArchiveAsync">Archive</MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.RestorePage"
+                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Archived"
+                                   OnClick="RestoreAsync">Restore from archive</MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Class="pa-5" Elevation="1">
+                <MudStack Spacing="3">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                         <MudText Typo="Typo.h6">Venues &amp; courts</MudText>
                         <CfToolbarAddButton OnClick="AddVenueAsync" AriaLabel="Add venue" />
@@ -187,6 +222,7 @@ else
     private Dictionary<Guid, string> _newCourtNameByVenue = new();
 
     private Guid? _lastLoadedId;
+    private bool _busyPublication;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -287,6 +323,56 @@ else
         finally
         {
             _savingDetails = false;
+        }
+    }
+
+    private Color PublicationChipColor() =>
+        _current?.PublicationStatus switch
+        {
+            TournamentPublicationStatusDto.Published => Color.Success,
+            TournamentPublicationStatusDto.Archived => Color.Warning,
+            _ => Color.Default,
+        };
+
+    private async Task PublishAsync() => await RunPublicationActionAsync(async () =>
+        await Api.Tournaments.PublishAsync(_current!.Id));
+
+    private async Task UnpublishAsync() => await RunPublicationActionAsync(async () =>
+        await Api.Tournaments.UnpublishAsync(_current!.Id));
+
+    private async Task ArchiveAsync()
+    {
+        if (_current is null) return;
+        var ok = await DialogService.ShowMessageBox(
+            "Archive tournament",
+            $"Archive '{_current.Name}'? Admin structure edits lock until restored.",
+            yesText: "Archive",
+            cancelText: "Cancel");
+        if (ok != true) return;
+        await RunPublicationActionAsync(async () => await Api.Tournaments.ArchiveAsync(_current.Id));
+    }
+
+    private async Task RestoreAsync() => await RunPublicationActionAsync(async () =>
+        await Api.Tournaments.RestoreAsync(_current!.Id));
+
+    private async Task RunPublicationActionAsync(Func<Task<TournamentDto>> action)
+    {
+        if (_current is null) return;
+        _busyPublication = true;
+        try
+        {
+            var t = await action();
+            _current = t;
+            Snackbar.Add("Tournament lifecycle updated.", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busyPublication = false;
         }
     }
 

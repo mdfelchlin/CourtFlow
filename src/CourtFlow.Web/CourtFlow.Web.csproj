@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CourtFlow.ServiceDefaults\CourtFlow.ServiceDefaults.csproj" />
     <ProjectReference Include="..\CourtFlow.Web.Shared\CourtFlow.Web.Shared.csproj" />
     <ProjectReference Include="..\CourtFlow.ApiClient\CourtFlow.ApiClient.csproj" />
     <ProjectReference Include="..\CourtFlow.Web.Client\CourtFlow.Web.Client.csproj" />

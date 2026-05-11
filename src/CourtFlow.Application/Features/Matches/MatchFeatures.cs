@@ -148,3 +148,40 @@ public sealed class ScoreMatchHandler : IRequestHandler<ScoreMatchCommand, Match
         return homeSetWins > awaySetWins ? match.HomeTeamId : match.AwayTeamId;
     }
 }
+
+public sealed record ForfeitMatchCommand(Guid Id, Guid WinningTeamId) : IRequest<MatchDto?>;
+
+public sealed class ForfeitMatchValidator : AbstractValidator<ForfeitMatchCommand>
+{
+    public ForfeitMatchValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.WinningTeamId).NotEmpty();
+    }
+}
+
+public sealed class ForfeitMatchHandler : IRequestHandler<ForfeitMatchCommand, MatchDto?>
+{
+    private readonly IAppDbContext _db;
+    private readonly IBracketProgressionService _progression;
+
+    public ForfeitMatchHandler(IAppDbContext db, IBracketProgressionService progression)
+    {
+        _db = db;
+        _progression = progression;
+    }
+
+    public async Task<MatchDto?> Handle(ForfeitMatchCommand request, CancellationToken ct)
+    {
+        var m = await _db.Matches.Include(x => x.Sets).FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (m is null) return null;
+
+        m.ForfeitTo(request.WinningTeamId);
+        await _db.SaveChangesAsync(ct);
+
+        if (m.BracketNodeId is not null)
+            await _progression.AdvanceAsync(m.Id, ct);
+
+        return m.ToDto();
+    }
+}

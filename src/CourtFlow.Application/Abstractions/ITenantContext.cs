@@ -3,9 +3,9 @@ namespace CourtFlow.Application.Abstractions;
 public interface ITenantContext
 {
     Guid? OrganizationId { get; }
-    Guid? UserId { get; }
+    string? UserId { get; }
     bool IsAuthenticated { get; }
 
     Guid RequireOrganizationId();
-    Guid RequireUserId();
+    string RequireUserId();
 }

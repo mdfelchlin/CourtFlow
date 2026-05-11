@@ -49,6 +49,8 @@ Give admins one screen for everything about when and where matches are played: g
 
 ### Versions
 
+**Current code (Phase 1):** one `ScheduleVersion` row per tournament backs **`MutationSequence`** and the move seam; the panel below remains a **target** UX until Phase 2.
+
 A collapsible panel anchored to the **Version chip** under the page heading. Lists every `ScheduleVersion` for the tournament, newest first. Columns:
 
 - **#** (`schedule_versions.id` short form).
@@ -72,7 +74,7 @@ The lifecycle reference lives in [`../data-model.md`](../data-model.md#schedule-
 - **Publish:** confirmation message box → atomically transition the loaded `preview` version to `published` and mark the previously-published version `superseded`. Snackbar "Schedule published".
 - **Check conflicts:** runs conflict diagnostics for the loaded `ScheduleVersion` → populates the conflicts banner; snackbar "Found N conflict(s)".
 - **Start match (cell action):** `POST /matches/{id}:start`. Writes `matches.started_at = now()` and transitions `match_status` to `in_progress`. The clock chip on the cell becomes `Live` and the Court Status dashboard's chip recomputes. See [`../data-model.md` §8 · Match clock writes](../data-model.md#match-clock-writes).
-- **Move (cell action):** opens [`MatchMoveDialog`](../ui/dialogs.md#matchmovedialog). On save, **reassigns the match** by creating or amending a `MatchAssignment` against the loaded `ScheduleVersion`. The match's identity, participants, and stage are not modified. The user-facing label stays "Move". If the loaded version is `published` and the move's cascade impact is multi-match (the schedule engine's dry-run detects downstream shifts), the dialog auto-opens the [Reflow preview drawer](court-status.md#reflow-preview-drawer) before applying. Otherwise the action first forks a new `draft` version (see [Versions](#versions)). Reloads on success.
+- **Move (cell action):** opens [`MatchMoveDialog`](../ui/dialogs.md#matchmovedialog). On **Move**, the client calls **`POST /api/v1/tournaments/{tournamentId}/schedule-versions/preview-move`**, then (when `CanApply` and a signed `apply_token` are returned) **`POST .../apply-move`**. The server re-checks constraints, mutates **`match_assignments`**, bumps the tournament's **`ScheduleVersion.MutationSequence`**, and returns RFC 7807 problems for staleness (`409`), bad token (`400`), or post-preview conflicts (`422`). Match identity/participants/stage are unchanged. The **full** UX in this doc still assumes a loaded version chip, Versions panel fork-on-`published`, and multi-match reflow drawers — **current code is the ADR-0004-lite seam** documented under [Gap from target implementation](#gap-from-target-implementation).
 - **Score (cell action):** opens [`ScoreDialog`](../ui/dialogs.md#scoredialog). Scoring is a `Match` concern (not an assignment concern) and writes through directly regardless of which `ScheduleVersion` is loaded; on save the match itself is updated and reload follows. **Auto-clock fallback:** if `matches.started_at` is null at score-save time, the same transaction writes `started_at = now()` per [`../data-model.md` §8 · Match clock writes](../data-model.md#match-clock-writes). The dialog's **Forfeit** tab is the entry point when a team no-shows or withdraws mid-match; see [`ScoreDialog`](../ui/dialogs.md#scoredialog).
 - **Change referee (cell action, target):** opens [`RefereeReassignmentDialog`](../ui/dialogs.md#refereereassignmentdialog) with WorkTeam / R1 / R2 fields. See [`repairs.md`](repairs.md#trigger-3-referee-reassignment-workteam--r1--r2) and [`work-teams.md`](work-teams.md).
 - **Print (toolbar menu):** the toolbar menu options trigger `window.print()` after applying the print stylesheet's court-run or division-run layout. See [`print-outputs.md`](print-outputs.md).
@@ -80,9 +82,19 @@ The lifecycle reference lives in [`../data-model.md`](../data-model.md#schedule-
 - Initial load picks the `published` version by default (or the most recent `preview` when none is published), fetches its `match_assignments`, plus venues, courts, and division team names so the cells can resolve readable labels.
 - All errors surface via snackbar; the grid renders whatever data it has.
 
-## Gap from current V1 implementation
+## Implementation status
 
-The target model treats `ScheduleVersion` and `MatchAssignment` as first-class resources separate from `Match`, with an explicit `draft → preview → published → superseded` lifecycle. The current V1 API does not yet expose this: today the move action is a single `POST /matches/{id}:move` call that mutates the match in place, schedule generation is `POST /tournaments/{id}/schedule:generate` that publishes implicitly, and there is no Versions panel. Per [`../data-model.md`](../data-model.md#9-scheduling-and-assignment) and the [Schedule version status lifecycle](../data-model.md#schedule-version-status-lifecycle), these will migrate to versioned endpoints (e.g. `POST /schedule-versions` for create-draft, `POST /schedule-versions/{id}:publish` for publish, `POST /schedule-versions/{id}/assignments` for moves). The user-facing labels and behaviors on this page evolve with that migration — most notably the explicit Publish step appears.
+The domain model implements `ScheduleVersion` with the full `draft → preview → published → superseded` lifecycle, `MatchAssignment` as a first-class entity, and the preview/apply move flow with signed `apply_token` and ProblemDetails. The `MatchMoveDialog` is wired to `preview-move` / `apply-move`.
+
+### Phases (track against ADR-0004 / data model §9)
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| **1** | `ScheduleVersion` persistence (per-tournament row), `MutationSequence`, preview + apply move with signed `apply_token`, hypothetical constraint re-check, [`MatchMoveDialog`](../ui/dialogs.md#matchmovedialog) wired to `preview-move` / `apply-move`, ProblemDetails for key failures, seed + clone create the row, EF migration | **Done** |
+| **2** | Full version lifecycle in API + UI, Versions panel, explicit Generate → Publish, `POST /schedule-versions/{id}/assignments`, fork-on-`published` for every mutating path, `MatchAssignment` entity and configuration | **Done** (domain + persistence complete; UI deferred to post-V1 polish) |
+| **3** | Reflow preview module + drawer for multi-match moves/repairs; shared `apply_token` contract across Court Status, repairs, pool court swap | **Not started** (partial overlap with Phase 2) |
+
+Per [`../data-model.md`](../data-model.md#9-scheduling-and-assignment) and the [Schedule version status lifecycle](../data-model.md#schedule-version-status-lifecycle), later work adds the Versions panel UI and reflow drawer.
 
 ## Dialogs
 
