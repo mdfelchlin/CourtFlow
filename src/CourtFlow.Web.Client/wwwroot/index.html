@@ -13,6 +13,14 @@
     <link rel="manifest" href="manifest.webmanifest" />
 </head>
 <body>
+    <!-- Same values as appsettings.json so Clerk can init before any fetch (reliable on SWA/CDN). -->
+    <script>
+        window.__courtflowClerkConfig = {
+            publishableKey: "pk_test_c3RpcnJlZC1waXBlZmlzaC01LmNsZXJrLmFjY291bnRzLmRldiQ",
+            frontendApi: "https://stirred-pipefish-5.clerk.accounts.dev",
+            jwtTemplate: "courtflow-api"
+        };
+    </script>
     <div id="app">
         <div style="padding: 1rem; font-family: Inter, sans-serif;">Loading CourtFlow...</div>
     </div>

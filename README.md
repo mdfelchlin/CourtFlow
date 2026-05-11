@@ -2,7 +2,7 @@
 
 Volleyball tournament management platform. V1 is admin-only: an ASP.NET Core Web API plus a Blazor Web App (Server) for tournament directors to configure events, generate schedules, manage brackets, monitor courts, and record scores.
 
-See the PRD: [Volleyball Tournament Management API + Blazor Web App PRD (V1, Admin-Only).md](Volleyball%20Tournament%20Management%20API%20+%20Blazor%20Web%20App%20PRD%20%28V1%2C%20Admin-Only%29.md).
+All product, architecture, data-model, deployment, UI, and per-feature docs live in [`docs/`](docs/README.md). Start with [`docs/product-overview.md`](docs/product-overview.md).
 
 ## Solution Layout
 
@@ -55,6 +55,6 @@ Legacy password sign-in is intentionally disabled. `POST /api/v1/auth/sign-in` n
 
 ## Deployment (Azure SWA + Container Apps + Turso + Clerk)
 
-The **architecture, Azure/Turso/Clerk setup, GitHub secrets, CI/CD YAML/Dockerfile templates, libSQL migration notes, and go-live checklist** are all in a single plan: [`docs/CourtFlow-Azure-Plan.md`](docs/CourtFlow-Azure-Plan.md) (and the Cursor plan `azure_swa_hardening` mirrors it). **§3.1** tracks legacy database decommission guidance.
+The **architecture, Azure/Turso/Clerk setup, GitHub secrets, CI/CD YAML/Dockerfile templates, libSQL migration notes, and go-live checklist** are all in a single plan: [`docs/azure-plan.md`](docs/azure-plan.md) (and the Cursor plan `azure_swa_hardening` mirrors it). **§3.1** tracks legacy database decommission guidance.
 
 > **Pipeline files:** add `.github/workflows/*.yml`, `deploy/Dockerfile.api`, and `.dockerignore` from **§10** of that plan, or use Agent mode to materialize them as real files in the repo.

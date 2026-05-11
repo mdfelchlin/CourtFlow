@@ -13,12 +13,22 @@ locals {
     managedBy   = "terraform"
   }
 
-  env_vars = {
-    ASPNETCORE_ENVIRONMENT = title(var.environment)
-    Clerk__Authority       = var.clerk_authority
-    Clerk__Audience        = var.clerk_audience
-    Cors__Origins__0       = length(var.cors_origins) > 0 ? var.cors_origins[0] : ""
+  # Cors:Origins:0, Cors:Origins:1, ... — multiple entries allowed.
+  # If cors_origins is empty, allow the default SWA URL from this stack (avoids a second apply to fix CORS).
+  cors_env = length(var.cors_origins) > 0 ? {
+    for idx, o in var.cors_origins : "Cors__Origins__${idx}" => o
+    } : {
+    "Cors__Origins__0" = "https://${module.static_web_app.default_host_name}"
   }
+
+  env_vars = merge(
+    {
+      ASPNETCORE_ENVIRONMENT = title(var.environment)
+      Clerk__Authority       = var.clerk_authority
+      Clerk__Audience        = var.clerk_audience
+    },
+    local.cors_env
+  )
 
   secret_env_vars = var.connection_string_default != "" ? {
     ConnectionStrings__Default = "connection-strings-default"

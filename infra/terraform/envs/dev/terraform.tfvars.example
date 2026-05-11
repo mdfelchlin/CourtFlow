@@ -7,9 +7,9 @@ min_replicas = 0
 max_replicas = 3
 api_image    = "mcr.microsoft.com/k8se/quickstart:latest"
 
-cors_origins = [
-  "https://example-dev.azurestaticapps.net",
-]
+# When empty, Terraform sets CORS to https://<SWA default hostname> for this environment.
+# Set explicit entries to add more origins (e.g. custom domain, https://localhost:7178).
+cors_origins = []
 
 budget_amount = 25
 budget_contact_emails = [
