@@ -12,7 +12,11 @@ public class OrganizationConfig : IEntityTypeConfiguration<Organization>
         b.HasKey(x => x.Id);
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
         b.Property(x => x.Slug).HasMaxLength(100).IsRequired();
+        b.Property(x => x.ClerkOrgId).HasMaxLength(255);
+        b.Property(x => x.OwnerExternalUserId).HasMaxLength(450);
         b.HasIndex(x => x.Slug).IsUnique();
+        b.HasIndex(x => x.ClerkOrgId).IsUnique();
+        b.HasIndex(x => x.OwnerExternalUserId).IsUnique();
         b.HasMany(x => x.Tournaments).WithOne().HasForeignKey(t => t.OrganizationId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Memberships).WithOne().HasForeignKey(m => m.OrganizationId).OnDelete(DeleteBehavior.Cascade);
     }

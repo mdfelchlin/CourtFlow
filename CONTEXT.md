@@ -12,6 +12,13 @@ _Avoid_: Event (in the admin context), competition.
 Public-facing synonym for **Tournament**. Used only on the public surface — the public route (`/events/{id}`), public DTOs (`PublicEventDto`), and the public-facing feature docs (`features/public-landing.md`, `features/public-event.md`). Never appears in the admin surface or in domain code.
 _Avoid_: Tournament (in the public context).
 
+**Organization**:
+The multi-tenant boundary in CourtFlow — every tenant-scoped row (`tournaments`, `clubs`, `teams`, `matches`, …) hangs off exactly one **Organization** via `organization_id`. Each authenticated user has at least one Organization through an **OrganizationMembership**; the user's chosen org id rides every request as the `org_id` claim and is the filter the EF tenant policy applies. An Organization comes in two shapes:
+- **Personal workspace** — auto-provisioned the first time a Clerk user signs in. `clerk_org_id` is `NULL`; the lone owner is recorded in `owner_external_user_id`. Personal workspaces consume **no** Clerk Organization slot, which is critical because Clerk's Free plan caps us at 100 orgs.
+- **Team workspace** — created when a personal workspace is upgraded (or when a user is invited into an existing team). `clerk_org_id` is set and the Clerk Organization is the source of truth for membership and role; CourtFlow's `organization_memberships` rows mirror Clerk membership webhooks. Multiple users belong; roles come from Clerk.
+The split is mechanical, not domain: a Tournament inside a personal workspace and a Tournament inside a team workspace are otherwise identical. See [`docs/adr/0008-personal-organizations-and-team-upgrade.md`](docs/adr/0008-personal-organizations-and-team-upgrade.md).
+_Avoid_: Tenant (CourtFlow's user-facing language is "workspace"), Account (Clerk's user account is a different concept), Club (an org-scoped affiliation that owns teams — many clubs can live inside one Organization).
+
 **Club**:
 A long-lived org-scoped affiliation that owns one or more **Teams**. Lives in `clubs`. Reused across tournaments and seasons.
 _Avoid_: Organization (which is the multi-tenant boundary, not a club).

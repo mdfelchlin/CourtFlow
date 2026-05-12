@@ -6,6 +6,7 @@ using CourtFlow.Infrastructure.MultiTenancy;
 using CourtFlow.Infrastructure.Options;
 using CourtFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,8 +16,15 @@ namespace CourtFlow.Infrastructure.Seed;
 public static class DemoSeeder
 {
     public const string DemoOrgSlug = "courtflow-demo";
-    /// <summary>Stable external id for seeded membership (replace with your Clerk <c>sub</c> locally if needed).</summary>
-    public const string DemoAdminExternalUserId = "user_demo_seed";
+
+    /// <summary>
+    /// Config key (e.g. user-secrets) for the Clerk <c>sub</c> of the local developer.
+    /// When present, the seeder attaches an admin <see cref="OrganizationMembership"/>
+    /// for this <c>sub</c> on the demo org so the developer's real login lands inside
+    /// the seeded tenant. When absent, no membership is attached — the demo data exists
+    /// but is invisible to any real user until they're invited.
+    /// </summary>
+    public const string DevClerkUserIdConfigKey = "Dev:ClerkUserId";
 
     public static async Task SeedAsync(IServiceProvider services, CancellationToken ct = default)
     {
@@ -27,6 +35,8 @@ public static class DemoSeeder
             return;
 
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var devClerkUserId = config[DevClerkUserIdConfigKey]?.Trim();
 
         var org = await db.Organizations.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Slug == DemoOrgSlug, ct);
         if (org is null)
@@ -37,15 +47,26 @@ public static class DemoSeeder
             logger.LogInformation("Seeded demo organization {OrgId}", org.Id);
         }
 
-        var hasMembership = await db.OrganizationMemberships.IgnoreQueryFilters()
-            .AnyAsync(m => m.OrganizationId == org.Id && m.ExternalUserId == DemoAdminExternalUserId, ct);
-        if (!hasMembership)
+        if (!string.IsNullOrWhiteSpace(devClerkUserId))
         {
-            db.OrganizationMemberships.Add(new OrganizationMembership(org.Id, DemoAdminExternalUserId, "Admin"));
-            await db.SaveChangesAsync(ct);
+            var hasMembership = await db.OrganizationMemberships.IgnoreQueryFilters()
+                .AnyAsync(m => m.OrganizationId == org.Id && m.ExternalUserId == devClerkUserId, ct);
+            if (!hasMembership)
+            {
+                db.OrganizationMemberships.Add(new OrganizationMembership(org.Id, devClerkUserId, "Admin"));
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "Attached demo-org admin membership for Dev:ClerkUserId={Sub}", devClerkUserId);
+            }
+        }
+        else
+        {
+            logger.LogDebug(
+                "Dev:ClerkUserId not configured — demo tournament will exist but no membership is attached. " +
+                "Set 'Dev:ClerkUserId' in user-secrets to your Clerk sub to see Spring Classic on login.");
         }
 
-        using var tenantScope = HttpTenantContext.BeginScope(org.Id, DemoAdminExternalUserId);
+        using var tenantScope = HttpTenantContext.BeginScope(org.Id, devClerkUserId);
 
         var tournament = await db.Tournaments.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.OrganizationId == org.Id, ct);
         if (tournament is null)

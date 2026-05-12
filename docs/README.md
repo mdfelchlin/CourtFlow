@@ -32,6 +32,7 @@ This is the canonical home for everything about CourtFlow that isn't code. The g
 | Doc | Use it for |
 | --- | --- |
 | [`azure-plan.md`](azure-plan.md) | Committed Azure stack (Static Web Apps + Container Apps + Turso + Clerk), CI/CD workflow templates, go-live checklist. |
+| [`local-development.md`](local-development.md) | How to run the app locally (Aspire AppHost), what the dashboard env vars in `launchSettings.json` do, and how to point the WASM client at the right API for each scenario. |
 
 ## UI cross-cutting
 

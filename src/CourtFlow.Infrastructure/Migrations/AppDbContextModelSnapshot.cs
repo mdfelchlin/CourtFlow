@@ -866,6 +866,11 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("ClerkOrgId")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("clerk_org_id");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at_utc");
@@ -875,6 +880,11 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<string>("OwnerExternalUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner_external_user_id");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -888,6 +898,14 @@ namespace CourtFlow.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
+
+                    b.HasIndex("ClerkOrgId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizations_clerk_org_id");
+
+                    b.HasIndex("OwnerExternalUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organizations_owner_external_user_id");
 
                     b.HasIndex("Slug")
                         .IsUnique()

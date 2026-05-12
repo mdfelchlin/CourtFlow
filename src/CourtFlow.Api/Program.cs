@@ -40,7 +40,10 @@ public class Program
             .ValidateOnStart();
         builder.Services.AddSingleton<IValidateOptions<ClerkOptions>, ClerkOptionsValidator>();
         builder.Services.AddSingleton<IConfigureNamedOptions<JwtBearerOptions>>(sp =>
-            new ConfigureCourtFlowJwtBearerOptions(sp.GetRequiredService<IOptionsMonitor<ClerkOptions>>()));
+            new ConfigureCourtFlowJwtBearerOptions(
+                sp.GetRequiredService<IOptionsMonitor<ClerkOptions>>(),
+                sp.GetRequiredService<IHostEnvironment>(),
+                sp.GetRequiredService<ILoggerFactory>()));
 
         builder.Services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -129,6 +132,32 @@ public class Program
         app.UseRateLimiter();
         app.UseCors();
         app.UseAuthentication();
+        if (app.Environment.IsDevelopment())
+        {
+            app.Use(async (ctx, next) =>
+            {
+                var path = ctx.Request.Path.Value ?? string.Empty;
+                if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    var log = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("CourtFlow.AuthDebug");
+                    var authHeader = ctx.Request.Headers.Authorization.ToString();
+                    var hasBearer = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
+                    var isAuth = ctx.User?.Identity?.IsAuthenticated == true;
+                    var orgId = ctx.User?.FindFirst("org_id")?.Value ?? ctx.User?.FindFirst("orgId")?.Value;
+                    log.LogWarning(
+                        "Pre-authorize {Method} {Path}: bearer header={HasBearer}, IsAuthenticated={IsAuth}, org_id={OrgId}",
+                        ctx.Request.Method,
+                        ctx.Request.Path,
+                        hasBearer,
+                        isAuth,
+                        orgId ?? "(none)");
+                }
+
+                await next();
+            });
+        }
+
         app.UseAuthorization();
         app.MapControllers();
 
@@ -136,7 +165,10 @@ public class Program
     }
 }
 
-internal sealed class ConfigureCourtFlowJwtBearerOptions(IOptionsMonitor<ClerkOptions> clerkMonitor)
+internal sealed class ConfigureCourtFlowJwtBearerOptions(
+    IOptionsMonitor<ClerkOptions> clerkMonitor,
+    IHostEnvironment env,
+    ILoggerFactory loggerFactory)
     : IConfigureNamedOptions<JwtBearerOptions>
 {
     public void Configure(JwtBearerOptions options) =>
@@ -151,6 +183,10 @@ internal sealed class ConfigureCourtFlowJwtBearerOptions(IOptionsMonitor<ClerkOp
         var authority = clerk.Authority.TrimEnd('/');
         options.Authority = authority;
         options.RequireHttpsMetadata = true;
+        // In Development surface the actual validation failure in the WWW-Authenticate
+        // header so the browser/Refit client can show the real reason (expired, bad
+        // audience, bad issuer, signature failure, etc.) instead of an opaque 401.
+        options.IncludeErrorDetails = env.IsDevelopment();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -158,10 +194,61 @@ internal sealed class ConfigureCourtFlowJwtBearerOptions(IOptionsMonitor<ClerkOp
             ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
             ValidAudience = clerk.Audience,
             ValidateLifetime = true,
-            ValidateIssuerSigningKey = false,
+            ValidateIssuerSigningKey = true,
             ClockSkew = TimeSpan.FromMinutes(1),
             NameClaimType = ClaimTypes.NameIdentifier,
             RoleClaimType = ClaimTypes.Role
+        };
+
+        var log = loggerFactory.CreateLogger("CourtFlow.Auth.JwtBearer");
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = ctx =>
+            {
+                log.LogWarning(ctx.Exception,
+                    "JWT auth failed on {Method} {Path} — {ExceptionType}: {Message}",
+                    ctx.HttpContext.Request.Method,
+                    ctx.HttpContext.Request.Path,
+                    ctx.Exception.GetType().Name,
+                    ctx.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnChallenge = ctx =>
+            {
+                if (!string.IsNullOrEmpty(ctx.Error) || !string.IsNullOrEmpty(ctx.ErrorDescription))
+                {
+                    log.LogWarning(
+                        "JWT challenge on {Method} {Path}: error={Error}; description={Description}",
+                        ctx.HttpContext.Request.Method,
+                        ctx.HttpContext.Request.Path,
+                        ctx.Error,
+                        ctx.ErrorDescription);
+                }
+                else
+                {
+                    var hasHeader = ctx.HttpContext.Request.Headers.ContainsKey("Authorization");
+                    log.LogWarning(
+                        "JWT challenge on {Method} {Path}: no Authorization header present (header sent: {HasHeader})",
+                        ctx.HttpContext.Request.Method,
+                        ctx.HttpContext.Request.Path,
+                        hasHeader);
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = ctx =>
+            {
+                log.LogDebug(
+                    "JWT validated on {Method} {Path} — sub={Sub}; org_id={OrgId}; aud={Aud}; iss={Iss}",
+                    ctx.HttpContext.Request.Method,
+                    ctx.HttpContext.Request.Path,
+                    ctx.Principal?.FindFirst("sub")?.Value,
+                    ctx.Principal?.FindFirst("org_id")?.Value ?? ctx.Principal?.FindFirst("orgId")?.Value,
+                    ctx.SecurityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwt
+                        ? string.Join(",", jwt.Audiences)
+                        : null,
+                    (ctx.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken)?.Issuer);
+                return Task.CompletedTask;
+            }
         };
     }
 }
