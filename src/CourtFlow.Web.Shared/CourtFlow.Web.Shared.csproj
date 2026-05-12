@@ -12,26 +12,19 @@
 
   <ItemGroup>
     <!--
-      ThemeState (server-side SSR path) reads the courtflow-theme cookie via
-      IHttpContextAccessor. That type lives in the ASP.NET Core shared framework on
-      .NET 10, so we reference Microsoft.AspNetCore.App rather than the legacy
-      Microsoft.AspNetCore.Http.Abstractions 2.3.x package. PrivateAssets="all"
-      prevents the reference from flowing to the WASM client at runtime; the
-      browser-side ThemeState code path never touches IHttpContextAccessor.
-    -->
-    <FrameworkReference Include="Microsoft.AspNetCore.App" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!--
-      Microsoft.AspNetCore.Components.{Authorization,Web} and
-      Microsoft.Extensions.Options.ConfigurationExtensions are already supplied by
-      Microsoft.AspNetCore.App (above) — adding explicit PackageReferences for them
-      triggers NU1510 (package pruning) since the shared framework already provides
-      them. The WASM consumer (CourtFlow.Web.Client) gets them transitively via
-      Microsoft.AspNetCore.Components.WebAssembly.
+      NOTE: Microsoft.AspNetCore.Http.Abstractions stays on the legacy 2.3.x line
+      ON PURPOSE. ThemeState reads the courtflow-theme cookie via IHttpContextAccessor.
+      The shared-framework version of that type (Microsoft.AspNetCore.App, 10.0.0.0) is
+      server-only and is NOT present in the WASM runtime, so swapping to a
+      FrameworkReference compiles cleanly but blows up when blazor.web.js loads
+      CourtFlow.Web.Shared.dll on the client. The 2.3.x package ships a redistributable
+      assembly that gets bundled into the WASM payload, which is what we need.
     -->
     <PackageReference Include="MudBlazor" Version="9.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.10" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
   </ItemGroup>
 
   <ItemGroup>
