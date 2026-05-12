@@ -49,7 +49,6 @@
                       Immediate="true"
                       InputType="InputType.Text"
                       Lines="1"
-                      AutoGrow="false"
                       Clearable="true" />
     </MudItem>
     <MudItem xs="12" sm="12" md="4">
@@ -219,7 +218,7 @@
 
     private async Task DeleteAsync(TeamDto t)
     {
-        var ok = await DialogService.ShowMessageBox("Delete team", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        var ok = await DialogService.ShowMessageBoxAsync("Delete team", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
         try
         {

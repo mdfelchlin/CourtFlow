@@ -8,7 +8,6 @@ using CourtFlow.Infrastructure.Options;
 using CourtFlow.Infrastructure.Persistence;
 using CourtFlow.Infrastructure.Seed;
 using CourtFlow.ServiceDefaults;
-using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -69,7 +68,6 @@ public class Program
             {
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
-        builder.Services.AddFluentValidationAutoValidation();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -190,7 +188,9 @@ internal sealed class ConfigureCourtFlowJwtBearerOptions(
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = authority,
+            // No explicit ValidIssuer — options.Authority above triggers OIDC discovery,
+            // and the framework validates the token's iss against configuration.Issuer
+            // pulled from the discovery document. Single source of truth.
             ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
             ValidAudience = clerk.Audience,
             ValidateLifetime = true,
@@ -243,10 +243,10 @@ internal sealed class ConfigureCourtFlowJwtBearerOptions(
                     ctx.HttpContext.Request.Path,
                     ctx.Principal?.FindFirst("sub")?.Value,
                     ctx.Principal?.FindFirst("org_id")?.Value ?? ctx.Principal?.FindFirst("orgId")?.Value,
-                    ctx.SecurityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwt
+                    ctx.SecurityToken is Microsoft.IdentityModel.JsonWebTokens.JsonWebToken jwt
                         ? string.Join(",", jwt.Audiences)
                         : null,
-                    (ctx.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken)?.Issuer);
+                    (ctx.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken)?.Issuer);
                 return Task.CompletedTask;
             }
         };

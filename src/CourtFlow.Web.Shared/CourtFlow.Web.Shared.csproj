@@ -11,11 +11,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MudBlazor" Version="8.14.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
+    <!--
+      ThemeState (server-side SSR path) reads the courtflow-theme cookie via
+      IHttpContextAccessor. That type lives in the ASP.NET Core shared framework on
+      .NET 10, so we reference Microsoft.AspNetCore.App rather than the legacy
+      Microsoft.AspNetCore.Http.Abstractions 2.3.x package. PrivateAssets="all"
+      prevents the reference from flowing to the WASM client at runtime; the
+      browser-side ThemeState code path never touches IHttpContextAccessor.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.AspNetCore.Components.{Authorization,Web} and
+      Microsoft.Extensions.Options.ConfigurationExtensions are already supplied by
+      Microsoft.AspNetCore.App (above) — adding explicit PackageReferences for them
+      triggers NU1510 (package pruning) since the shared framework already provides
+      them. The WASM consumer (CourtFlow.Web.Client) gets them transitively via
+      Microsoft.AspNetCore.Components.WebAssembly.
+    -->
+    <PackageReference Include="MudBlazor" Version="9.4.0" />
   </ItemGroup>
 
   <ItemGroup>

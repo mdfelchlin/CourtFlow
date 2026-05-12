@@ -343,7 +343,7 @@ else
     private async Task ArchiveAsync()
     {
         if (_current is null) return;
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Archive tournament",
             $"Archive '{_current.Name}'? Admin structure edits lock until restored.",
             yesText: "Archive",
@@ -449,7 +449,7 @@ else
 
     private async Task DeleteCourtAsync(Guid venueId, CourtDto court)
     {
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Delete court",
             $"Delete '{court.Name}'?",
             yesText: "Delete",
@@ -503,7 +503,7 @@ else
 
     private async Task DeleteVenueAsync(VenueDto v)
     {
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Delete venue",
             $"Delete '{v.Name}' and all of its courts?",
             yesText: "Delete",

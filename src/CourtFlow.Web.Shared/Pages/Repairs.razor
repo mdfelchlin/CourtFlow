@@ -104,7 +104,7 @@ else
 
     private async Task<string?> PromptInputAsync(string title, string message)
     {
-        var result = await DialogService.ShowMessageBox(title, message, yesText: "OK", cancelText: "Cancel");
+        var result = await DialogService.ShowMessageBoxAsync(title, message, yesText: "OK", cancelText: "Cancel");
         return result == true ? "placeholder" : null;
     }
 

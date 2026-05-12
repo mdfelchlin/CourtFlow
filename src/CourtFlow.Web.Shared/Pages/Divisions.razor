@@ -82,7 +82,7 @@
 
     private async Task DeleteAsync(DivisionDto d)
     {
-        var ok = await DialogService.ShowMessageBox("Delete division", $"Delete '{d.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        var ok = await DialogService.ShowMessageBoxAsync("Delete division", $"Delete '{d.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
         try { await Api.Divisions.DeleteAsync(d.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }

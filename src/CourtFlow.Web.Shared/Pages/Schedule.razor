@@ -243,7 +243,7 @@ else
     private async Task GenerateAsync()
     {
         if (TournamentStore.SelectedTournamentId is null) return;
-        var ok = await DialogService.ShowMessageBox("Generate schedule", "This will create pool-play matches. Continue?", yesText: "Generate", cancelText: "Cancel");
+        var ok = await DialogService.ShowMessageBoxAsync("Generate schedule", "This will create pool-play matches. Continue?", yesText: "Generate", cancelText: "Cancel");
         if (ok != true) return;
         try { await Api.Schedule.GenerateAsync(TournamentStore.SelectedTournamentId.Value); Snackbar.Add("Schedule generated", Severity.Success); await ReloadAsync(); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }

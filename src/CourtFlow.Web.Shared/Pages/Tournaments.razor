@@ -56,7 +56,7 @@
 
     private async Task CloneAsync(TournamentDto t)
     {
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Clone tournament",
             $"Create a duplicate of '{t.Name}' (structures and teams copied; schedules and brackets are not).",
             yesText: "Clone",
@@ -73,7 +73,7 @@
 
     private async Task DeleteAsync(TournamentDto t)
     {
-        var ok = await DialogService.ShowMessageBox("Delete tournament", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        var ok = await DialogService.ShowMessageBoxAsync("Delete tournament", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
         try { await Api.Tournaments.DeleteAsync(t.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }

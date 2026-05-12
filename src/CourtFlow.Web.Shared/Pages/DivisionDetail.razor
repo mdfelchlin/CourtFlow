@@ -449,7 +449,7 @@ else
 
     private async Task DeletePoolAsync(PoolDto pool)
     {
-        var ok = await DialogService.ShowMessageBox("Delete pool", $"Delete '{pool.Name}'?", yesText: "Delete", cancelText: "Cancel");
+        var ok = await DialogService.ShowMessageBoxAsync("Delete pool", $"Delete '{pool.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
         try
         {
