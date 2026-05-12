@@ -38,15 +38,23 @@ public class Program
             .ValidateDataAnnotations()
             .ValidateOnStart();
         builder.Services.AddSingleton<IValidateOptions<ClerkOptions>, ClerkOptionsValidator>();
-        builder.Services.AddSingleton<IConfigureNamedOptions<JwtBearerOptions>>(sp =>
-            new ConfigureCourtFlowJwtBearerOptions(
-                sp.GetRequiredService<IOptionsMonitor<ClerkOptions>>(),
-                sp.GetRequiredService<IHostEnvironment>(),
-                sp.GetRequiredService<ILoggerFactory>()));
 
         builder.Services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
+
+        // MUST register under IConfigureOptions<JwtBearerOptions> (NOT IConfigureNamedOptions).
+        // OptionsFactory enumerates IEnumerable<IConfigureOptions<T>> and casts each entry to
+        // IConfigureNamedOptions<T> when calling. Registering under the named interface alone
+        // makes the singleton unreachable — the factory never sees it, leaving Authority and
+        // ValidIssuers unset (IDX10204 in logs). The class still implements
+        // IConfigureNamedOptions<JwtBearerOptions> so the cast inside the factory still works.
+        // Registered after AddJwtBearer so our Configure runs last (registration-order wins).
+        builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>>(sp =>
+            new ConfigureCourtFlowJwtBearerOptions(
+                sp.GetRequiredService<IOptionsMonitor<ClerkOptions>>(),
+                sp.GetRequiredService<IHostEnvironment>(),
+                sp.GetRequiredService<ILoggerFactory>()));
 
         builder.Services.AddScoped<IClaimsTransformation, ClerkClaimsTransformation>();
 
@@ -185,32 +193,71 @@ internal sealed class ConfigureCourtFlowJwtBearerOptions(
         // header so the browser/Refit client can show the real reason (expired, bad
         // audience, bad issuer, signature failure, etc.) instead of an opaque 401.
         options.IncludeErrorDetails = env.IsDevelopment();
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            // No explicit ValidIssuer — options.Authority above triggers OIDC discovery,
-            // and the framework validates the token's iss against configuration.Issuer
-            // pulled from the discovery document. Single source of truth.
-            ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience),
-            ValidAudience = clerk.Audience,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            NameClaimType = ClaimTypes.NameIdentifier,
-            RoleClaimType = ClaimTypes.Role
-        };
+
+        // Merge into JwtBearer's TokenValidationParameters — do not replace the object
+        // JwtBearer wired (ConfigurationManager, signing keys from metadata, etc.).
+        options.TokenValidationParameters ??= new TokenValidationParameters();
+        var tvp = options.TokenValidationParameters;
+        tvp.ValidateIssuer = true;
+        tvp.ValidIssuer = null;
+        tvp.ValidIssuers = new[] { authority };
+        tvp.ValidateAudience = !string.IsNullOrWhiteSpace(clerk.Audience);
+        tvp.ValidAudience = clerk.Audience;
+        tvp.ValidateLifetime = true;
+        tvp.ValidateIssuerSigningKey = true;
+        tvp.ClockSkew = TimeSpan.FromMinutes(1);
+        tvp.NameClaimType = ClaimTypes.NameIdentifier;
+        tvp.RoleClaimType = ClaimTypes.Role;
 
         var log = loggerFactory.CreateLogger("CourtFlow.Auth.JwtBearer");
+        log.LogInformation(
+            "JWT bearer configured: Authority={Authority}; ValidIssuers=[{ValidIssuers}]; ValidAudience={Audience}",
+            options.Authority,
+            string.Join(", ", options.TokenValidationParameters.ValidIssuers ?? []),
+            options.TokenValidationParameters.ValidAudience);
+
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = ctx =>
             {
+                // Ground-truth diagnostics: decode the raw bearer token's iss claim
+                // and dump the currently-effective ValidIssuers so we can see exactly
+                // what the validator was comparing against when it rejected us.
+                string? rawIss = null;
+                int? rawIssLen = null;
+                try
+                {
+                    var auth = ctx.HttpContext.Request.Headers.Authorization.ToString();
+                    if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var token = auth["Bearer ".Length..].Trim();
+                        var parts = token.Split('.');
+                        if (parts.Length >= 2)
+                        {
+                            var payloadJson = System.Text.Encoding.UTF8.GetString(
+                                Microsoft.IdentityModel.Tokens.Base64UrlEncoder.DecodeBytes(parts[1]));
+                            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+                            if (doc.RootElement.TryGetProperty("iss", out var issEl))
+                            {
+                                rawIss = issEl.GetString();
+                                rawIssLen = rawIss?.Length;
+                            }
+                        }
+                    }
+                }
+                catch { /* best-effort diagnostics */ }
+
+                var effectiveValidIssuers = ctx.Options.TokenValidationParameters.ValidIssuers;
                 log.LogWarning(ctx.Exception,
-                    "JWT auth failed on {Method} {Path} — {ExceptionType}: {Message}",
+                    "JWT auth failed on {Method} {Path} — {ExceptionType}: {Message} | token.iss=[{TokenIss}] len={TokenIssLen} | ValidIssuers=[{ValidIssuers}] | Authority=[{Authority}]",
                     ctx.HttpContext.Request.Method,
                     ctx.HttpContext.Request.Path,
                     ctx.Exception.GetType().Name,
-                    ctx.Exception.Message);
+                    ctx.Exception.Message,
+                    rawIss,
+                    rawIssLen,
+                    effectiveValidIssuers is null ? "(null)" : string.Join(" | ", effectiveValidIssuers),
+                    ctx.Options.Authority);
                 return Task.CompletedTask;
             },
             OnChallenge = ctx =>
