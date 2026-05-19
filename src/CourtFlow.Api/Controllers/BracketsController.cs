@@ -25,6 +25,13 @@ public class BracketsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpGet("{id:guid}/tree")]
+    public async Task<IActionResult> Tree(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new GetBracketTreeQuery(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
     [HttpPost("generate")]
     public async Task<IActionResult> Generate([FromBody] GenerateBracketCommand cmd, CancellationToken ct) =>
         Ok(await _mediator.Send(cmd, ct));

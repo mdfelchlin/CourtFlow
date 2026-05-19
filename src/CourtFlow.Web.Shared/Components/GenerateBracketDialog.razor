@@ -10,6 +10,7 @@
             </MudSelect>
             <MudNumericField @bind-Value="_capacity" Label="Team capacity (power of 2)" Min="2" Max="64" />
             <MudCheckBox T="bool" @bind-Value="_ifNecessaryFinal" Label="If-necessary final (DE only)" />
+            <MudCheckBox T="bool" @bind-Value="_thirdPlaceMatch" Label="Add third-place match" />
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -26,6 +27,7 @@
     private BracketTypeDto _type = BracketTypeDto.SingleElimination;
     private int _capacity = 8;
     private bool _ifNecessaryFinal = true;
+    private bool _thirdPlaceMatch;
 
     private void Cancel() => Dialog.Cancel();
 
@@ -33,7 +35,7 @@
     {
         try
         {
-            await Api.Brackets.GenerateAsync(new GenerateBracketDto(TournamentId, DivisionId, _type, _capacity, _ifNecessaryFinal));
+            await Api.Brackets.GenerateAsync(new GenerateBracketDto(TournamentId, DivisionId, _type, _capacity, _ifNecessaryFinal, ThirdPlaceMatch: _thirdPlaceMatch));
             Snackbar.Add("Bracket generated", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

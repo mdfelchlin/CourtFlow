@@ -4,7 +4,7 @@ public enum WaveDto { AM = 1, PM = 2 }
 public enum DivisionFormatDto { PoolOnly = 1, PoolPlusBracket = 2, BracketOnly = 3 }
 public enum MatchStateDto { NotStarted = 1, InProgress = 2, Final = 3, Canceled = 4 }
 public enum BracketTypeDto { SingleElimination = 1, DoubleElimination = 2 }
-public enum BracketBranchDto { Winners = 1, Losers = 2, GrandFinal = 3 }
+public enum BracketBranchDto { Winners = 1, Losers = 2, GrandFinal = 3, ThirdPlace = 4 }
 public enum CourtStatusKindDto { Idle = 0, OnTime = 1, SlightlyBehind = 2, Behind = 3, Ahead = 4 }
 public enum RankedSeedStrategyDto { Snake = 1 }
 public enum StageTypeDto { Pool = 1, Bracket = 2 }
@@ -123,7 +123,8 @@ public sealed record DivisionBracketStructureDto(
     BracketTypeDto Type,
     int TeamCount,
     bool IfNecessaryFinal,
-    int Sequence);
+    int Sequence,
+    bool ThirdPlaceMatch = false);
 
 public sealed record DivisionAdvancementRuleDto(
     Guid? Id,
@@ -207,10 +208,61 @@ public sealed record ScoreMatchDto(IReadOnlyList<MatchSetDto> Sets, bool Finaliz
 public sealed record ForfeitMatchDto(Guid WinningTeamId);
 public sealed record ChangeRefereeDto(Guid? RefTeamId);
 
-public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName);
+public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName, bool ThirdPlaceMatch = false);
 public sealed record BracketNodeDto(Guid Id, Guid BracketId, BracketBranchDto Branch, int Round, int Slot, Guid? MatchId, Guid? HomeTeamId, Guid? AwayTeamId, int? HomeSeed, int? AwaySeed, Guid? WinsToNodeId, Guid? LosesToNodeId);
 public sealed record BracketWithNodesDto(BracketDto Bracket, IReadOnlyList<BracketNodeDto> Nodes);
-public sealed record GenerateBracketDto(Guid TournamentId, Guid DivisionId, BracketTypeDto Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null);
+public sealed record BracketTreeSetScoreDto(int SetNumber, int HomeScore, int AwayScore);
+public sealed record BracketTreeNodeDto(
+    Guid Id,
+    Guid BracketId,
+    BracketBranchDto Branch,
+    int Round,
+    int Slot,
+    Guid? MatchId,
+    Guid? HomeTeamId,
+    Guid? AwayTeamId,
+    int? HomeSeed,
+    int? AwaySeed,
+    Guid? WinsToNodeId,
+    Guid? LosesToNodeId,
+    string HomeLabel,
+    string AwayLabel,
+    bool HomeIsBye,
+    bool AwayIsBye,
+    bool IsPinnedHome,
+    bool IsPinnedAway,
+    MatchStateDto? MatchState,
+    IReadOnlyList<BracketTreeSetScoreDto> Sets,
+    string? HomeSetsSummary,
+    string? AwaySetsSummary,
+    Guid? WinnerTeamId,
+    string? WinnerSide,
+    string? CourtName,
+    DateTime? ScheduledStartUtc,
+    string? MatchLabel = null);
+
+public enum BracketDisplayGroupKindDto
+{
+    Main = 1,
+    Lower = 2,
+    SingleMatch = 3,
+    GrandFinal = 4,
+    ThirdPlace = 5
+}
+
+public sealed record BracketDisplayGroupDto(
+    string Id,
+    int Sequence,
+    string Title,
+    string? Subtitle,
+    BracketDisplayGroupKindDto Kind,
+    IReadOnlyList<Guid> NodeIds);
+
+public sealed record BracketTreeDto(
+    BracketDto Bracket,
+    IReadOnlyList<BracketTreeNodeDto> Nodes,
+    IReadOnlyList<BracketDisplayGroupDto> Groups);
+public sealed record GenerateBracketDto(Guid TournamentId, Guid DivisionId, BracketTypeDto Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null, bool ThirdPlaceMatch = false);
 
 public enum ConflictKindDto { TeamDoubleBooking = 1, RefConflict = 2, CourtDoubleBooking = 3, WaveViolation = 4, PartnerTournamentConflict = 5 }
 public sealed record ScheduleConflictDto(ConflictKindDto Kind, Guid MatchId, Guid? OtherMatchId, Guid? TeamId, Guid? CourtId, DateTime StartUtc, DateTime EndUtc, string Message);
@@ -318,7 +370,32 @@ public sealed record PublicBracketNodeDto(
     int? HomeSeed,
     int? AwaySeed,
     Guid? WinsToNodeId,
-    Guid? LosesToNodeId);
+    Guid? LosesToNodeId,
+    string HomeLabel,
+    string AwayLabel,
+    bool HomeIsBye,
+    bool AwayIsBye,
+    bool IsPinnedHome,
+    bool IsPinnedAway,
+    MatchStateDto? MatchState,
+    IReadOnlyList<PublicBracketSetScoreDto> Sets,
+    string? HomeSetsSummary,
+    string? AwaySetsSummary,
+    Guid? WinnerTeamId,
+    string? WinnerSide,
+    string? CourtName,
+    DateTime? ScheduledStartUtc,
+    string? MatchLabel = null);
+
+public sealed record PublicBracketSetScoreDto(int SetNumber, int HomeScore, int AwayScore);
+
+public sealed record PublicBracketDisplayGroupDto(
+    string Id,
+    int Sequence,
+    string Title,
+    string? Subtitle,
+    BracketDisplayGroupKindDto Kind,
+    IReadOnlyList<Guid> NodeIds);
 
 public sealed record PublicBracketDto(
     Guid Id,
@@ -327,7 +404,10 @@ public sealed record PublicBracketDto(
     BracketTypeDto Type,
     bool IfNecessaryFinal,
     int TeamCapacity,
-    IReadOnlyList<PublicBracketNodeDto> Nodes);
+    string? DisplayName,
+    bool ThirdPlaceMatch,
+    IReadOnlyList<PublicBracketNodeDto> Nodes,
+    IReadOnlyList<PublicBracketDisplayGroupDto> Groups);
 
 public sealed record PublicStandingsRowDto(
     Guid TeamId,

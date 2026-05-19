@@ -1,0 +1,108 @@
+.cf-bracket-tree-scroll {
+    overflow: auto;
+    width: 100%;
+    max-width: 100%;
+    padding: 0.25rem 0 0.75rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.cf-bracket-tree-scroll--compact {
+    max-height: 360px;
+}
+
+.cf-bracket-tree-hint {
+    margin-bottom: 0.5rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.cf-bracket-canvas {
+    position: relative;
+    min-width: min-content;
+    padding-left: 2px;
+}
+
+.cf-bracket-connectors {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 1;
+}
+
+.cf-bracket-connector {
+    fill: none;
+    stroke: var(--mud-palette-lines-default);
+    stroke-width: 1;
+}
+
+.cf-bracket-connector--loses,
+.cf-bracket-junction.cf-bracket-connector--loses {
+    stroke-dasharray: 4 3;
+    opacity: 0.75;
+}
+
+.cf-bracket-junction {
+    fill: var(--mud-palette-surface);
+    stroke: var(--mud-palette-lines-default);
+    stroke-width: 1;
+}
+
+.cf-bracket-band {
+    position: absolute;
+    box-sizing: border-box;
+    background: var(--mud-palette-background-grey, var(--cf-surface-0, #eef0f4));
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.cf-bracket-band--divided {
+    border-top: 1px solid var(--mud-palette-lines-default);
+    border-radius: 0 0 6px 6px;
+}
+
+.cf-bracket-band__title {
+    position: absolute;
+    top: 6px;
+    left: 10px;
+    right: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    line-height: 1.2;
+}
+
+.cf-bracket-band__subtitle {
+    position: absolute;
+    top: 22px;
+    left: 10px;
+    right: 10px;
+    font-size: 0.6875rem;
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.2;
+}
+
+.cf-bracket-round-header {
+    position: absolute;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    pointer-events: none;
+    padding: 4px 0 8px;
+    z-index: 2;
+}
+
+.cf-bracket-node {
+    position: absolute;
+    box-sizing: border-box;
+    overflow: visible;
+    z-index: 3;
+}
+
+.cf-bracket-node:hover {
+    z-index: 4;
+}

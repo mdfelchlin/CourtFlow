@@ -306,6 +306,18 @@ else
                                         </MudText>
                                     }
                                 }
+                                @if (bracket.Id is { } bracketId)
+                                {
+                                    <MudExpansionPanels Class="mt-2" Elevation="0">
+                                        <MudExpansionPanel Text="Preview bracket tree" Dense="true">
+                                            <BracketView BracketId="bracketId" Compact="true" />
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Generate brackets to preview the tree.</MudText>
+                                }
                             </MudPaper>
                         }
                     }

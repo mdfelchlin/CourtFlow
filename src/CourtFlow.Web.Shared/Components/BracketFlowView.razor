@@ -1,0 +1,87 @@
+@using CourtFlow.Web.Shared.Brackets
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Class="my-2" />
+}
+else if (_nodes.Count == 0)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary">No bracket nodes.</MudText>
+}
+else
+{
+    <div class="cf-bracket-flow @(Compact ? "cf-bracket-flow--compact" : "")">
+        @foreach (var group in _groups.OrderBy(g => g.Sequence))
+        {
+            <section class="cf-bracket-flow__section @(group.Sequence > 0 ? "cf-bracket-flow__section--divided" : "")">
+                <div class="cf-bracket-flow__header">
+                    <MudText Typo="Typo.subtitle2" Class="cf-bracket-flow__title">@group.Title</MudText>
+                    @if (!string.IsNullOrEmpty(group.Subtitle))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Subtitle</MudText>
+                    }
+                </div>
+                <MiniBracketTree Group="group"
+                                 NodeById="_nodeById"
+                                 MatchLabels="_matchLabels"
+                                 PathHighlightedIds="_pathHighlightedIds"
+                                 Compact="Compact" />
+            </section>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? BracketId { get; set; }
+    [Parameter] public IReadOnlyList<BracketTreeNodeDto>? Nodes { get; set; }
+    [Parameter] public IReadOnlyList<BracketDisplayGroupDto>? Groups { get; set; }
+    [Parameter] public Guid? HighlightedTeamId { get; set; }
+    [Parameter] public bool Compact { get; set; }
+
+    private bool _loading;
+    private IReadOnlyList<BracketTreeNodeDto> _nodes = Array.Empty<BracketTreeNodeDto>();
+    private IReadOnlyList<BracketDisplayGroupDto> _groups = Array.Empty<BracketDisplayGroupDto>();
+    private Dictionary<Guid, BracketTreeNodeDto> _nodeById = new();
+    private Dictionary<Guid, string> _matchLabels = new();
+    private HashSet<Guid> _pathHighlightedIds = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var needsFetch = BracketId is not null && Nodes is null;
+        _loading = needsFetch;
+        try
+        {
+            if (Nodes is not null)
+            {
+                _nodes = Nodes;
+                _groups = Groups ?? BracketDisplayGrouper.BuildGroups(Nodes);
+            }
+            else if (BracketId is { } bracketId)
+            {
+                var tree = await Api.Brackets.GetTreeAsync(bracketId);
+                _nodes = tree?.Nodes ?? Array.Empty<BracketTreeNodeDto>();
+                _groups = tree?.Groups ?? BracketDisplayGrouper.BuildGroups(_nodes);
+            }
+            else
+            {
+                _nodes = Array.Empty<BracketTreeNodeDto>();
+                _groups = Array.Empty<BracketDisplayGroupDto>();
+            }
+
+            RebuildState();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void RebuildState()
+    {
+        _nodeById = _nodes.ToDictionary(n => n.Id);
+        _pathHighlightedIds = BracketTree.ComputePathHighlights(_nodes, HighlightedTeamId);
+        _matchLabels = BracketMatchNumbering.BuildLabels(_nodes);
+        _groups = _groups.Count > 0 ? _groups : BracketDisplayGrouper.BuildGroups(_nodes);
+    }
+}

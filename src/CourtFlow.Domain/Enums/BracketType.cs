@@ -10,5 +10,6 @@ public enum BracketBranch
 {
     Winners = 1,
     Losers = 2,
-    GrandFinal = 3
+    GrandFinal = 3,
+    ThirdPlace = 4
 }

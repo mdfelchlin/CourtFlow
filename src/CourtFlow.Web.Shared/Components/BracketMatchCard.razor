@@ -1,0 +1,122 @@
+@using CourtFlow.ApiClient
+
+<div class="cf-bracket-match @CardClass">
+    @if (ShowCaption)
+    {
+        <div class="cf-bracket-match__caption">@CaptionText</div>
+    }
+    else
+    {
+        <div class="cf-bracket-match__caption cf-bracket-match__caption--spacer" aria-hidden="true"></div>
+    }
+    <div class="cf-bracket-match__body">
+        @if (!string.IsNullOrEmpty(MatchLabel))
+        {
+            <span class="cf-bracket-match__rail">@MatchLabel</span>
+        }
+        <div class="cf-bracket-match__stack">
+            <div class="cf-bracket-match__row @RowClass(true)">
+                @if (IsPinnedHome)
+                {
+                    <MudTooltip Text="Manual pin">
+                        <span class="cf-bracket-match__pin">📌</span>
+                    </MudTooltip>
+                }
+                <MudTooltip Text="@HomeLabel" Disabled="@(string.IsNullOrEmpty(HomeLabel))">
+                    <span class="cf-bracket-match__name">@DisplayName(HomeLabel, HomeIsBye)</span>
+                </MudTooltip>
+                @if (!string.IsNullOrEmpty(ScoreText(HomeSetsSummary, home: true)))
+                {
+                    <span class="cf-bracket-match__score">@ScoreText(HomeSetsSummary, home: true)</span>
+                }
+            </div>
+            @if (!HomeIsBye || !AwayIsBye)
+            {
+                <div class="cf-bracket-match__row @RowClass(false)">
+                    @if (IsPinnedAway)
+                    {
+                        <MudTooltip Text="Manual pin">
+                            <span class="cf-bracket-match__pin">📌</span>
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="@AwayLabel" Disabled="@(string.IsNullOrEmpty(AwayLabel))">
+                        <span class="cf-bracket-match__name">@DisplayName(AwayLabel, AwayIsBye)</span>
+                    </MudTooltip>
+                    @if (!string.IsNullOrEmpty(ScoreText(AwaySetsSummary, home: false)))
+                    {
+                        <span class="cf-bracket-match__score">@ScoreText(AwaySetsSummary, home: false)</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string MatchLabel { get; set; } = "";
+    [Parameter] public string HomeLabel { get; set; } = "TBD";
+    [Parameter] public string AwayLabel { get; set; } = "TBD";
+    [Parameter] public bool HomeIsBye { get; set; }
+    [Parameter] public bool AwayIsBye { get; set; }
+    [Parameter] public bool IsPinnedHome { get; set; }
+    [Parameter] public bool IsPinnedAway { get; set; }
+    [Parameter] public string? HomeSetsSummary { get; set; }
+    [Parameter] public string? AwaySetsSummary { get; set; }
+    [Parameter] public MatchStateDto? MatchState { get; set; }
+    [Parameter] public Guid? MatchId { get; set; }
+    [Parameter] public string? WinnerSide { get; set; }
+    [Parameter] public string? CourtName { get; set; }
+    [Parameter] public DateTime? ScheduledStartUtc { get; set; }
+    [Parameter] public bool PathHighlighted { get; set; }
+
+    private bool ShowCaption => ScheduledStartUtc is not null || !string.IsNullOrEmpty(CourtName);
+
+    private string CaptionText
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (ScheduledStartUtc is { } start)
+                parts.Add(start.ToLocalTime().ToString("ddd, h:mm tt"));
+            if (!string.IsNullOrEmpty(CourtName))
+                parts.Add(CourtName);
+            return string.Join(" · ", parts);
+        }
+    }
+
+    private string CardClass => PathHighlighted ? "cf-bracket-match--path" : "";
+
+    private string RowClass(bool home)
+    {
+        var classes = new List<string>();
+        if (home && HomeIsBye) classes.Add("cf-bracket-match__row--bye");
+        if (!home && AwayIsBye) classes.Add("cf-bracket-match__row--bye");
+        if (IsWinnerRow(home)) classes.Add("cf-bracket-match__row--winner");
+        return string.Join(' ', classes);
+    }
+
+    private bool IsWinnerRow(bool home)
+    {
+        if (string.IsNullOrEmpty(WinnerSide)) return false;
+        return home
+            ? WinnerSide.Equals("home", StringComparison.OrdinalIgnoreCase)
+            : WinnerSide.Equals("away", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string DisplayName(string label, bool isBye) =>
+        isBye ? "BYE" : label;
+
+    private string ScoreText(string? setsSummary, bool home)
+    {
+        if (!string.IsNullOrEmpty(setsSummary))
+            return setsSummary;
+
+        if (MatchId is null)
+            return "";
+
+        if (home && HomeIsBye || !home && AwayIsBye)
+            return "";
+
+        return MatchState is MatchStateDto.InProgress or MatchStateDto.Final ? "—" : "";
+    }
+}

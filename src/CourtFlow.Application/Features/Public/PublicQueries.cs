@@ -1,4 +1,5 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Application.Features.Brackets;
 using CourtFlow.Application.Features.ScheduleVersions;
 using CourtFlow.Application.ReadModels.PublicEventReadiness;
 using CourtFlow.Domain.Enums;
@@ -405,31 +406,24 @@ public sealed class GetPublicBracketsHandler : IRequestHandler<GetPublicBrackets
             .ToListAsync(ct);
         if (brackets.Count == 0) return Array.Empty<PublicBracketDto>();
 
-        var bracketIds = brackets.Select(b => b.Id).ToList();
-        var nodes = await _db.BracketNodes
-            .IgnoreQueryFilters()
-            .Where(n => bracketIds.Contains(n.BracketId))
-            .ToListAsync(ct);
-
         var divIds = brackets.Select(b => b.DivisionId).Distinct().ToList();
         var divNames = await _db.Divisions.IgnoreQueryFilters()
             .Where(d => divIds.Contains(d.Id)).ToDictionaryAsync(d => d.Id, d => d.Name, ct);
 
-        var teamIds = nodes
-            .SelectMany(n => new[] { n.HomeTeamId, n.AwayTeamId })
-            .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
-        var teamNames = await _db.Teams.IgnoreQueryFilters()
-            .Where(t => teamIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
+        var trees = await BracketTreeProjection.BuildManyAsync(
+            _db,
+            brackets,
+            ignoreQueryFilters: true,
+            publishedScheduleOnly: true,
+            ct);
 
-        return brackets.Select(b => new PublicBracketDto(
-            b.Id,
-            b.DivisionId,
-            divNames.GetValueOrDefault(b.DivisionId, string.Empty),
-            b.Type,
-            b.IfNecessaryFinal,
-            b.TeamCapacity,
-            nodes.Where(n => n.BracketId == b.Id)
-                .OrderBy(n => n.Round).ThenBy(n => n.Slot)
+        return brackets.Select(b =>
+        {
+            var tree = trees.GetValueOrDefault(b.Id);
+            var treeNodes = tree?.Nodes
+                .OrderBy(n => n.Branch)
+                .ThenBy(n => n.Round)
+                .ThenBy(n => n.Slot)
                 .Select(n => new PublicBracketNodeDto(
                     n.Id,
                     n.Branch,
@@ -437,14 +431,52 @@ public sealed class GetPublicBracketsHandler : IRequestHandler<GetPublicBrackets
                     n.Slot,
                     n.MatchId,
                     n.HomeTeamId,
-                    n.HomeTeamId.HasValue ? teamNames.GetValueOrDefault(n.HomeTeamId.Value) : null,
+                    n.HomeTeamId.HasValue && !n.HomeIsBye ? n.HomeLabel : null,
                     n.AwayTeamId,
-                    n.AwayTeamId.HasValue ? teamNames.GetValueOrDefault(n.AwayTeamId.Value) : null,
+                    n.AwayTeamId.HasValue && !n.AwayIsBye ? n.AwayLabel : null,
                     n.HomeSeed,
                     n.AwaySeed,
                     n.WinsToNodeId,
-                    n.LosesToNodeId))
-                .ToList())).ToList();
+                    n.LosesToNodeId,
+                    n.HomeLabel,
+                    n.AwayLabel,
+                    n.HomeIsBye,
+                    n.AwayIsBye,
+                    n.IsPinnedHome,
+                    n.IsPinnedAway,
+                    n.MatchState,
+                    n.Sets.Select(s => new PublicBracketSetScoreDto(s.SetNumber, s.HomeScore, s.AwayScore)).ToList(),
+                    n.HomeSetsSummary,
+                    n.AwaySetsSummary,
+                    n.WinnerTeamId,
+                    n.WinnerSide,
+                    n.CourtName,
+                    n.ScheduledStartUtc,
+                    n.MatchLabel))
+                .ToList() ?? new List<PublicBracketNodeDto>();
+
+            var groups = tree?.Groups
+                .Select(g => new PublicBracketDisplayGroupDto(
+                    g.Id,
+                    g.Sequence,
+                    g.Title,
+                    g.Subtitle,
+                    (PublicBracketDisplayGroupKind)(int)g.Kind,
+                    g.NodeIds))
+                .ToList() ?? new List<PublicBracketDisplayGroupDto>();
+
+            return new PublicBracketDto(
+                b.Id,
+                b.DivisionId,
+                divNames.GetValueOrDefault(b.DivisionId, string.Empty),
+                b.Type,
+                b.IfNecessaryFinal,
+                b.TeamCapacity,
+                b.DisplayName,
+                b.ThirdPlaceMatch,
+                treeNodes,
+                groups);
+        }).ToList();
     }
 }
 

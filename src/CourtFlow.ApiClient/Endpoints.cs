@@ -292,6 +292,9 @@ public sealed class BracketEndpoints(ICourtFlowBracketsApi api)
     public Task<BracketWithNodesDto?> GetAsync(Guid id, CancellationToken ct = default)
         => _api.GetAsync(id, ct);
 
+    public Task<BracketTreeDto?> GetTreeAsync(Guid id, CancellationToken ct = default)
+        => _api.GetTreeAsync(id, ct);
+
     public Task<BracketDto> GenerateAsync(GenerateBracketDto dto, CancellationToken ct = default)
         => _api.GenerateAsync(dto, ct);
 }

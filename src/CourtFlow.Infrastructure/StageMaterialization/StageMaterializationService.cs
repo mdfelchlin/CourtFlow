@@ -9,6 +9,7 @@ using CourtFlow.Application.StageMaterialization;
 using CourtFlow.Application.WorkTeams;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Infrastructure.Brackets;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Infrastructure.StageMaterialization;
@@ -140,7 +141,7 @@ public sealed class StageMaterializationService : IStageMaterialization
             if (!hasNodes)
                 await EnsureBracketNodesAsync(division.OrganizationId, bracket, cancellationToken);
 
-            await EnsureBracketRoundOneMatchesAsync(division, bracketStage, bracket, cancellationToken);
+            await EnsureAllBracketNodeMatchesAsync(division, bracketStage, bracket, cancellationToken);
         }
 
         if (bracketStage.Status == StageStatus.Draft)
@@ -186,6 +187,7 @@ public sealed class StageMaterializationService : IStageMaterialization
             }
 
             await ApplyResolvedTeamsToRoundOneAsync(bracket, slots, teamIdByTournamentTeamId, cancellationToken);
+            await EnsureBracketAdvancementMatchesAndByesAsync(division, bracketStage, bracket, cancellationToken);
         }
 
         if (bracketStage.Status == StageStatus.Configured)
@@ -230,71 +232,42 @@ public sealed class StageMaterializationService : IStageMaterialization
 
     private async Task EnsureBracketNodesAsync(Guid orgId, Bracket bracket, CancellationToken ct)
     {
-        var size = NextPowerOfTwo(bracket.TeamCapacity);
-        var winners = new Dictionary<(int round, int slot), BracketNode>();
-        var totalRounds = (int)Math.Log2(size);
-
-        for (var round = 1; round <= totalRounds; round++)
-        {
-            var slotsInRound = size >> round;
-            for (var slot = 0; slot < slotsInRound; slot++)
-            {
-                var node = new BracketNode(orgId, bracket.Id, BracketBranch.Winners, round, slot);
-                bracket.AddNode(node);
-                _db.BracketNodes.Add(node);
-                winners[(round, slot)] = node;
-            }
-        }
-
-        for (var round = 1; round < totalRounds; round++)
-        {
-            var slotsInRound = size >> round;
-            for (var slot = 0; slot < slotsInRound; slot++)
-            {
-                var parentSlot = slot / 2;
-                winners[(round, slot)].WireAdvancement(
-                    winners[(round + 1, parentSlot)].Id,
-                    slot % 2 == 0 ? 1 : 2,
-                    null,
-                    null);
-            }
-        }
-
-        if (bracket.Type == BracketType.DoubleElimination)
-        {
-            var losersRounds = totalRounds * 2 - 1;
-            for (var round = 1; round <= losersRounds; round++)
-            {
-                var slotsInRound = Math.Max(1, size >> ((round + 1) / 2 + 1));
-                for (var slot = 0; slot < slotsInRound; slot++)
-                {
-                    var node = new BracketNode(orgId, bracket.Id, BracketBranch.Losers, round, slot);
-                    bracket.AddNode(node);
-                    _db.BracketNodes.Add(node);
-                }
-            }
-
-            var grandFinal = new BracketNode(orgId, bracket.Id, BracketBranch.GrandFinal, 1, 0);
-            bracket.AddNode(grandFinal);
-            _db.BracketNodes.Add(grandFinal);
-
-            if (bracket.IfNecessaryFinal)
-            {
-                var ifNecessary = new BracketNode(orgId, bracket.Id, BracketBranch.GrandFinal, 2, 0);
-                bracket.AddNode(ifNecessary);
-                _db.BracketNodes.Add(ifNecessary);
-                grandFinal.WireAdvancement(ifNecessary.Id, 1, ifNecessary.Id, 2);
-            }
-        }
-
+        BracketGraphBuilder.AddNodes(_db, bracket, orgId);
         await Task.CompletedTask;
     }
 
-    private static int NextPowerOfTwo(int n)
+    private async Task EnsureAllBracketNodeMatchesAsync(
+        Division division,
+        Stage bracketStage,
+        Bracket bracket,
+        CancellationToken ct)
     {
-        var p = 1;
-        while (p < n) p <<= 1;
-        return p;
+        var tournament = await _db.Tournaments.FirstAsync(t => t.Id == division.TournamentId, ct);
+        var nodes = await _db.BracketNodes
+            .Where(n => n.BracketId == bracket.Id)
+            .OrderBy(n => n.Branch)
+            .ThenBy(n => n.Round)
+            .ThenBy(n => n.Slot)
+            .ToListAsync(ct);
+
+        var placeholderStart = tournament.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var duration = tournament.DefaultMatchDurationMinutes;
+        var wave = await _db.Teams.Where(t => t.DivisionId == division.Id).Select(t => t.Wave).FirstOrDefaultAsync(ct);
+
+        foreach (var node in nodes.Where(n => n.MatchId is null))
+        {
+            var match = new Match(
+                division.OrganizationId,
+                division.TournamentId,
+                division.Id,
+                wave,
+                placeholderStart,
+                duration,
+                bracketNodeId: node.Id,
+                stageId: bracketStage.Id);
+            _db.Matches.Add(match);
+            node.LinkMatch(match.Id);
+        }
     }
 
     private async Task EnsureBracketRoundOneMatchesAsync(
@@ -371,6 +344,73 @@ public sealed class StageMaterializationService : IStageMaterialization
                 var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct);
                 match?.AssignTeams(home, away);
             }
+        }
+    }
+
+    private async Task EnsureBracketAdvancementMatchesAndByesAsync(
+        Division division,
+        Stage bracketStage,
+        Bracket bracket,
+        CancellationToken ct)
+    {
+        var tournament = await _db.Tournaments.FirstAsync(t => t.Id == division.TournamentId, ct);
+        var nodes = await _db.BracketNodes
+            .Where(n => n.BracketId == bracket.Id)
+            .OrderBy(n => n.Branch)
+            .ThenBy(n => n.Round)
+            .ThenBy(n => n.Slot)
+            .ToListAsync(ct);
+        var byId = nodes.ToDictionary(n => n.Id);
+
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var node in nodes)
+            {
+                var winnerByBye = node.HomeTeamId ?? node.AwayTeamId;
+                if (winnerByBye is null || (node.HomeTeamId is not null && node.AwayTeamId is not null))
+                    continue;
+
+                if (node.WinsToNodeId is not { } winsTo || !byId.TryGetValue(winsTo, out var next))
+                    continue;
+
+                var targetSlot = node.WinsToSlot ?? 1;
+                var alreadyAssigned = targetSlot == 1 ? next.HomeTeamId : next.AwayTeamId;
+                if (alreadyAssigned == winnerByBye)
+                    continue;
+
+                next.AssignTeam(targetSlot, winnerByBye);
+                changed = true;
+            }
+        }
+
+        var placeholderStart = tournament.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var duration = tournament.DefaultMatchDurationMinutes;
+        var defaultWave = await _db.Teams.Where(t => t.DivisionId == division.Id).Select(t => t.Wave).FirstOrDefaultAsync(ct);
+
+        foreach (var node in nodes.Where(n => n.HomeTeamId is not null && n.AwayTeamId is not null))
+        {
+            if (node.MatchId is { } existingMatchId)
+            {
+                var existing = await _db.Matches.FirstOrDefaultAsync(m => m.Id == existingMatchId, ct);
+                existing?.AssignTeams(node.HomeTeamId, node.AwayTeamId);
+                continue;
+            }
+
+            var match = new Match(
+                division.OrganizationId,
+                division.TournamentId,
+                division.Id,
+                defaultWave,
+                placeholderStart,
+                duration,
+                bracketNodeId: node.Id,
+                homeTeamId: node.HomeTeamId,
+                awayTeamId: node.AwayTeamId,
+                stageId: bracketStage.Id);
+            _db.Matches.Add(match);
+            node.LinkMatch(match.Id);
         }
     }
 

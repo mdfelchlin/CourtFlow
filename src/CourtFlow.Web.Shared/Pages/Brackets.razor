@@ -33,7 +33,7 @@ else
         @foreach (var b in _brackets)
         {
             <MudTabPanel Text="@($"{(string.IsNullOrEmpty(b.DisplayName) ? b.Type.ToString() : b.DisplayName)} · {b.TeamCapacity}")">
-                <BracketView BracketId="b.Id" />
+                <BracketView BracketId="b.Id" Compact="false" />
             </MudTabPanel>
         }
     </MudTabs>

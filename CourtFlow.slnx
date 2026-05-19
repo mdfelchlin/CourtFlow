@@ -12,4 +12,7 @@
     <Project Path="src/CourtFlow.Web.Client/CourtFlow.Web.Client.csproj" />
     <Project Path="src/CourtFlow.Web/CourtFlow.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CourtFlow.Web.Shared.Tests/CourtFlow.Web.Shared.Tests.csproj" />
+  </Folder>
 </Solution>

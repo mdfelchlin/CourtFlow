@@ -228,6 +228,16 @@ A vertical stack of **Bracket cards**. Each card:
   - Right-click → "Clear override" removes the manual pin (slot reverts to the upstream rule).
 - **Mark as BYE** affordance per slot — sets `expected_source_type = 'bye'` (used for non-power-of-2 brackets).
 
+#### Preview bracket tree (after Generate brackets)
+
+Once **Generate brackets** has materialized at least one bracket for the stage, each **Bracket card** in Step 2 gains an inline **preview panel** below the slot list:
+
+- **Collapsed by default** (expand chevron / "Preview bracket tree") so dense divisions stay scannable until the director opens it.
+- **Content:** read-only **BracketTree** for that bracket id — same visual vocabulary as [`brackets.md`](brackets.md) (flow layout, connectors, match cards, placeholders, pins, BYE). Horizontally scrollable inside a **compact max-height** region so Step 2 does not consume the full viewport on large draws.
+- **Before generate:** no bracket id yet — show muted placeholder copy ("Generate brackets to preview the tree") or omit the panel until materialization succeeds.
+
+This is an **inspection** aid inside the wizard; full-screen browsing remains on **`/brackets`**.
+
 #### Drag-and-drop matrix (brackets)
 
 | Gesture | Effect |

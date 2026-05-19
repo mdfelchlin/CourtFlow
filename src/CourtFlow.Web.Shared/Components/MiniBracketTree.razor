@@ -1,0 +1,125 @@
+@using CourtFlow.Web.Shared.Brackets
+
+@if (Group.Kind == BracketDisplayGroupKindDto.SingleMatch && GroupNodeIds.Count == 1)
+{
+    var node = NodeById[GroupNodeIds[0]];
+    <div class="cf-mini-bracket cf-mini-bracket--single">
+        <BracketMatchCard MatchLabel="@(node.MatchLabel ?? MatchLabels.GetValueOrDefault(node.Id, ""))"
+                          HomeLabel="@node.HomeLabel"
+                          AwayLabel="@node.AwayLabel"
+                          HomeIsBye="@node.HomeIsBye"
+                          AwayIsBye="@node.AwayIsBye"
+                          IsPinnedHome="@node.IsPinnedHome"
+                          IsPinnedAway="@node.IsPinnedAway"
+                          MatchId="@node.MatchId"
+                          MatchState="@node.MatchState"
+                          HomeSetsSummary="@node.HomeSetsSummary"
+                          AwaySetsSummary="@node.AwaySetsSummary"
+                          WinnerSide="@node.WinnerSide"
+                          CourtName="@node.CourtName"
+                          ScheduledStartUtc="@node.ScheduledStartUtc"
+                          PathHighlighted="@PathHighlightedIds.Contains(node.Id)" />
+    </div>
+}
+else
+{
+    <div class="cf-mini-bracket-scroll @(Compact ? "cf-mini-bracket-scroll--compact" : "")">
+        <div class="cf-mini-bracket-canvas" style="@CanvasStyle">
+            <svg class="cf-mini-bracket-connectors"
+                 width="@_layout.CanvasWidth"
+                 height="@_layout.CanvasHeight"
+                 viewBox="0 0 @_layout.CanvasWidth @_layout.CanvasHeight"
+                 aria-hidden="true">
+                @foreach (var connector in _layout.Connectors.Where(c => c.Kind == BracketConnectorKind.WinsTo))
+                {
+                    <path d="@connector.Path" class="cf-mini-bracket-connector" />
+                }
+                @foreach (var junction in _layout.Junctions)
+                {
+                    <circle cx="@junction.X"
+                            cy="@junction.Y"
+                            r="3"
+                            class="cf-mini-bracket-junction" />
+                }
+            </svg>
+            @foreach (var column in _layout.RoundColumns)
+            {
+                <div class="cf-mini-bracket-round-header"
+                     style="left: @(column.X)px; top: @(column.HeaderY)px; width: @(column.Width)px;">
+                    @column.Label
+                </div>
+            }
+            @foreach (var positioned in _layout.Nodes)
+            {
+                var node = NodeById[positioned.Id];
+                <div class="cf-mini-bracket-node"
+                     style="left: @(positioned.X)px; top: @(positioned.Y)px; width: @(positioned.Width)px; height: @(positioned.Height)px;">
+                    <BracketMatchCard MatchLabel="@(node.MatchLabel ?? MatchLabels.GetValueOrDefault(node.Id, ""))"
+                                      HomeLabel="@node.HomeLabel"
+                                      AwayLabel="@node.AwayLabel"
+                                      HomeIsBye="@node.HomeIsBye"
+                                      AwayIsBye="@node.AwayIsBye"
+                                      IsPinnedHome="@node.IsPinnedHome"
+                                      IsPinnedAway="@node.IsPinnedAway"
+                                      MatchId="@node.MatchId"
+                                      MatchState="@node.MatchState"
+                                      HomeSetsSummary="@node.HomeSetsSummary"
+                                      AwaySetsSummary="@node.AwaySetsSummary"
+                                      WinnerSide="@node.WinnerSide"
+                                      CourtName="@node.CourtName"
+                                      ScheduledStartUtc="@node.ScheduledStartUtc"
+                                      PathHighlighted="@PathHighlightedIds.Contains(node.Id)" />
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public BracketDisplayGroupDto Group { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyDictionary<Guid, BracketTreeNodeDto> NodeById { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyDictionary<Guid, string> MatchLabels { get; set; } = default!;
+    [Parameter, EditorRequired] public HashSet<Guid> PathHighlightedIds { get; set; } = default!;
+    [Parameter] public bool Compact { get; set; }
+
+    private static readonly BracketLayoutOptions CompactOptions = new(
+        CardWidth: 168,
+        CardHeight: 52,
+        ConnectorGap: 40,
+        RoundHeaderBandHeight: 24,
+        MatchVerticalGap: 10,
+        MiniBracket: true);
+
+    private static readonly BracketLayoutOptions DefaultOptions = new(MiniBracket: true);
+
+    private BracketLayoutResult _layout = EmptyLayout;
+    private IReadOnlyList<Guid> GroupNodeIds { get; set; } = Array.Empty<Guid>();
+
+    private static readonly BracketLayoutResult EmptyLayout = new(
+        Array.Empty<PositionedBracketNode>(),
+        Array.Empty<BracketConnector>(),
+        Array.Empty<BracketJunction>(),
+        Array.Empty<BracketRoundColumn>(),
+        new Dictionary<BracketBranchDto, BracketLayoutSection>(),
+        0,
+        0,
+        28);
+
+    protected override void OnParametersSet()
+    {
+        GroupNodeIds = Group.NodeIds;
+        if (Group.Kind == BracketDisplayGroupKindDto.SingleMatch && GroupNodeIds.Count == 1)
+        {
+            _layout = EmptyLayout;
+            return;
+        }
+
+        var inputs = MiniBracketLayoutHelper.BuildLayoutInputs(Group, NodeById);
+
+        var options = Compact ? CompactOptions : DefaultOptions;
+        _layout = inputs.Count == 0 ? EmptyLayout : new BracketLayoutEngine().Layout(inputs, options);
+    }
+
+    private string CanvasStyle =>
+        $"width: {_layout.CanvasWidth}px; height: {_layout.CanvasHeight}px; min-width: {_layout.CanvasWidth}px;";
+}

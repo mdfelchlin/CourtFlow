@@ -1,0 +1,30 @@
+.cf-bracket-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+
+.cf-bracket-flow--compact {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.cf-bracket-flow__section {
+    padding: 0.75rem 0 1rem;
+}
+
+.cf-bracket-flow__section--divided {
+    border-top: 1px solid var(--mud-palette-lines-default);
+    margin-top: 0.25rem;
+    padding-top: 1rem;
+}
+
+.cf-bracket-flow__header {
+    margin-bottom: 0.625rem;
+}
+
+.cf-bracket-flow__title {
+    font-weight: 600;
+    line-height: 1.3;
+}

@@ -14,7 +14,9 @@ CourtFlow V1 core is **shipped end-to-end**: Clerk auth, multi-tenant API, divis
 
 **Remaining intentional deferrals:** print outputs (OPS-13), Power Pool / Challenge Phase / multi-stage beyond 1 pool + 1 bracket, and V1 out-of-scope items (registration, multi-sport, AES import, SignalR).
 
-**Minor polish still possible** (not blocking V1 demo): bracket drag-reorder UI, full MudStepper on division wizard, server-side import preview endpoint, Terraform production hardening notes.
+**Bracket flow UI is shipped:** admin **`/brackets`**, public Brackets tab, and Division detail Step 2 preview all use **BracketTree** (match cards + SVG connectors + layout engine) instead of flat column/table layouts.
+
+**Minor polish still possible** (not blocking V1 demo): bracket drag-reorder UI, full MudStepper on division wizard, server-side import preview endpoint, Terraform production hardening notes, optional bracket-tree extras (fit-to-width / zoom hint parity, resize-driven layout refresh on unusual viewports).
 
 ---
 
@@ -72,7 +74,7 @@ CourtFlow V1 core is **shipped end-to-end**: Clerk auth, multi-tenant API, divis
 | [x] | SCH-03 | **Publish schedule** action; public Schedule tab gated | [`public-event.md`](features/public-event.md) |
 | [x] | SCH-04 | Schedule cell: **Start match**, **Score**, **Change referee** | [`schedule.md`](features/schedule.md) |
 | [x] | SCH-05 | Fork new schedule version when editing after publish | [`schedule.md`](features/schedule.md) |
-| [x] | SCH-06 | Brackets admin page + `BracketView`; manage-in-division link | [`brackets.md`](features/brackets.md) |
+| [x] | SCH-06 | Brackets admin page + **BracketTree**; manage-in-division link | [`brackets.md`](features/brackets.md) |
 
 ---
 

@@ -3,7 +3,7 @@ using CourtFlow.Domain.Enums;
 
 namespace CourtFlow.Application.Brackets;
 
-public sealed record BracketBuildOptions(BracketType Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null);
+public sealed record BracketBuildOptions(BracketType Type, int TeamCapacity, bool IfNecessaryFinal, string? DisplayName = null, bool ThirdPlaceMatch = false);
 
 public interface IBracketBuilder
 {

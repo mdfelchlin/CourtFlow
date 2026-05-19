@@ -65,7 +65,7 @@ The strip is **sticky** on scroll on viewports ≥ `sm` so a parent walking the 
 | --- | --- |
 | **Teams** | The pinned team's division is moved to the top and visually highlighted. Other divisions remain accessible below. |
 | **Schedule** | The table is pre-filtered to **only the pinned team's matches** (playing or reffing). A small `MudChip` above the table reads "Showing 6 of 247 matches for Spike Crush 14U Black" with a **Show all** affordance to clear the filter without unpinning the team. |
-| **Brackets** | The bracket containing the team is moved to the top; the team's path through the tree is highlighted (a different chip color on slots the team has played or is scheduled to play). |
+| **Brackets** | The bracket containing the team is moved to the top; **`HighlightedTeamId`** from the pin drives **BracketTree** so every match node on that team's **winners-path** through the tree uses the design-system **my-team path** tint (`--cf-tint-info-pale` on the relevant match cards — nodes the team has played or advances through). |
 | **Standings** | The pool containing the team is moved to the top; the team's row is highlighted. |
 
 When no team is pinned, every tab behaves as documented in [Page body](#page-body) below.
@@ -116,7 +116,8 @@ The roster tab. Becomes available as soon as the tournament has any `TournamentT
 - Empty state: `MudAlert Info` "No brackets have been generated for this event yet." Shown when no bracket-type Stage has `bracket_seed_slots` materialized in this tournament.
 - Otherwise one outlined `MudPaper` per bracket containing:
   - Header: bracket icon, division name (`h6`), type chip, capacity chip ("N teams").
-  - Dense `MudTable` of nodes ordered by Round/Slot with columns: **Round**, **Slot**, **Branch**, **Matchup**. Each side renders the resolved team name when `bracket_seed_slots.resolved_tournament_team_id` is set; otherwise the placeholder label from the upstream rule (`Pool A · 1st`, `Gold-3 ← manual`, `Seed N`, or `TBD`).
+  - **BracketTree** — the same left-to-right **flow layout** as admin ([`brackets.md`](brackets.md)): match cards, **SVG connectors**, placeholders, BYE, and pins. This is **not** a round/slot `MudTable`; the public reads the enriched public brackets payload that mirrors the tree shape and labels.
+  - When the **My-team** strip has a pinned team, cards on that team's **path** pick up the highlighted tint so parents can scan the bracket without scanning every matchup row.
 
 ### Tab 4 — Standings (`Leaderboard` icon)
 

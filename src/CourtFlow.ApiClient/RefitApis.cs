@@ -215,6 +215,9 @@ public interface ICourtFlowBracketsApi
     [Get("/api/v1/brackets/{id}")]
     Task<BracketWithNodesDto?> GetAsync(Guid id, CancellationToken cancellationToken);
 
+    [Get("/api/v1/brackets/{id}/tree")]
+    Task<BracketTreeDto?> GetTreeAsync(Guid id, CancellationToken cancellationToken);
+
     [Post("/api/v1/brackets/generate")]
     Task<BracketDto> GenerateAsync([Body] GenerateBracketDto dto, CancellationToken cancellationToken);
 }

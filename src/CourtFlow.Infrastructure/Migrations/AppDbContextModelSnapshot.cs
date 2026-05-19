@@ -110,6 +110,10 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("team_capacity");
 
+                    b.Property<bool>("ThirdPlaceMatch")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("third_place_match");
+
                     b.Property<Guid>("TournamentId")
                         .HasColumnType("TEXT")
                         .HasColumnName("tournament_id");

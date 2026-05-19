@@ -25,7 +25,8 @@ public sealed record DivisionBracketStructureDto(
     BracketType Type,
     int TeamCount,
     bool IfNecessaryFinal,
-    int Sequence);
+    int Sequence,
+    bool ThirdPlaceMatch = false);
 
 public sealed record DivisionAdvancementRuleDto(
     Guid? Id,
@@ -127,7 +128,8 @@ public sealed class GetDivisionWizardStateHandler : IRequestHandler<GetDivisionW
                 b.Type,
                 b.TeamCapacity,
                 b.IfNecessaryFinal,
-                i)).ToList(),
+                i,
+                b.ThirdPlaceMatch)).ToList(),
             rules.Select(r => new DivisionAdvancementRuleDto(
                 r.Id,
                 r.SourcePoolId,
@@ -366,12 +368,13 @@ public sealed class SaveDivisionBracketStructureHandler : IRequestHandler<SaveDi
                     dto.Type,
                     dto.TeamCount,
                     dto.IfNecessaryFinal,
-                    dto.Name);
+                    dto.Name,
+                    dto.ThirdPlaceMatch);
                 _db.Brackets.Add(bracket);
             }
             else
             {
-                bracket.Configure(dto.Type, dto.TeamCount, dto.IfNecessaryFinal, dto.Name);
+                bracket.Configure(dto.Type, dto.TeamCount, dto.IfNecessaryFinal, dto.Name, dto.ThirdPlaceMatch);
             }
         }
 

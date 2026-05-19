@@ -10,6 +10,7 @@ public class Bracket : Entity, ITenantScoped
     public Guid DivisionId { get; private set; }
     public BracketType Type { get; private set; } = BracketType.SingleElimination;
     public bool IfNecessaryFinal { get; private set; }
+    public bool ThirdPlaceMatch { get; private set; }
     public int TeamCapacity { get; private set; }
     public string? DisplayName { get; private set; }
 
@@ -18,7 +19,7 @@ public class Bracket : Entity, ITenantScoped
 
     private Bracket() { }
 
-    public Bracket(Guid organizationId, Guid tournamentId, Guid divisionId, BracketType type, int teamCapacity, bool ifNecessaryFinal = false, string? displayName = null)
+    public Bracket(Guid organizationId, Guid tournamentId, Guid divisionId, BracketType type, int teamCapacity, bool ifNecessaryFinal = false, string? displayName = null, bool thirdPlaceMatch = false)
     {
         OrganizationId = organizationId;
         TournamentId = tournamentId;
@@ -26,6 +27,7 @@ public class Bracket : Entity, ITenantScoped
         Type = type;
         TeamCapacity = teamCapacity;
         IfNecessaryFinal = ifNecessaryFinal;
+        ThirdPlaceMatch = thirdPlaceMatch;
         DisplayName = displayName;
     }
 
@@ -38,11 +40,12 @@ public class Bracket : Entity, ITenantScoped
 
     public void SetIfNecessaryFinal(bool enabled) { IfNecessaryFinal = enabled; Touch(); }
 
-    public void Configure(BracketType type, int teamCapacity, bool ifNecessaryFinal, string? displayName)
+    public void Configure(BracketType type, int teamCapacity, bool ifNecessaryFinal, string? displayName, bool thirdPlaceMatch = false)
     {
         Type = type;
         TeamCapacity = teamCapacity;
         IfNecessaryFinal = ifNecessaryFinal;
+        ThirdPlaceMatch = thirdPlaceMatch;
         DisplayName = displayName;
         Touch();
     }
