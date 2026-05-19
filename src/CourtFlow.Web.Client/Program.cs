@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using System.Net.Http;
@@ -30,6 +31,9 @@ builder.Services.AddOptions<ApiOptions>()
     .Bind(builder.Configuration.GetSection(ApiOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<ApiOptions>, ApiOptionsValidator>();
+
+// Shared Razor (e.g. Tournaments) injects IHostEnvironment for dev-only UI; WASM host is not IHostEnvironment at runtime.
+builder.Services.AddSingleton<IHostEnvironment>(new CourtFlow.Web.Client.WebAssemblyHostEnvironmentAdapter(builder.HostEnvironment));
 
 builder.Services.AddMudServices();
 builder.Services.AddAuthorizationCore();

@@ -73,11 +73,14 @@ public class Program
 
         app.MapStaticAssets();
 
+        // Interactive auth runs in WebAssembly (Clerk + JWT). Do not require an authenticated server principal
+        // for component routes — that would Challenge and require IAuthenticationService / server cookies.
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()
             .AddAdditionalAssemblies(
                 typeof(CourtFlow.Web.Client._Imports).Assembly,
-                typeof(CourtFlow.Web.Shared.Components.AppShell).Assembly);
+                typeof(CourtFlow.Web.Shared.Components.AppShell).Assembly)
+            .AllowAnonymous();
 
         app.Run();
     }

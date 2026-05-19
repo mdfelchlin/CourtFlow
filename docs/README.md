@@ -12,6 +12,7 @@ This is the canonical home for everything about CourtFlow that isn't code. The g
 | --- | --- |
 | [`product-overview.md`](product-overview.md) | Mission, problems we're solving, audiences, in/out scope, NFRs, success metrics. **Read first.** |
 | [`happy-path.md`](happy-path.md) | End-to-end walkthrough from CSV to a built tournament. Read after `product-overview.md` to see how the features fit together. |
+| [`implementation-backlog.md`](implementation-backlog.md) | **Gap analysis + task checklist** — what the docs describe vs what ships today; work through this to close V1. |
 
 ## Architecture
 

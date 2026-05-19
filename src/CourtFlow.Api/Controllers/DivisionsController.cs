@@ -68,19 +68,17 @@ public class DivisionsController : ControllerBase
     [HttpPost("{id:guid}/apply-seeding")]
     public async Task<IActionResult> ApplySeeding(Guid id, [FromBody] ApplySeedingBody body, CancellationToken ct)
     {
-        var strategy = (RankedSeedStrategy)body.Strategy;
-        var r = await _mediator.Send(new ApplyDivisionSeedingCommand(id, strategy), ct);
+        var r = await _mediator.Send(new ApplyDivisionSeedingCommand(id, body.Strategy), ct);
         return Ok(r);
     }
 
     [HttpPost("{id:guid}/advancement-brackets")]
     public async Task<IActionResult> AdvancementBrackets(Guid id, [FromBody] AdvancementBracketsBody body, CancellationToken ct)
     {
-        var type = (BracketType)body.Type;
         var r = await _mediator.Send(new GeneratePoolAdvancementBracketsCommand(
             id,
             body.TopNPerPool,
-            type,
+            body.Type,
             body.IfNecessaryFinal,
             body.GoldTeamIds,
             body.SilverTeamIds), ct);
@@ -89,10 +87,10 @@ public class DivisionsController : ControllerBase
 }
 
 public sealed record ReorderDivisionTeamsBody(IReadOnlyList<Guid> OrderedTeamIds);
-public sealed record ApplySeedingBody(int Strategy);
+public sealed record ApplySeedingBody(RankedSeedStrategy Strategy);
 public sealed record AdvancementBracketsBody(
     int TopNPerPool,
-    int Type,
+    BracketType Type,
     bool IfNecessaryFinal,
     IReadOnlyList<Guid>? GoldTeamIds,
     IReadOnlyList<Guid>? SilverTeamIds);
