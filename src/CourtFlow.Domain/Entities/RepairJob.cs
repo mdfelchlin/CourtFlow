@@ -1,5 +1,6 @@
 using CourtFlow.Domain.Common;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Domain.Events;
 
 namespace CourtFlow.Domain.Entities;
 
@@ -40,6 +41,8 @@ public class RepairJob : Entity, ITenantScoped
         Status = RepairJobStatus.Applied;
         PreviewDiagnosticsJson = diagnosticsJson;
         Touch();
+        if (TriggerType == RepairTriggerType.ScheduleReflow)
+            RaiseEvent(new ReflowPreviewApplied(Id, TournamentId));
     }
 
     public void Reject()

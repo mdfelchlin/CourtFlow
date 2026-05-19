@@ -1,4 +1,6 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Application.Features.Teams;
+using CourtFlow.Application.Features.Stages;
 using CourtFlow.Application.Seeding;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
@@ -94,6 +96,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
         var divisionIds = divisions.Select(x => x.Id).ToHashSet();
         var pools = await _db.Pools.Where(p => divisionIds.Contains(p.DivisionId)).ToListAsync(ct);
         var teams = await _db.Teams.Where(t => divisionIds.Contains(t.DivisionId)).ToListAsync(ct);
+        var touchedDivisions = new HashSet<Guid>();
 
         var createdPools = 0;
         var createdTeams = 0;
@@ -107,6 +110,7 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
                 divisions.Add(division);
                 divisionByName[division.Name] = division;
                 _db.Divisions.Add(division);
+                await DefaultDivisionStages.EnsureProvisionedAsync(_db, division, ct);
             }
 
             var poolName = row.PoolName.Trim();
@@ -154,14 +158,92 @@ public sealed class ImportPredefinedPoolsHandler : IRequestHandler<ImportPredefi
                 team.SetSeedHint(row.SeedHint);
                 updatedTeams++;
             }
+
+            await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            touchedDivisions.Add(division.Id);
         }
 
         if (errors.Count == 0)
         {
+            foreach (var divisionId in touchedDivisions)
+            {
+                var division = divisions.Single(d => d.Id == divisionId);
+                var divisionRows = request.Rows
+                    .Where(r => string.Equals(r.DivisionName.Trim(), division.Name, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(r => r.RowNumber)
+                    .ToList();
+                await SyncPredefinedDivisionRankingsAsync(division, divisionRows, teams, ct);
+            }
+
             await _db.SaveChangesAsync(ct);
         }
 
         return new ImportResultDto(createdPools, createdTeams, updatedTeams, errors);
+    }
+
+    private async Task SyncPredefinedDivisionRankingsAsync(
+        Division division,
+        IReadOnlyList<PredefinedPoolImportRow> divisionRowsInOrder,
+        List<Team> allTeams,
+        CancellationToken ct)
+    {
+        if (divisionRowsInOrder.Count == 0)
+            return;
+
+        static string TeamKey(string name) => name.Trim().ToUpperInvariant();
+
+        var divisionTeams = allTeams.Where(t => t.DivisionId == division.Id).ToList();
+        var teamByLookup = divisionTeams.GroupBy(t => TeamKey(t.Name))
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var csvOrderedTeams = new List<Team>();
+        var csvSeen = new HashSet<Guid>();
+        foreach (var row in divisionRowsInOrder)
+        {
+            if (!teamByLookup.TryGetValue(TeamKey(row.TeamName), out var team))
+                continue;
+            if (csvSeen.Add(team.Id))
+                csvOrderedTeams.Add(team);
+        }
+
+        if (csvOrderedTeams.Count == 0)
+            return;
+
+        var hintsAny = divisionRowsInOrder.Any(r => r.SeedHint.HasValue);
+
+        IEnumerable<Team> orderedEnumerable;
+        if (hintsAny)
+        {
+            var withHint = csvOrderedTeams.Where(t => t.SeedHint.HasValue)
+                .OrderBy(t => t.SeedHint)
+                .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var hintIds = withHint.Select(t => t.Id).ToHashSet();
+            var withoutHint = csvOrderedTeams.Where(t => !hintIds.Contains(t.Id)).ToList();
+            orderedEnumerable = withHint.Concat(withoutHint);
+        }
+        else
+        {
+            orderedEnumerable = csvOrderedTeams;
+        }
+
+        var orderedEntries = new List<(TournamentTeam TournamentTeam, int Rank)>();
+        var rankCounter = 1;
+        foreach (var team in orderedEnumerable)
+        {
+            var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            DivisionEntryRankingService.MirrorSeedHint(team, rankCounter);
+            orderedEntries.Add((tt, rankCounter));
+            rankCounter++;
+        }
+
+        await DivisionEntryRankingService.ReplaceDivisionRankingsAsync(
+            _db,
+            division,
+            orderedEntries,
+            source: hintsAny ? "import_seed_hint" : "import",
+            isManualOverride: false,
+            ct);
     }
 }
 
@@ -216,6 +298,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                 divisions.Add(division);
                 divisionByName[division.Name] = division;
                 _db.Divisions.Add(division);
+                await DefaultDivisionStages.EnsureProvisionedAsync(_db, division, ct);
             }
             var ordered = divisionGroup.OrderBy(r => r.Rank).ToList();
             var poolSizes = PoolSeeding.BuildPoolSizes(ordered.Count);
@@ -251,6 +334,8 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                 _ => PoolSeeding.BuildSnakePoolSequence(poolSizes)
             };
 
+            var rankingEntries = new List<(TournamentTeam TournamentTeam, int Rank)>(ordered.Count);
+
             for (var i = 0; i < ordered.Count; i++)
             {
                 var row = ordered[i];
@@ -263,7 +348,7 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
 
                 if (team is null)
                 {
-                    team = new Team(division.OrganizationId, division.Id, row.TeamName.Trim(), row.Wave, pool.Id, row.Club, row.Rank);
+                    team = new Team(division.OrganizationId, division.Id, row.TeamName.Trim(), row.Wave, pool.Id, row.Club, seedHint: null);
                     teams.Add(team);
                     createdTeams++;
                     _db.Teams.Add(team);
@@ -273,10 +358,16 @@ public sealed class ImportRankedTeamsHandler : IRequestHandler<ImportRankedTeams
                     team.AssignPool(pool.Id);
                     team.SetWave(row.Wave);
                     team.SetClub(row.Club);
-                    team.SetSeedHint(row.Rank);
                     updatedTeams++;
                 }
+
+                var tournamentTeam = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+                DivisionEntryRankingService.MirrorSeedHint(team, row.Rank);
+                rankingEntries.Add((tournamentTeam, row.Rank));
             }
+
+            await DivisionEntryRankingService.ReplaceDivisionRankingsAsync(
+                _db, division, rankingEntries, source: "import", isManualOverride: false, ct);
         }
 
         if (errors.Count == 0)

@@ -79,8 +79,14 @@
         <PropertyColumn Property="x => x.Club" Title="Club" />
         <TemplateColumn Title="Actions">
             <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" aria-label="Edit" />
+                @if (context.Item.TournamentTeamId is { } ttId)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PersonOff" Size="Size.Small" Color="Color.Warning"
+                                   aria-label="Withdraw from tournament"
+                                   OnClick="@(() => WithdrawAsync(context.Item, ttId))" />
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" aria-label="Delete" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
@@ -227,6 +233,19 @@
             _items.RemoveAll(x => x.Id == t.Id);
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task WithdrawAsync(TeamDto t, Guid tournamentTeamId)
+    {
+        var tid = TournamentStore.SelectedTournamentId;
+        if (tid is null) return;
+        var parms = new DialogParameters { ["TournamentId"] = tid.Value };
+        var dialog = await DialogService.ShowAsync<WithdrawTeamDialog>("Withdraw team", parms);
+        if ((await dialog.Result) is { Canceled: false })
+        {
+            Snackbar.Add("Withdrawal recorded", Severity.Success);
+            await ReloadAsync();
+        }
     }
 
 }

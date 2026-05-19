@@ -7,11 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Application.Features.Teams;
 
-public sealed record TeamDto(Guid Id, Guid DivisionId, Guid? PoolId, string Name, string? Club, Wave Wave, int? SeedHint);
+public sealed record TeamDto(
+    Guid Id,
+    Guid? TournamentTeamId,
+    Guid DivisionId,
+    Guid? PoolId,
+    string Name,
+    string? Club,
+    Wave Wave,
+    int? SeedHint);
 
 internal static class TeamMapping
 {
-    public static TeamDto ToDto(this Team t) => new(t.Id, t.DivisionId, t.PoolId, t.Name, t.Club, t.Wave, t.SeedHint);
+    public static TeamDto ToDto(this Team team, int? displayRank = null, Guid? tournamentTeamId = null) =>
+        new(team.Id, tournamentTeamId, team.DivisionId, team.PoolId, team.Name, team.Club, team.Wave, displayRank ?? team.SeedHint);
 }
 
 public sealed record ListTeamsQuery(Guid? TournamentId, Guid? DivisionId, Guid? PoolId) : IRequest<IReadOnlyList<TeamDto>>;
@@ -31,15 +40,43 @@ public sealed class ListTeamsHandler : IRequestHandler<ListTeamsQuery, IReadOnly
         if (request.DivisionId is { } d) q = q.Where(t => t.DivisionId == d);
         if (request.PoolId is { } p) q = q.Where(t => t.PoolId == p);
         var items = await q.ToListAsync(ct);
-        // Ranking views: numeric SeedHint first. Do not tie-break by Name on division lists — when all seeds are
-        // null or equal, ThenBy(Name) looks like "alphabetical sorting" instead of numeric seed order.
+
+        IReadOnlyDictionary<Guid, int>? ranksByTeamId = null;
+        if (request.DivisionId is { } divisionId)
+            ranksByTeamId = await DivisionEntryRankingService.GetRankByTeamIdAsync(_db, divisionId, ct);
+
+        int RankKey(Team t) => ranksByTeamId?.GetValueOrDefault(t.Id) ?? t.SeedHint ?? int.MaxValue;
+
         if (request.PoolId is not null)
-            items = items.OrderBy(t => t.SeedHint ?? int.MaxValue).ThenBy(t => t.Name).ToList();
+            items = items.OrderBy(RankKey).ThenBy(t => t.Name).ToList();
         else if (request.DivisionId is not null)
-            items = items.OrderBy(t => t.SeedHint ?? int.MaxValue).ThenBy(t => t.Id).ToList();
+            items = items.OrderBy(RankKey).ThenBy(t => t.Id).ToList();
         else
             items = items.OrderBy(t => t.Name).ToList();
-        return items.Select(TeamMapping.ToDto).ToList();
+
+        Guid? tidForLookup = request.TournamentId;
+        if (tidForLookup is null && request.DivisionId is { } divisionIdForTournament)
+        {
+            tidForLookup = await _db.Divisions.AsNoTracking()
+                .Where(d => d.Id == divisionIdForTournament)
+                .Select(d => d.TournamentId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        IReadOnlyDictionary<Guid, Guid> tournamentTeamByTeamId = new Dictionary<Guid, Guid>();
+        if (tidForLookup is { } tid && tid != Guid.Empty)
+        {
+            tournamentTeamByTeamId = await _db.TournamentTeams.AsNoTracking()
+                .Where(tt => tt.TournamentId == tid)
+                .ToDictionaryAsync(tt => tt.TeamId, tt => tt.Id, ct);
+        }
+
+        return items.Select(t =>
+        {
+            var rank = ranksByTeamId?.GetValueOrDefault(t.Id);
+            Guid? ttId = tournamentTeamByTeamId.TryGetValue(t.Id, out var found) ? found : null;
+            return t.ToDto(rank, ttId);
+        }).ToList();
     }
 }
 
@@ -62,10 +99,15 @@ public sealed class CreateTeamHandler : IRequestHandler<CreateTeamCommand, TeamD
     public async Task<TeamDto> Handle(CreateTeamCommand request, CancellationToken ct)
     {
         var orgId = _tenant.RequireOrganizationId();
-        var t = new Team(orgId, request.DivisionId, request.Name, Wave.AM, poolId: null, club: request.Club, seedHint: null);
-        _db.Teams.Add(t);
+        var division = await _db.Divisions.FirstAsync(d => d.Id == request.DivisionId, ct);
+        var team = new Team(orgId, request.DivisionId, request.Name, Wave.AM, poolId: null, club: request.Club, seedHint: null);
+        _db.Teams.Add(team);
+        var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+        var rank = await DivisionEntryRankingService.NextRankAsync(_db, division.Id, ct);
+        await DivisionEntryRankingService.UpsertRankingAsync(
+            _db, division, tt, rank, source: "manual", isManualOverride: false, ct);
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        return team.ToDto(rank);
     }
 }
 
@@ -120,7 +162,13 @@ public sealed class MoveTeamHandler : IRequestHandler<MoveTeamCommand, TeamDto?>
         var fromDiv = await _db.Divisions.FirstOrDefaultAsync(x => x.Id == team.DivisionId, ct);
         if (fromDiv is null) return null;
         if (fromDiv.TournamentId != toDiv.TournamentId) return null;
+
+        await DivisionEntryRankingService.RemoveRankingsForTeamAsync(_db, fromDiv, team, ct);
         team.MoveToDivision(request.DivisionId);
+        var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, toDiv, team, ct);
+        var rank = await DivisionEntryRankingService.NextRankAsync(_db, toDiv.Id, ct);
+        await DivisionEntryRankingService.UpsertRankingAsync(
+            _db, toDiv, tt, rank, source: "manual", isManualOverride: false, ct);
         await _db.SaveChangesAsync(ct);
         return team.ToDto();
     }
@@ -184,14 +232,25 @@ public sealed class ReorderDivisionTeamsHandler : IRequestHandler<ReorderDivisio
         if (request.OrderedTeamIds.Count != teams.Count || request.OrderedTeamIds.Any(id => !idSet.Contains(id)))
             return null;
 
+        var orderedEntries = new List<(TournamentTeam TournamentTeam, int Rank)>(request.OrderedTeamIds.Count);
         for (var i = 0; i < request.OrderedTeamIds.Count; i++)
         {
+            var rank = i + 1;
             var team = teams.Single(t => t.Id == request.OrderedTeamIds[i]);
-            team.SetSeedHint(i + 1);
+            var tournamentTeam = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            DivisionEntryRankingService.MirrorSeedHint(team, rank);
+            orderedEntries.Add((tournamentTeam, rank));
         }
 
+        await DivisionEntryRankingService.ReplaceDivisionRankingsAsync(
+            _db, division, orderedEntries, source: "manual", isManualOverride: true, ct);
+
         await _db.SaveChangesAsync(ct);
-        return teams.OrderBy(t => t.SeedHint).ThenBy(t => t.Id).Select(TeamMapping.ToDto).ToList();
+
+        return request.OrderedTeamIds
+            .Select(id => teams.Single(t => t.Id == id))
+            .Select((t, i) => t.ToDto(i + 1))
+            .ToList();
     }
 }
 
@@ -217,11 +276,21 @@ public sealed class RandomizeDivisionSeedsHandler : IRequestHandler<RandomizeDiv
 
         var rnd = new Random();
         var shuffled = teams.OrderBy(_ => rnd.Next()).ToList();
+        var orderedEntries = new List<(TournamentTeam TournamentTeam, int Rank)>(shuffled.Count);
         for (var i = 0; i < shuffled.Count; i++)
-            shuffled[i].SetSeedHint(i + 1);
+        {
+            var rank = i + 1;
+            var team = shuffled[i];
+            var tournamentTeam = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            DivisionEntryRankingService.MirrorSeedHint(team, rank);
+            orderedEntries.Add((tournamentTeam, rank));
+        }
+
+        await DivisionEntryRankingService.ReplaceDivisionRankingsAsync(
+            _db, division, orderedEntries, source: "random", isManualOverride: false, ct);
 
         await _db.SaveChangesAsync(ct);
-        return shuffled.OrderBy(t => t.SeedHint).ThenBy(t => t.Id).Select(TeamMapping.ToDto).ToList();
+        return shuffled.Select((t, i) => t.ToDto(i + 1)).ToList();
     }
 }
 
@@ -233,9 +302,12 @@ public sealed class DeleteTeamHandler : IRequestHandler<DeleteTeamCommand, bool>
     public DeleteTeamHandler(IAppDbContext db) => _db = db;
     public async Task<bool> Handle(DeleteTeamCommand request, CancellationToken ct)
     {
-        var t = await _db.Teams.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-        if (t is null) return false;
-        _db.Teams.Remove(t);
+        var team = await _db.Teams.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (team is null) return false;
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == team.DivisionId, ct);
+        if (division is not null)
+            await DivisionEntryRankingService.RemoveTournamentEntryAsync(_db, division, team, ct);
+        _db.Teams.Remove(team);
         await _db.SaveChangesAsync(ct);
         return true;
     }

@@ -44,8 +44,8 @@ public sealed class TournamentEndpoints(ICourtFlowTournamentsApi api)
     public Task<TournamentDto> RestoreAsync(Guid id, CancellationToken ct = default)
         => _api.RestoreAsync(id, ct);
 
-    public Task<TournamentDto> CloneAsync(Guid id, CancellationToken ct = default)
-        => _api.CloneAsync(id, ct);
+    public Task<TournamentDto> CloneAsync(Guid id, bool structureOnly = false, CancellationToken ct = default)
+        => _api.CloneAsync(id, structureOnly, ct);
 }
 
 public sealed class VenueEndpoints(ICourtFlowVenuesApi api)
@@ -127,6 +127,76 @@ public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
 
     public Task<GenerateAdvancementBracketsResultDto> GenerateAdvancementBracketsAsync(Guid divisionId, GenerateAdvancementBracketsDto dto, CancellationToken ct = default)
         => _api.GenerateAdvancementBracketsAsync(divisionId, dto, ct);
+
+    public async Task SnakeIntoPoolsAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.SnakeIntoPoolsAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
+    public async Task GenerateBracketsAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.GenerateBracketsAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
+    public async Task ResolveBracketSlotsAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.ResolveBracketSlotsAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
+    public Task<DivisionWizardStateDto?> GetWizardStateAsync(Guid divisionId, CancellationToken ct = default)
+        => _api.GetWizardStateAsync(divisionId, ct);
+
+    public Task<DivisionWizardStateDto?> SavePoolStructureAsync(Guid divisionId, SaveDivisionPoolStructureDto dto, CancellationToken ct = default)
+        => _api.SavePoolStructureAsync(divisionId, dto, ct);
+
+    public Task<DivisionWizardStateDto?> SaveBracketStructureAsync(Guid divisionId, SaveDivisionBracketStructureDto dto, CancellationToken ct = default)
+        => _api.SaveBracketStructureAsync(divisionId, dto, ct);
+
+    public Task<DivisionWizardStateDto?> SaveAdvancementRulesAsync(Guid divisionId, SaveDivisionAdvancementRulesDto dto, CancellationToken ct = default)
+        => _api.SaveAdvancementRulesAsync(divisionId, dto, ct);
+
+    public Task<IReadOnlyList<DivisionPoolWorkRotationDto>> GetWorkRotationAsync(Guid divisionId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.GetWorkRotationAsync(divisionId, ct));
+
+    public Task<BracketSeedSlotDto> SetBracketSlotOverrideAsync(Guid slotId, BracketSlotOverrideDto dto, CancellationToken ct = default)
+        => _api.SetBracketSlotOverrideAsync(slotId, dto, ct);
+}
+
+public sealed class WaveEndpoints(ICourtFlowWavesApi api)
+{
+    private readonly ICourtFlowWavesApi _api = api;
+
+    public Task<IReadOnlyList<TournamentWaveDto>> ListAsync(Guid tournamentId, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(tournamentId, ct));
+
+    public Task<TournamentWaveDto> CreateAsync(Guid tournamentId, CreateTournamentWaveDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(tournamentId, dto, ct);
+
+    public Task<TournamentWaveDto> UpdateAsync(Guid tournamentId, Guid waveId, UpdateTournamentWaveDto dto, CancellationToken ct = default)
+        => _api.UpdateAsync(tournamentId, waveId, dto, ct);
+
+    public async Task DeleteAsync(Guid tournamentId, Guid id, CancellationToken ct = default)
+    {
+        var res = await _api.DeleteAsync(tournamentId, id, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+}
+
+public sealed class StageEndpoints(ICourtFlowStagesApi api)
+{
+    private readonly ICourtFlowStagesApi _api = api;
+
+    public Task<IReadOnlyList<StageDto>> ListAsync(Guid? divisionId = null, CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListAsync(divisionId, ct));
+
+    public Task<StageDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _api.GetAsync(id, ct);
+
+    public Task<StageDto?> TransitionAsync(Guid id, TransitionStageDto dto, CancellationToken ct = default)
+        => _api.TransitionAsync(id, dto, ct);
 }
 
 public sealed class PoolEndpoints(ICourtFlowPoolsApi api)
@@ -204,6 +274,12 @@ public sealed class MatchEndpoints(ICourtFlowMatchesApi api)
 
     public Task<MatchDto> ForfeitAsync(Guid id, ForfeitMatchDto dto, CancellationToken ct = default)
         => _api.ForfeitAsync(id, dto, ct);
+
+    public Task<MatchDto> StartAsync(Guid id, CancellationToken ct = default)
+        => _api.StartAsync(id, ct);
+
+    public Task<MatchDto> ChangeRefereeAsync(Guid id, ChangeRefereeDto dto, CancellationToken ct = default)
+        => _api.ChangeRefereeAsync(id, dto, ct);
 }
 
 public sealed class BracketEndpoints(ICourtFlowBracketsApi api)
@@ -246,6 +322,9 @@ public sealed class ScheduleVersionsEndpoints(ICourtFlowScheduleVersionsApi api)
 
     public Task<MatchDto> ApplyMoveAsync(Guid tournamentId, ApplyScheduleMoveRequestDto dto, CancellationToken ct = default)
         => _api.ApplyMoveAsync(tournamentId, dto, ct);
+
+    public Task<ScheduleVersionSummaryDto> PublishAsync(Guid tournamentId, CancellationToken ct = default)
+        => _api.PublishAsync(tournamentId, ct);
 }
 
 public sealed class CourtStatusEndpoints(ICourtFlowCourtStatusApi api)
@@ -254,14 +333,20 @@ public sealed class CourtStatusEndpoints(ICourtFlowCourtStatusApi api)
 
     public Task<IReadOnlyList<CourtStatusDto>> GetAsync(Guid tournamentId, CancellationToken ct = default)
         => ReadOnlyAdapt.From(_api.GetAsync(tournamentId, ct));
+
+    public Task<ReflowPreviewDto> ReflowPreviewAsync(Guid tournamentId, CancellationToken ct = default)
+        => _api.ReflowPreviewAsync(tournamentId, ct);
+
+    public Task<ReflowApplyResultDto> ReflowApplyAsync(Guid tournamentId, ReflowApplyDto dto, CancellationToken ct = default)
+        => _api.ReflowApplyAsync(tournamentId, dto, ct);
 }
 
 public sealed class StandingsEndpoints(ICourtFlowStandingsApi api)
 {
     private readonly ICourtFlowStandingsApi _api = api;
 
-    public Task<IReadOnlyList<PoolStandingsDto>> ForDivisionAsync(Guid divisionId, CancellationToken ct = default)
-        => ReadOnlyAdapt.From(_api.ForDivisionAsync(divisionId, ct));
+    public Task<DivisionStandingsDto> ForDivisionAsync(Guid divisionId, CancellationToken ct = default)
+        => _api.ForDivisionAsync(divisionId, ct);
 }
 
 public sealed class PublicEventEndpoints(ICourtFlowPublicEventsApi api)
@@ -271,11 +356,20 @@ public sealed class PublicEventEndpoints(ICourtFlowPublicEventsApi api)
     public Task<IReadOnlyList<PublicEventDto>> ListAsync(CancellationToken ct = default)
         => ReadOnlyAdapt.From(_api.ListAsync(ct));
 
+    public Task<IReadOnlyList<PublicEventDto>> ListPastAsync(CancellationToken ct = default)
+        => ReadOnlyAdapt.From(_api.ListPastAsync(ct));
+
     public Task<PublicEventDetailDto?> GetAsync(Guid id, CancellationToken ct = default)
         => _api.GetAsync(id, ct);
 
+    public Task<PublicEventReadinessDto?> GetReadinessAsync(Guid id, CancellationToken ct = default)
+        => _api.GetReadinessAsync(id, ct);
+
     public async Task<IReadOnlyList<PublicMatchDto>?> GetScheduleAsync(Guid id, CancellationToken ct = default)
         => await _api.GetScheduleAsync(id, ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PublicDivisionTeamsDto>?> GetTeamsAsync(Guid id, CancellationToken ct = default)
+        => await _api.GetTeamsAsync(id, ct).ConfigureAwait(false);
 
     public async Task<IReadOnlyList<PublicBracketDto>?> GetBracketsAsync(Guid id, CancellationToken ct = default)
         => await _api.GetBracketsAsync(id, ct).ConfigureAwait(false);
@@ -299,6 +393,9 @@ public sealed class RepairsEndpoints(ICourtFlowRepairsApi api)
 
     public Task<RepairJobDto> CourtOutageAsync(Guid tournamentId, CourtOutageDto dto, CancellationToken ct = default)
         => _api.CourtOutageAsync(tournamentId, dto, ct);
+
+    public Task<RepairJobDto> RefereeReassignmentAsync(Guid tournamentId, RefereeReassignmentDto dto, CancellationToken ct = default)
+        => _api.RefereeReassignmentAsync(tournamentId, dto, ct);
 }
 
 public sealed class TemplatesEndpoints(ICourtFlowTemplatesApi api)
@@ -313,6 +410,9 @@ public sealed class TemplatesEndpoints(ICourtFlowTemplatesApi api)
 
     public Task<TemplateDto> CaptureAsync(CaptureTemplateDto dto, CancellationToken ct = default)
         => _api.CaptureAsync(dto, ct);
+
+    public Task<TournamentFromTemplateDto> CreateTournamentAsync(Guid id, CreateTournamentFromTemplateDto dto, CancellationToken ct = default)
+        => _api.CreateTournamentAsync(id, dto, ct);
 
     public Task DeleteAsync(Guid id, CancellationToken ct = default)
         => _api.DeleteAsync(id, ct);

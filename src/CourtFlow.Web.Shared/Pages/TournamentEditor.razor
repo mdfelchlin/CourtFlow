@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>@(_current is null ? "New tournament" : $"{_current.Name} · CourtFlow")</PageTitle>
 
@@ -14,6 +15,70 @@
                    OnClick="@(() => Nav.NavigateTo("/tournaments"))" />
     <MudText Typo="Typo.h4">@(_current is null ? "New tournament" : _current.Name)</MudText>
 </MudStack>
+
+@if (_current is not null)
+{
+    <MudPaper Outlined="true" Class="pa-4 mb-4" Elevation="0">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+            <MudStack Spacing="1" Style="flex:1; min-width:240px">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@PublicationChipColor()"
+                             Variant="Variant.Filled">@PublicationStatusLabel()</MudChip>
+                    @if (_current.PublicationStatus == TournamentPublicationStatusDto.Published)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">@PublicEventUrl()</MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                           Size="Size.Small"
+                                           aria-label="Copy public link"
+                                           OnClick="CopyPublicUrlAsync" />
+                        </MudStack>
+                    }
+                </MudStack>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@PublicationCaption()</MudText>
+                @if (_current.PublishedAtUtc is not null || _current.ArchivedAtUtc is not null)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@PublicationTimestamps()</MudText>
+                }
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                @if (_current.PublicationStatus == TournamentPublicationStatusDto.Draft)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Public"
+                               Disabled="_busyPublication"
+                               OnClick="ConfirmPublishAsync">Publish to public</MudButton>
+                }
+                else if (_current.PublicationStatus == TournamentPublicationStatusDto.Published)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.Archive"
+                               Disabled="_busyPublication"
+                               OnClick="ConfirmArchiveAsync">Archive tournament</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.RestorePage"
+                               Disabled="_busyPublication"
+                               OnClick="RestoreAsync">Un-archive</MudButton>
+                }
+                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Bookmark" OnClick="CaptureTemplateAsync">Save as template</MudButton>
+                @if (_current.PublicationStatus != TournamentPublicationStatusDto.Draft)
+                {
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight">
+                        <MudMenuItem Icon="@Icons.Material.Filled.VisibilityOff" OnClick="ConfirmUnpublishAsync">Move to draft</MudMenuItem>
+                    </MudMenu>
+                }
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+}
 
 @if (_loadFailed)
 {
@@ -58,36 +123,52 @@ else
         {
             <MudPaper Class="pa-5" Elevation="1">
                 <MudStack Spacing="3">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
-                        <MudText Typo="Typo.h6">Publication</MudText>
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="@PublicationChipColor()"
-                                 Variant="Variant.Filled">@(_current.PublicationStatus.ToString())</MudChip>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">Waves</MudText>
+                        <CfToolbarAddButton OnClick="AddWaveAsync" AriaLabel="Add wave" />
                     </MudStack>
-                    <MudText Typo="Typo.body2">
-                        Published tournaments appear on the public event list and feeds. Archived tournaments lock structure edits until restored.
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Playing waves (AM/PM or session 1/2) for scheduling and imports.
                     </MudText>
-                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Public"
-                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Draft"
-                                   OnClick="PublishAsync">Publish</MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.VisibilityOff"
-                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Published"
-                                   OnClick="UnpublishAsync">Unpublish</MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   StartIcon="@Icons.Material.Filled.Archive"
-                                   Disabled="_busyPublication || _current.PublicationStatus == TournamentPublicationStatusDto.Archived"
-                                   OnClick="ArchiveAsync">Archive</MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.RestorePage"
-                                   Disabled="_busyPublication || _current.PublicationStatus != TournamentPublicationStatusDto.Archived"
-                                   OnClick="RestoreAsync">Restore from archive</MudButton>
-                    </MudStack>
+                    @if (_loadingWaves)
+                    {
+                        <MudProgressLinear Indeterminate="true" />
+                    }
+                    else if (_waves.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                            No waves yet. Use Add above — typical tournaments use AM and PM.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_waves" Dense="true" Hover="true">
+                            <HeaderContent>
+                                <MudTh>Code</MudTh>
+                                <MudTh>Window</MudTh>
+                                <MudTh></MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Code</MudTd>
+                                <MudTd>
+                                    @if (!string.IsNullOrWhiteSpace(context.DefaultStartTime) || !string.IsNullOrWhiteSpace(context.DefaultEndTime))
+                                    {
+                                        <span>@(context.DefaultStartTime ?? "—") – @(context.DefaultEndTime ?? "—")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="mud-text-secondary">—</span>
+                                    }
+                                </MudTd>
+                                <MudTd>
+                                    <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Edit wave" OnClick="@(() => EditWaveAsync(context))" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" aria-label="Delete wave" OnClick="@(() => DeleteWaveAsync(context))" />
+                                    </MudStack>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
                 </MudStack>
             </MudPaper>
 
@@ -209,6 +290,8 @@ else
     private bool _loadFailed;
     private bool _savingDetails;
     private bool _loadingVenues;
+    private bool _loadingWaves;
+    private List<TournamentWaveDto> _waves = new();
 
     private string _name = "";
     private string? _description;
@@ -242,6 +325,7 @@ else
         if (_current is not null)
         {
             await ReloadVenuesAsync();
+            await ReloadWavesAsync();
         }
     }
 
@@ -306,6 +390,7 @@ else
                 _lastLoadedId = created.Id;
                 Snackbar.Add("Tournament created", Severity.Success);
                 await ReloadVenuesAsync();
+                await ReloadWavesAsync();
                 Nav.NavigateTo($"/tournaments/{created.Id}", replace: true);
             }
             else
@@ -330,32 +415,104 @@ else
         _current?.PublicationStatus switch
         {
             TournamentPublicationStatusDto.Published => Color.Success,
-            TournamentPublicationStatusDto.Archived => Color.Warning,
+            TournamentPublicationStatusDto.Archived => Color.Info,
             _ => Color.Default,
         };
 
-    private async Task PublishAsync() => await RunPublicationActionAsync(async () =>
-        await Api.Tournaments.PublishAsync(_current!.Id));
+    private string PublicationStatusLabel() => _current?.PublicationStatus switch
+    {
+        TournamentPublicationStatusDto.Published => "Published",
+        TournamentPublicationStatusDto.Archived => "Archived",
+        _ => "Draft",
+    };
 
-    private async Task UnpublishAsync() => await RunPublicationActionAsync(async () =>
-        await Api.Tournaments.UnpublishAsync(_current!.Id));
+    private string PublicEventUrl() => _current is null ? "" : Nav.ToAbsoluteUri($"/events/{_current.Id}").ToString();
 
-    private async Task ArchiveAsync()
+    private string PublicationCaption() => _current?.PublicationStatus switch
+    {
+        TournamentPublicationStatusDto.Published =>
+            "This tournament is visible on the public landing page.",
+        TournamentPublicationStatusDto.Archived =>
+            "Visible only as a past event. Shared links remain reachable.",
+        _ =>
+            "Not visible publicly. Publish to make this tournament discoverable on the public landing.",
+    };
+
+    private string PublicationTimestamps()
+    {
+        if (_current is null) return "";
+        var parts = new List<string>();
+        if (_current.PublishedAtUtc is { } pub)
+            parts.Add($"Published {pub.ToLocalTime():g}");
+        if (_current.ArchivedAtUtc is { } arc)
+            parts.Add($"Archived {arc.ToLocalTime():g}");
+        return string.Join(" · ", parts);
+    }
+
+    private async Task CopyPublicUrlAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", PublicEventUrl());
+            Snackbar.Add("Public link copied.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ConfirmPublishAsync()
+    {
+        if (_current is null) return;
+        var ok = await DialogService.ShowMessageBoxAsync(
+            "Publish to public",
+            "Make this tournament visible to the public? It will appear on the public landing page immediately. You can move it back to draft later.",
+            yesText: "Publish",
+            cancelText: "Cancel");
+        if (ok != true) return;
+        await RunPublicationActionAsync(async () => await Api.Tournaments.PublishAsync(_current.Id), "Tournament published.");
+    }
+
+    private async Task CaptureTemplateAsync()
+    {
+        if (_current is null) return;
+        try
+        {
+            var template = await Api.Templates.CaptureAsync(new CaptureTemplateDto(_current.Id, $"Template from {_current.Name}"));
+            Snackbar.Add($"Template \"{template.Name}\" saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task ConfirmUnpublishAsync()
+    {
+        if (_current is null) return;
+        var ok = await DialogService.ShowMessageBoxAsync(
+            "Move to draft",
+            "This will remove the tournament from the public landing and break shared /events links. The schedule, brackets, and standings will become inaccessible to the public. Continue?",
+            yesText: "Move to draft",
+            cancelText: "Cancel");
+        if (ok != true) return;
+        await RunPublicationActionAsync(async () => await Api.Tournaments.UnpublishAsync(_current.Id), "Moved to draft. The tournament is no longer publicly visible.");
+    }
+
+    private async Task ConfirmArchiveAsync()
     {
         if (_current is null) return;
         var ok = await DialogService.ShowMessageBoxAsync(
             "Archive tournament",
-            $"Archive '{_current.Name}'? Admin structure edits lock until restored.",
+            "Archive this tournament? It will move from the active landing to a Past Events section. Shared links remain reachable.",
             yesText: "Archive",
             cancelText: "Cancel");
         if (ok != true) return;
-        await RunPublicationActionAsync(async () => await Api.Tournaments.ArchiveAsync(_current.Id));
+        await RunPublicationActionAsync(async () => await Api.Tournaments.ArchiveAsync(_current.Id), "Tournament archived.");
     }
 
-    private async Task RestoreAsync() => await RunPublicationActionAsync(async () =>
-        await Api.Tournaments.RestoreAsync(_current!.Id));
+    private async Task RestoreAsync() =>
+        await RunPublicationActionAsync(async () => await Api.Tournaments.RestoreAsync(_current!.Id), "Tournament restored to published.");
 
-    private async Task RunPublicationActionAsync(Func<Task<TournamentDto>> action)
+    private async Task RunPublicationActionAsync(Func<Task<TournamentDto>> action, string successMessage)
     {
         if (_current is null) return;
         _busyPublication = true;
@@ -363,7 +520,7 @@ else
         {
             var t = await action();
             _current = t;
-            Snackbar.Add("Tournament lifecycle updated.", Severity.Success);
+            Snackbar.Add(successMessage, Severity.Success);
             StateHasChanged();
         }
         catch (Exception ex)
@@ -373,6 +530,75 @@ else
         finally
         {
             _busyPublication = false;
+        }
+    }
+
+    private async Task ReloadWavesAsync()
+    {
+        if (_current is null) return;
+        _loadingWaves = true;
+        try
+        {
+            _waves = (await Api.Waves.ListAsync(_current.Id)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loadingWaves = false;
+        }
+    }
+
+    private async Task AddWaveAsync()
+    {
+        if (_current is null) return;
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = _current.Id,
+            ["UsedCodes"] = _waves.Select(w => w.Code).ToList()
+        };
+        var dialog = await DialogService.ShowAsync<WaveDialog>("Add wave", parms);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadWavesAsync();
+    }
+
+    private async Task EditWaveAsync(TournamentWaveDto wave)
+    {
+        if (_current is null) return;
+        var parms = new DialogParameters
+        {
+            ["TournamentId"] = _current.Id,
+            ["Existing"] = wave,
+            ["UsedCodes"] = _waves.Select(w => w.Code).ToList()
+        };
+        var dialog = await DialogService.ShowAsync<WaveDialog>("Edit wave", parms);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadWavesAsync();
+    }
+
+    private async Task DeleteWaveAsync(TournamentWaveDto wave)
+    {
+        if (_current is null) return;
+        var ok = await DialogService.ShowMessageBoxAsync(
+            "Delete wave",
+            $"Delete wave '{wave.Code}'?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+        if (ok != true) return;
+
+        try
+        {
+            await Api.Waves.DeleteAsync(_current.Id, wave.Id);
+            Snackbar.Add("Wave deleted", Severity.Success);
+            await ReloadWavesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 

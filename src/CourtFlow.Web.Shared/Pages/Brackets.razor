@@ -3,6 +3,7 @@
 @inject CourtFlow.ApiClient.CourtFlowApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>Brackets · CourtFlow</PageTitle>
 
@@ -16,6 +17,8 @@
                 <MudSelectItem T="Guid?" Value="@((Guid?)d.Id)">@d.Name</MudSelectItem>
             }
         </MudSelect>
+        <MudButton StartIcon="@Icons.Material.Filled.Tune" Variant="Variant.Outlined" Size="Size.Small" Class="cf-toolbar-btn"
+                   Disabled="_divisionId is null" OnClick="ManageInDivision">Manage in division</MudButton>
         <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="cf-toolbar-btn" OnClick="GenerateAsync" Disabled="_divisionId is null">Generate</MudButton>
     </MudStack>
 </MudStack>
@@ -65,6 +68,11 @@ else
     {
         try { _brackets = _divisionId is null ? Array.Empty<BracketDto>() : await Api.Brackets.ListAsync(_divisionId); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void ManageInDivision()
+    {
+        if (_divisionId is { } id) Nav.NavigateTo($"/divisions/{id}");
     }
 
     private async Task GenerateAsync()

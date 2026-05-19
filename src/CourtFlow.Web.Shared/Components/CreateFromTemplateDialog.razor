@@ -1,0 +1,61 @@
+@using CourtFlow.Web.Shared
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle1">Create from template: @TemplateName</MudText>
+            <MudTextField @bind-Value="_name" Label="Tournament name" Required="true" />
+            <MudDatePicker @bind-Date="_start" Label="Start date" />
+            <MudDatePicker @bind-Date="_end" Label="End date" />
+            <MudSelect T="string" @bind-Value="_timeZoneId" Label="Time zone" Dense="true">
+                @foreach (var tz in TimeZoneOptions.All)
+                {
+                    <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField T="int" @bind-Value="_duration" Label="Default match duration (min)" Min="15" Max="180" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateAsync" Disabled="_busy">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid TemplateId { get; set; }
+    [Parameter] public string TemplateName { get; set; } = "";
+
+    private string _name = "";
+    private DateTime? _start = DateTime.Today;
+    private DateTime? _end = DateTime.Today.AddDays(2);
+    private string _timeZoneId = TimeZoneOptions.All[0].Id;
+    private int _duration = 60;
+    private bool _busy;
+
+    protected override void OnInitialized() => _name = $"From {TemplateName}";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || _start is null || _end is null) return;
+        _busy = true;
+        try
+        {
+            var result = await Api.Templates.CreateTournamentAsync(TemplateId,
+                new CreateTournamentFromTemplateDto(
+                    _name.Trim(),
+                    DateOnly.FromDateTime(_start.Value),
+                    DateOnly.FromDateTime(_end.Value),
+                    _timeZoneId,
+                    _duration));
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _busy = false; }
+    }
+}

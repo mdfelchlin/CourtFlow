@@ -11,6 +11,12 @@ on:
         options:
           - dev
           - production
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "deploy/**"
+      - ".github/workflows/deploy-api.yml"
 
 permissions:
   id-token: write
@@ -25,7 +31,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target_environment }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'dev' }}
     steps:
       - uses: actions/checkout@v4
 

@@ -1,9 +1,8 @@
 using CourtFlow.Api.Infrastructure;
-using CourtFlow.Application.Abstractions;
-using CourtFlow.Domain.Entities;
+using CourtFlow.Application.Features.Templates;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Api.Controllers;
 
@@ -12,57 +11,55 @@ namespace CourtFlow.Api.Controllers;
 [Authorize(Policy = AuthorizationPolicies.RequireOrg)]
 public class TemplatesController : ControllerBase
 {
-    private readonly IAppDbContext _db;
-    private readonly ITenantContext _tenant;
+    private readonly IMediator _mediator;
 
-    public TemplatesController(IAppDbContext db, ITenantContext tenant)
-    {
-        _db = db;
-        _tenant = tenant;
-    }
+    public TemplatesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct)
     {
-        var templates = await _db.TournamentTemplates
-            .OrderByDescending(t => t.UpdatedAtUtc)
-            .Select(t => new TemplateDto(t.Id, t.Name, t.Description, t.SourceTournamentId, t.UsageCount, t.CreatedAtUtc))
-            .ToListAsync(ct);
+        var templates = await _mediator.Send(new ListTemplatesQuery(), ct);
         return Ok(templates);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
-        var t = await _db.TournamentTemplates.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (t is null) return NotFound();
-        return Ok(new TemplateDto(t.Id, t.Name, t.Description, t.SourceTournamentId, t.UsageCount, t.CreatedAtUtc));
+        var t = await _mediator.Send(new GetTemplateQuery(id), ct);
+        return t is null ? NotFound() : Ok(t);
     }
 
     [HttpPost("capture")]
     public async Task<IActionResult> Capture([FromBody] CaptureTemplateBody body, CancellationToken ct)
     {
-        var orgId = _tenant.OrganizationId ?? throw new UnauthorizedAccessException();
-        var tournament = await _db.Tournaments.FirstOrDefaultAsync(t => t.Id == body.SourceTournamentId, ct);
-        if (tournament is null) return NotFound();
+        var template = await _mediator.Send(new CaptureTemplateCommand(body.SourceTournamentId, body.Name), ct);
+        return template is null
+            ? NotFound()
+            : CreatedAtAction(nameof(Get), new { id = template.Id }, template);
+    }
 
-        var template = new TournamentTemplate(orgId, body.Name ?? $"Template from {tournament.Name}", body.SourceTournamentId);
-        _db.TournamentTemplates.Add(template);
-        await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(Get), new { id = template.Id },
-            new TemplateDto(template.Id, template.Name, template.Description, template.SourceTournamentId, template.UsageCount, template.CreatedAtUtc));
+    [HttpPost("{id:guid}/create-tournament")]
+    public async Task<IActionResult> CreateTournament(Guid id, [FromBody] CreateTournamentFromTemplateBody body, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CreateTournamentFromTemplateCommand(
+            id,
+            body.Name,
+            body.StartDate,
+            body.EndDate,
+            body.TimeZoneId,
+            body.DefaultMatchDurationMinutes), ct);
+        return result is null ? NotFound() : Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var t = await _db.TournamentTemplates.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (t is null) return NotFound();
-        _db.TournamentTemplates.Remove(t);
-        await _db.SaveChangesAsync(ct);
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
+        await _mediator.Send(new DeleteTemplateCommand(id), ct) ? NoContent() : NotFound();
 }
 
-public sealed record TemplateDto(Guid Id, string Name, string? Description, Guid? SourceTournamentId, int UsageCount, DateTime CreatedAt);
 public sealed record CaptureTemplateBody(Guid SourceTournamentId, string? Name);
+public sealed record CreateTournamentFromTemplateBody(
+    string Name,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    string TimeZoneId,
+    int DefaultMatchDurationMinutes);

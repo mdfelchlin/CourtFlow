@@ -11,6 +11,11 @@ public class Team : Entity, ITenantScoped
     public string Name { get; private set; } = string.Empty;
     public string? Club { get; private set; }
     public Wave Wave { get; private set; } = Wave.AM;
+
+    /// <summary>
+    /// Legacy display seed mirrored from <c>division_rankings</c>. Do not use for new ranking logic.
+    /// </summary>
+    [Obsolete("Use division_rankings via TournamentTeam. Kept for one-release API/UI compat.")]
     public int? SeedHint { get; private set; }
 
     private Team() { }

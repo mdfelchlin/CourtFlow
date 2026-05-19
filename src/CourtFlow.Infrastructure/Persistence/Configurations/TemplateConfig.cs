@@ -12,6 +12,7 @@ public sealed class TournamentTemplateConfig : IEntityTypeConfiguration<Tourname
         b.HasKey(x => x.Id);
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
         b.Property(x => x.Description).HasMaxLength(2000);
+        b.Property(x => x.StructureJson);
         b.HasIndex(x => x.OrganizationId);
     }
 }

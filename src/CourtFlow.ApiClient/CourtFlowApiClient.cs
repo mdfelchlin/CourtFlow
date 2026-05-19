@@ -7,6 +7,8 @@ public sealed class CourtFlowApiClient(
     ICourtFlowVenuesApi venues,
     ICourtFlowCourtsApi courts,
     ICourtFlowDivisionsApi divisions,
+    ICourtFlowWavesApi waves,
+    ICourtFlowStagesApi stages,
     ICourtFlowPoolsApi pools,
     ICourtFlowTeamsApi teams,
     ICourtFlowImportsApi imports,
@@ -27,6 +29,8 @@ public sealed class CourtFlowApiClient(
     public VenueEndpoints Venues { get; } = new(venues);
     public CourtEndpoints Courts { get; } = new(courts);
     public DivisionEndpoints Divisions { get; } = new(divisions);
+    public WaveEndpoints Waves { get; } = new(waves);
+    public StageEndpoints Stages { get; } = new(stages);
     public PoolEndpoints Pools { get; } = new(pools);
     public TeamEndpoints Teams { get; } = new(teams);
     public ImportEndpoints Imports { get; } = new(imports);

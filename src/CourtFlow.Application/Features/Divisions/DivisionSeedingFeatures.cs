@@ -1,5 +1,6 @@
 using CourtFlow.Application.Abstractions;
 using CourtFlow.Application.Features.Imports;
+using CourtFlow.Application.Features.Teams;
 using CourtFlow.Application.Seeding;
 using CourtFlow.Domain.Entities;
 using FluentValidation;
@@ -23,6 +24,7 @@ public sealed class ApplyDivisionSeedingValidator : AbstractValidator<ApplyDivis
 public sealed class ApplyDivisionSeedingHandler : IRequestHandler<ApplyDivisionSeedingCommand, ApplyDivisionSeedingResult>
 {
     private readonly IAppDbContext _db;
+
     public ApplyDivisionSeedingHandler(IAppDbContext db) => _db = db;
 
     public async Task<ApplyDivisionSeedingResult> Handle(ApplyDivisionSeedingCommand request, CancellationToken ct)
@@ -35,8 +37,12 @@ public sealed class ApplyDivisionSeedingHandler : IRequestHandler<ApplyDivisionS
         if (teams.Count < 3)
             return new ApplyDivisionSeedingResult(false, "At least 3 teams are required to build pools.");
 
+        await BackfillDivisionRankingsFromLegacySeedsAsync(division, teams, ct);
+
+        var rankByTeam = new Dictionary<Guid, int>(
+            await DivisionEntryRankingService.GetRankByTeamIdAsync(_db, division.Id, ct));
         var ordered = teams
-            .OrderBy(t => t.SeedHint ?? int.MaxValue)
+            .OrderBy(t => rankByTeam.TryGetValue(t.Id, out var rk) ? rk : int.MaxValue)
             .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -70,14 +76,48 @@ public sealed class ApplyDivisionSeedingHandler : IRequestHandler<ApplyDivisionS
 
         for (var i = 0; i < ordered.Count; i++)
         {
-            var team = ordered[i];
             var poolIndex = poolSequence[i];
-            var pool = divisionPools[poolIndex];
-            team.AssignPool(pool.Id);
-            team.SetSeedHint(i + 1);
+            ordered[i].AssignPool(divisionPools[poolIndex].Id);
         }
 
         await _db.SaveChangesAsync(ct);
         return new ApplyDivisionSeedingResult(true, null);
+    }
+
+    private async Task BackfillDivisionRankingsFromLegacySeedsAsync(
+        Division division,
+        List<Team> teams,
+        CancellationToken ct)
+    {
+        var rankByTeam = new Dictionary<Guid, int>(
+            await DivisionEntryRankingService.GetRankByTeamIdAsync(_db, division.Id, ct));
+
+        var missingRanking = teams
+            .Where(t => !rankByTeam.ContainsKey(t.Id))
+            .OrderBy(t => t.SeedHint ?? int.MaxValue)
+            .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (missingRanking.Count == 0)
+            return;
+
+        var appendMode = rankByTeam.Count > 0;
+        var maxExisting = rankByTeam.Values.DefaultIfEmpty(0).Max();
+        var next = Math.Max(maxExisting, 0) + 1;
+
+        foreach (var team in missingRanking)
+        {
+            var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            await DivisionEntryRankingService.UpsertRankingAsync(
+                _db,
+                division,
+                tt,
+                next,
+                source: appendMode ? "append_legacy" : "seed_legacy",
+                isManualOverride: false,
+                ct);
+            appendMode = true;
+            next++;
+        }
     }
 }

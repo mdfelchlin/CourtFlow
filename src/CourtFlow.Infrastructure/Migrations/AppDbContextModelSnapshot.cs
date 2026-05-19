@@ -15,7 +15,7 @@ namespace CourtFlow.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.4");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
 
             modelBuilder.Entity("CourtFlow.Domain.Entities.AdvancementRule", b =>
                 {
@@ -275,6 +275,63 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.ToTable("bracket_seed_slots", (string)null);
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Entities.BracketSeedSlotOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("at_utc");
+
+                    b.Property<Guid>("BracketSeedSlotId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("bracket_seed_slot_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("NewManualTournamentTeamId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("new_manual_tournament_team_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("PreviousManualTournamentTeamId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_manual_tournament_team_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bracket_seed_slot_overrides");
+
+                    b.HasIndex("AtUtc")
+                        .HasDatabaseName("ix_bracket_seed_slot_overrides_at_utc");
+
+                    b.HasIndex("BracketSeedSlotId")
+                        .HasDatabaseName("ix_bracket_seed_slot_overrides_bracket_seed_slot_id");
+
+                    b.ToTable("bracket_seed_slot_overrides", (string)null);
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Entities.Court", b =>
                 {
                     b.Property<Guid>("Id")
@@ -395,6 +452,10 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("organization_id");
 
+                    b.Property<int>("TiebreakerPreset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("tiebreaker_preset");
+
                     b.Property<Guid>("TournamentId")
                         .HasColumnType("TEXT")
                         .HasColumnName("tournament_id");
@@ -403,11 +464,18 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at_utc");
 
+                    b.Property<Guid?>("WaveId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("wave_id");
+
                     b.HasKey("Id")
                         .HasName("pk_divisions");
 
                     b.HasIndex("TournamentId")
                         .HasDatabaseName("ix_divisions_tournament_id");
+
+                    b.HasIndex("WaveId")
+                        .HasDatabaseName("ix_divisions_wave_id");
 
                     b.ToTable("divisions", (string)null);
                 });
@@ -650,6 +718,10 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("scheduled_start_utc");
 
+                    b.Property<Guid?>("StageId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("stage_id");
+
                     b.Property<int>("State")
                         .HasColumnType("INTEGER")
                         .HasColumnName("state");
@@ -684,6 +756,9 @@ namespace CourtFlow.Infrastructure.Migrations
 
                     b.HasIndex("PoolId")
                         .HasDatabaseName("ix_matches_pool_id");
+
+                    b.HasIndex("StageId")
+                        .HasDatabaseName("ix_matches_stage_id");
 
                     b.HasIndex("TournamentId")
                         .HasDatabaseName("ix_matches_tournament_id");
@@ -1024,6 +1099,18 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("organization_id");
 
+                    b.Property<int>("Sequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sequence");
+
+                    b.Property<int>("TargetSize")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(4)
+                        .HasColumnName("target_size");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at_utc");
@@ -1034,7 +1121,60 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.HasIndex("DivisionId")
                         .HasDatabaseName("ix_pools_division_id");
 
+                    b.HasIndex("DivisionId", "Sequence")
+                        .HasDatabaseName("ix_pools_division_id_sequence");
+
                     b.ToTable("pools", (string)null);
+                });
+
+            modelBuilder.Entity("CourtFlow.Domain.Entities.PoolCourtAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AllocationType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("allocation_type");
+
+                    b.Property<Guid>("CourtId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("court_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("PoolId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pool_id");
+
+                    b.Property<int>("PriorityOrder")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority_order");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pool_court_allocations");
+
+                    b.HasIndex("PoolId", "CourtId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pool_court_allocations_pool_id_court_id");
+
+                    b.HasIndex("PoolId", "PriorityOrder")
+                        .HasDatabaseName("ix_pool_court_allocations_pool_id_priority_order");
+
+                    b.ToTable("pool_court_allocations", (string)null);
                 });
 
             modelBuilder.Entity("CourtFlow.Domain.Entities.PoolEntry", b =>
@@ -1600,6 +1740,10 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.Property<Guid?>("SourceTournamentId")
                         .HasColumnType("TEXT")
                         .HasColumnName("source_tournament_id");
+
+                    b.Property<string>("StructureJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("structure_json");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("TEXT")

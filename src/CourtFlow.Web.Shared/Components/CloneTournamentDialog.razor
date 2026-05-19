@@ -1,0 +1,44 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body1">Clone <strong>@SourceName</strong></MudText>
+            <MudSwitch @bind-Value="_structureOnly" Label="Structure only (no teams)" Color="Color.Primary" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Copies venues, divisions, pool/bracket structure, and advancement rules. Teams are included unless structure only.
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmAsync" Disabled="_busy">Clone</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid SourceTournamentId { get; set; }
+    [Parameter] public string SourceName { get; set; } = "";
+
+    private bool _structureOnly;
+    private bool _busy;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task ConfirmAsync()
+    {
+        _busy = true;
+        try
+        {
+            var created = await Api.Tournaments.CloneAsync(SourceTournamentId, _structureOnly);
+            MudDialog.Close(DialogResult.Ok(created));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+}

@@ -33,7 +33,7 @@ public interface ICourtFlowTournamentsApi
     Task<TournamentDto> RestoreAsync(Guid id, CancellationToken cancellationToken);
 
     [Post("/api/v1/tournaments/{id}/clone")]
-    Task<TournamentDto> CloneAsync(Guid id, CancellationToken cancellationToken);
+    Task<TournamentDto> CloneAsync(Guid id, [Query] bool structureOnly = false, CancellationToken cancellationToken = default);
 }
 
 public interface ICourtFlowVenuesApi
@@ -97,6 +97,45 @@ public interface ICourtFlowDivisionsApi
 
     [Post("/api/v1/divisions/{divisionId}/advancement-brackets")]
     Task<GenerateAdvancementBracketsResultDto> GenerateAdvancementBracketsAsync(Guid divisionId, [Body] GenerateAdvancementBracketsDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/divisions/{divisionId}/snake-into-pools")]
+    Task<HttpResponseMessage> SnakeIntoPoolsAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/divisions/{divisionId}/generate-brackets")]
+    Task<HttpResponseMessage> GenerateBracketsAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/divisions/{divisionId}/resolve-bracket-slots")]
+    Task<HttpResponseMessage> ResolveBracketSlotsAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Get("/api/v1/divisions/{divisionId}/wizard")]
+    Task<DivisionWizardStateDto?> GetWizardStateAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Put("/api/v1/divisions/{divisionId}/wizard/pools")]
+    Task<DivisionWizardStateDto?> SavePoolStructureAsync(Guid divisionId, [Body] SaveDivisionPoolStructureDto dto, CancellationToken cancellationToken);
+
+    [Put("/api/v1/divisions/{divisionId}/wizard/brackets")]
+    Task<DivisionWizardStateDto?> SaveBracketStructureAsync(Guid divisionId, [Body] SaveDivisionBracketStructureDto dto, CancellationToken cancellationToken);
+
+    [Put("/api/v1/divisions/{divisionId}/wizard/advancement-rules")]
+    Task<DivisionWizardStateDto?> SaveAdvancementRulesAsync(Guid divisionId, [Body] SaveDivisionAdvancementRulesDto dto, CancellationToken cancellationToken);
+
+    [Get("/api/v1/divisions/{divisionId}/work-rotation")]
+    Task<List<DivisionPoolWorkRotationDto>> GetWorkRotationAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/divisions/bracket-seed-slots/{slotId}/override")]
+    Task<BracketSeedSlotDto> SetBracketSlotOverrideAsync(Guid slotId, [Body] BracketSlotOverrideDto dto, CancellationToken cancellationToken);
+}
+
+public interface ICourtFlowStagesApi
+{
+    [Get("/api/v1/stages")]
+    Task<List<StageDto>> ListAsync([Query] Guid? divisionId, CancellationToken cancellationToken);
+
+    [Get("/api/v1/stages/{id}")]
+    Task<StageDto?> GetAsync(Guid id, CancellationToken cancellationToken);
+
+    [Put("/api/v1/stages/{id}/status")]
+    Task<StageDto?> TransitionAsync(Guid id, [Body] TransitionStageDto dto, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowPoolsApi
@@ -160,6 +199,12 @@ public interface ICourtFlowMatchesApi
 
     [Post("/api/v1/matches/{id}/forfeit")]
     Task<MatchDto> ForfeitAsync(Guid id, [Body] ForfeitMatchDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/matches/{id}/start")]
+    Task<MatchDto> StartAsync(Guid id, CancellationToken cancellationToken);
+
+    [Post("/api/v1/matches/{id}/referee")]
+    Task<MatchDto> ChangeRefereeAsync(Guid id, [Body] ChangeRefereeDto dto, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowBracketsApi
@@ -193,18 +238,27 @@ public interface ICourtFlowScheduleVersionsApi
 
     [Post("/api/v1/tournaments/{tournamentId}/schedule-versions/apply-move")]
     Task<MatchDto> ApplyMoveAsync(Guid tournamentId, [Body] ApplyScheduleMoveRequestDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/tournaments/{tournamentId}/schedule-versions/publish")]
+    Task<ScheduleVersionSummaryDto> PublishAsync(Guid tournamentId, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowCourtStatusApi
 {
     [Get("/api/v1/tournaments/{tournamentId}/court-status")]
     Task<List<CourtStatusDto>> GetAsync(Guid tournamentId, CancellationToken cancellationToken);
+
+    [Get("/api/v1/tournaments/{tournamentId}/reflow/preview")]
+    Task<ReflowPreviewDto> ReflowPreviewAsync(Guid tournamentId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/tournaments/{tournamentId}/reflow/apply")]
+    Task<ReflowApplyResultDto> ReflowApplyAsync(Guid tournamentId, [Body] ReflowApplyDto dto, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowStandingsApi
 {
     [Get("/api/v1/divisions/{divisionId}/standings")]
-    Task<List<PoolStandingsDto>> ForDivisionAsync(Guid divisionId, CancellationToken cancellationToken);
+    Task<DivisionStandingsDto> ForDivisionAsync(Guid divisionId, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowPublicEventsApi
@@ -223,6 +277,30 @@ public interface ICourtFlowPublicEventsApi
 
     [Get("/api/v1/public/events/{id}/standings")]
     Task<List<PublicPoolStandingsDto>> GetStandingsAsync(Guid id, CancellationToken cancellationToken);
+
+    [Get("/api/v1/public/events/past")]
+    Task<List<PublicEventDto>> ListPastAsync(CancellationToken cancellationToken);
+
+    [Get("/api/v1/public/events/{id}/readiness")]
+    Task<PublicEventReadinessDto?> GetReadinessAsync(Guid id, CancellationToken cancellationToken);
+
+    [Get("/api/v1/public/events/{id}/teams")]
+    Task<List<PublicDivisionTeamsDto>> GetTeamsAsync(Guid id, CancellationToken cancellationToken);
+}
+
+public interface ICourtFlowWavesApi
+{
+    [Get("/api/v1/tournaments/{tournamentId}/waves")]
+    Task<List<TournamentWaveDto>> ListAsync(Guid tournamentId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/tournaments/{tournamentId}/waves")]
+    Task<TournamentWaveDto> CreateAsync(Guid tournamentId, [Body] CreateTournamentWaveDto dto, CancellationToken cancellationToken);
+
+    [Put("/api/v1/tournaments/{tournamentId}/waves/{id}")]
+    Task<TournamentWaveDto> UpdateAsync(Guid tournamentId, Guid id, [Body] UpdateTournamentWaveDto dto, CancellationToken cancellationToken);
+
+    [Delete("/api/v1/tournaments/{tournamentId}/waves/{id}")]
+    Task<HttpResponseMessage> DeleteAsync(Guid tournamentId, Guid id, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowRepairsApi
@@ -238,6 +316,9 @@ public interface ICourtFlowRepairsApi
 
     [Post("/api/v1/tournaments/{tournamentId}/repairs/court-outage")]
     Task<RepairJobDto> CourtOutageAsync(Guid tournamentId, [Body] CourtOutageDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/tournaments/{tournamentId}/repairs/referee-reassignment")]
+    Task<RepairJobDto> RefereeReassignmentAsync(Guid tournamentId, [Body] RefereeReassignmentDto dto, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowTemplatesApi
@@ -250,6 +331,9 @@ public interface ICourtFlowTemplatesApi
 
     [Post("/api/v1/templates/capture")]
     Task<TemplateDto> CaptureAsync([Body] CaptureTemplateDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/templates/{id}/create-tournament")]
+    Task<TournamentFromTemplateDto> CreateTournamentAsync(Guid id, [Body] CreateTournamentFromTemplateDto dto, CancellationToken cancellationToken);
 
     [Delete("/api/v1/templates/{id}")]
     Task<HttpResponseMessage> DeleteAsync(Guid id, CancellationToken cancellationToken);

@@ -47,6 +47,21 @@ public class MatchesController : ControllerBase
         var r = await _mediator.Send(new ForfeitMatchCommand(id, body.WinningTeamId), ct);
         return r is null ? NotFound() : Ok(r);
     }
+
+    [HttpPost("{id:guid}/start")]
+    public async Task<IActionResult> Start(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new StartMatchCommand(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPost("{id:guid}/referee")]
+    public async Task<IActionResult> ChangeReferee(Guid id, [FromBody] ChangeRefereeRequest body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new ChangeMatchRefereeCommand(id, body.RefTeamId), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
 }
 
 public sealed record ForfeitMatchRequest(Guid WinningTeamId);
+public sealed record ChangeRefereeRequest(Guid? RefTeamId);

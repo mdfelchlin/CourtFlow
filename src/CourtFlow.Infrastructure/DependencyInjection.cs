@@ -3,7 +3,11 @@ using CourtFlow.Application.Brackets;
 using CourtFlow.Application.CourtStatus;
 using CourtFlow.Application.Scheduling;
 using CourtFlow.Application.Standings;
+using CourtFlow.Application.ReadModels.DivisionReadiness;
+using CourtFlow.Application.ReadModels.PublicEventReadiness;
+using CourtFlow.Application.ReadModels.TiebreakerChain;
 using CourtFlow.Application.Reflow;
+using CourtFlow.Application.StageMaterialization;
 using CourtFlow.Infrastructure.Brackets;
 using CourtFlow.Infrastructure.Reflow;
 using CourtFlow.Infrastructure.CourtStatus;
@@ -13,6 +17,9 @@ using CourtFlow.Infrastructure.Persistence;
 using CourtFlow.Infrastructure.Persistence.Serialization;
 using CourtFlow.Infrastructure.Scheduling;
 using CourtFlow.Infrastructure.Standings;
+using CourtFlow.Infrastructure.Observability;
+using CourtFlow.Infrastructure.StageMaterialization;
+using CourtFlow.Application.ReadModels.MatchClockDelaySignal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -68,7 +75,14 @@ public static class DependencyInjection
         services.AddScoped<IBracketProgressionService, BracketProgressionService>();
         services.AddScoped<IStandingsCalculator, StandingsCalculator>();
         services.AddScoped<ICourtStatusService, CourtStatusService>();
-        services.AddScoped<IReflowPreviewEngine, NoOpReflowPreviewEngine>();
+        services.AddScoped<IReflowPreviewEngine, ReflowPreviewEngine>();
+        services.AddSingleton<IReflowApplyTokenIssuer, ReflowApplyTokenIssuer>();
+        services.AddScoped<IPublicEventReadiness, PublicEventReadinessService>();
+        services.AddScoped<IDivisionReadiness, DivisionReadinessService>();
+        services.AddSingleton<ITiebreakerChain, TiebreakerChainService>();
+        services.AddSingleton<IDelayCalculation, DelayCalculationService>();
+        services.AddSingleton<CourtFlowMetrics>();
+        services.AddScoped<IStageMaterialization, StageMaterializationService>();
 
         services.AddOptions<ScheduleVersionsOptions>()
             .Bind(config.GetSection(ScheduleVersionsOptions.SectionName));
@@ -81,6 +95,7 @@ public static class DependencyInjection
     public static IServiceCollection AddCourtFlowOutboxDispatcher(this IServiceCollection services)
     {
         services.AddHostedService<Outbox.OutboxDispatcherHostedService>();
+        services.AddHostedService<HostedServices.TournamentAutoArchiveHostedService>();
         return services;
     }
 }

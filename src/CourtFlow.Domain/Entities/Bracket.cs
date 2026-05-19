@@ -37,4 +37,13 @@ public class Bracket : Entity, ITenantScoped
     }
 
     public void SetIfNecessaryFinal(bool enabled) { IfNecessaryFinal = enabled; Touch(); }
+
+    public void Configure(BracketType type, int teamCapacity, bool ifNecessaryFinal, string? displayName)
+    {
+        Type = type;
+        TeamCapacity = teamCapacity;
+        IfNecessaryFinal = ifNecessaryFinal;
+        DisplayName = displayName;
+        Touch();
+    }
 }

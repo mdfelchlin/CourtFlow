@@ -81,9 +81,9 @@ public class TournamentsController : ControllerBase
     [HttpPost("{id:guid}/clone")]
     [ProducesResponseType(typeof(TournamentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Clone(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Clone(Guid id, [FromQuery] bool structureOnly = false, CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new CloneTournamentCommand(id), ct);
+        var result = await _mediator.Send(new CloneTournamentCommand(id, structureOnly), ct);
         return result is null ? NotFound() : CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 

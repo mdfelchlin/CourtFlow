@@ -8,6 +8,8 @@ How to run CourtFlow on a developer machine, what the env vars in `launchSetting
 - The ASP.NET Core dev certificate trusted (`dotnet dev-certs https --trust`)
 - SQLite (the dev DB file `courtflow-dev.db` is created automatically on first run)
 
+**Non-local deployments** use **Turso/libSQL** as the default database provider (`Database:Provider = LibSql`). Local Aspire and standalone dev runs keep SQLite; see [`azure-plan.md`](azure-plan.md) for connection string wiring.
+
 ## Running with Aspire (recommended)
 
 The orchestrated entry point is `CourtFlow.AppHost`. It launches the API, the Web (Blazor Web App + WASM client), and the Aspire dashboard together.
@@ -43,6 +45,8 @@ Every project's HTTP/HTTPS endpoints are **pinned** in `src/CourtFlow.AppHost/Pr
 | `CourtFlow.Web` | `http://localhost:5111` | `https://localhost:7247` |
 
 The AppHost injects the API's HTTPS endpoint into the Web project as `Api__BaseUrl`, so the server-side Refit client always knows where to call.
+
+On startup, the AppHost runs **`CourtFlow.DbMigrator`** first, then starts the API (which waits for migrations). Fresh clones get an up-to-date schema without a separate migrator step.
 
 ## Pointing the WASM client at an API
 

@@ -351,7 +351,7 @@ The data model places **no cap** on the number of stages per division. Future wi
 
 ## Gap from current V1 implementation
 
-The shipped page `DivisionEdit.razor` in the Web.Shared project (`/divisions/{DivisionId}`) is a **two-column prototype**: Rankings on the left + tabbed **Pools** / **Brackets** on the right with **Gold/Silver** advancement and GUID override text fields. It does **not** yet model:
+The shipped page `DivisionDetail.razor` in the Web.Shared project (`/divisions/{DivisionId}`) is a **two-column prototype**: Rankings on the left + tabbed **Pools** / **Brackets** on the right with **Gold/Silver** advancement and GUID override text fields. It does **not** yet model:
 
 - the `stages` table or `stage_id` on matches,
 - the **structure-first** wizard (Pool Structure → Bracket Structure → Advancement Rules) with progress bar and placeholder labels,

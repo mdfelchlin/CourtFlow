@@ -11,10 +11,15 @@ var builder = DistributedApplication.CreateBuilder(args);
 //
 // These match `Properties/launchSettings.json` for the corresponding projects so
 // standalone `dotnet run` behaves identically to running under the AppHost.
+var migrator = builder.AddProject<CourtFlow_DbMigrator>("courtflow-migrator")
+    .WithEnvironment("ConnectionStrings__Default", "Data Source=courtflow-dev.db");
+
 var api = builder.AddProject<CourtFlow_Api>("courtflow-api")
     .WithHttpEndpoint(port: 5033, name: "http")
     .WithHttpsEndpoint(port: 7028, name: "https")
-    .WithEnvironment("ConnectionStrings__Default", "Data Source=courtflow-dev.db");
+    .WithEnvironment("ConnectionStrings__Default", "Data Source=courtflow-dev.db")
+    .WithEnvironment("Database__Provider", "Sqlite")
+    .WaitFor(migrator);
 
 builder.AddProject<CourtFlow_Web>("courtflow-web")
     .WithHttpEndpoint(port: 5111, name: "http")

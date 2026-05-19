@@ -4,6 +4,7 @@ using CourtFlow.Application.Features.Divisions;
 using CourtFlow.Application.Features.Imports;
 using CourtFlow.Application.Features.Teams;
 using CourtFlow.Application.Standings;
+using CourtFlow.Application.StageMaterialization.Commands;
 using CourtFlow.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -84,7 +85,76 @@ public class DivisionsController : ControllerBase
             body.SilverTeamIds), ct);
         return Ok(r);
     }
+
+    [HttpPost("{id:guid}/snake-into-pools")]
+    public async Task<IActionResult> SnakeIntoPools(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new SnakeIntoPoolsCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/generate-brackets")]
+    public async Task<IActionResult> GenerateBrackets(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new GenerateBracketsCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/resolve-bracket-slots")]
+    public async Task<IActionResult> ResolveBracketSlots(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ResolveBracketSlotsCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/wizard")]
+    public async Task<IActionResult> WizardState(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new GetDivisionWizardStateQuery(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPut("{id:guid}/wizard/pools")]
+    public async Task<IActionResult> SavePoolStructure(Guid id, [FromBody] SavePoolStructureBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SaveDivisionPoolStructureCommand(id, body.Pools), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPut("{id:guid}/wizard/brackets")]
+    public async Task<IActionResult> SaveBracketStructure(Guid id, [FromBody] SaveBracketStructureBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SaveDivisionBracketStructureCommand(id, body.Brackets), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPut("{id:guid}/wizard/advancement-rules")]
+    public async Task<IActionResult> SaveAdvancementRules(Guid id, [FromBody] SaveAdvancementRulesBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SaveDivisionAdvancementRulesCommand(id, body.Rules), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpGet("{id:guid}/work-rotation")]
+    public async Task<IActionResult> WorkRotation(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new GetDivisionWorkRotationQuery(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPost("bracket-seed-slots/{slotId:guid}/override")]
+    public async Task<IActionResult> SetBracketSlotOverride(Guid slotId, [FromBody] BracketSlotOverrideBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SetBracketSlotOverrideCommand(slotId, body.ManualTournamentTeamId, body.Reason), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
 }
+
+public sealed record BracketSlotOverrideBody(Guid? ManualTournamentTeamId, string? Reason);
+
+public sealed record SavePoolStructureBody(IReadOnlyList<DivisionPoolStructureDto> Pools);
+public sealed record SaveBracketStructureBody(IReadOnlyList<DivisionBracketStructureDto> Brackets);
+public sealed record SaveAdvancementRulesBody(IReadOnlyList<DivisionAdvancementRuleDto> Rules);
 
 public sealed record ReorderDivisionTeamsBody(IReadOnlyList<Guid> OrderedTeamIds);
 public sealed record ApplySeedingBody(RankedSeedStrategy Strategy);

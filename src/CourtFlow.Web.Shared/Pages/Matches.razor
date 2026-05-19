@@ -13,14 +13,21 @@
         <PropertyColumn Property="x => x.ScheduledStartUtc" Title="Start (UTC)" Format="g" />
         <PropertyColumn Property="x => x.State" Title="State" />
         <PropertyColumn Property="x => x.Wave" Title="Wave" />
+        <TemplateColumn Title="Teams">
+            <CellTemplate>@TeamName(context.Item.HomeTeamId) vs @TeamName(context.Item.AwayTeamId)</CellTemplate>
+        </TemplateColumn>
         <TemplateColumn Title="Score">
-            <CellTemplate>
-                @string.Join(", ", context.Item.Sets.Select(s => $"{s.HomeScore}-{s.AwayScore}"))
-            </CellTemplate>
+            <CellTemplate>@string.Join(", ", context.Item.Sets.Select(s => $"{s.HomeScore}-{s.AwayScore}"))</CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Actions">
             <CellTemplate>
+                @if (context.Item.State == MatchStateDto.NotStarted)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" aria-label="Start" OnClick="@(() => StartAsync(context.Item))" />
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" aria-label="Move" OnClick="@(() => MoveAsync(context.Item))" />
                 <MudIconButton Icon="@Icons.Material.Filled.Scoreboard" Size="Size.Small" aria-label="Score" OnClick="@(() => ScoreAsync(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" aria-label="Referee" OnClick="@(() => RefereeAsync(context.Item))" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
@@ -30,6 +37,9 @@
     [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
 
     private IReadOnlyList<MatchDto> _items = Array.Empty<MatchDto>();
+    private IReadOnlyList<CourtDto> _courts = Array.Empty<CourtDto>();
+    private IReadOnlyList<TeamDto> _teams = Array.Empty<TeamDto>();
+    private Dictionary<Guid, string> _teamNames = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -42,9 +52,41 @@
     {
         _loading = true;
         var tid = TournamentStore.SelectedTournamentId;
-        try { _items = tid is null ? Array.Empty<MatchDto>() : await Api.Matches.ListAsync(tid); }
+        try
+        {
+            if (tid is null)
+            {
+                _items = Array.Empty<MatchDto>();
+                return;
+            }
+            _items = await Api.Matches.ListAsync(tid);
+            var venues = await Api.Venues.ListAsync(tid);
+            var courts = new List<CourtDto>();
+            foreach (var v in venues) courts.AddRange(await Api.Courts.ListAsync(v.Id));
+            _courts = courts;
+            var divisions = await Api.Divisions.ListAsync(tid);
+            var teams = new List<TeamDto>();
+            foreach (var d in divisions) teams.AddRange(await Api.Teams.ListAsync(divisionId: d.Id));
+            _teams = teams;
+            _teamNames = teams.ToDictionary(t => t.Id, t => t.Name);
+        }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         _loading = false;
+    }
+
+    private string TeamName(Guid? id) => id is null ? "TBD" : (_teamNames.TryGetValue(id.Value, out var n) ? n : "?");
+
+    private async Task StartAsync(MatchDto m)
+    {
+        try { await Api.Matches.StartAsync(m.Id); Snackbar.Add("Match started", Severity.Success); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task MoveAsync(MatchDto m)
+    {
+        var parms = new DialogParameters { ["Match"] = m, ["Courts"] = _courts };
+        var dialog = await DialogService.ShowAsync<MatchMoveDialog>("Move match", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
     }
 
     private async Task ScoreAsync(MatchDto m)
@@ -54,4 +96,10 @@
         if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
     }
 
+    private async Task RefereeAsync(MatchDto m)
+    {
+        var parms = new DialogParameters { ["MatchId"] = m.Id, ["CurrentRefTeamId"] = m.RefTeamId, ["Teams"] = _teams };
+        var dialog = await DialogService.ShowAsync<ChangeRefereeDialog>("Change referee", parms);
+        if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
+    }
 }

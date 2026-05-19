@@ -79,3 +79,28 @@ public sealed class BracketSeedSlotConfig : IEntityTypeConfiguration<BracketSeed
         b.HasIndex(x => new { x.BracketId, x.SeedPosition }).IsUnique();
     }
 }
+
+public sealed class PoolCourtAllocationConfig : IEntityTypeConfiguration<PoolCourtAllocation>
+{
+    public void Configure(EntityTypeBuilder<PoolCourtAllocation> b)
+    {
+        b.ToTable("pool_court_allocations");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.AllocationType).HasMaxLength(16).IsRequired();
+        b.HasIndex(x => new { x.PoolId, x.CourtId }).IsUnique();
+        b.HasIndex(x => new { x.PoolId, x.PriorityOrder });
+    }
+}
+
+public sealed class BracketSeedSlotOverrideConfig : IEntityTypeConfiguration<BracketSeedSlotOverride>
+{
+    public void Configure(EntityTypeBuilder<BracketSeedSlotOverride> b)
+    {
+        b.ToTable("bracket_seed_slot_overrides");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.ActorUserId).HasMaxLength(128);
+        b.Property(x => x.Reason).HasMaxLength(500);
+        b.HasIndex(x => x.BracketSeedSlotId);
+        b.HasIndex(x => x.AtUtc);
+    }
+}

@@ -9,6 +9,8 @@ public class TournamentTemplate : Entity, ITenantScoped
     public string? Description { get; private set; }
     public Guid? SourceTournamentId { get; private set; }
     public int UsageCount { get; private set; }
+    /// <summary>JSON snapshot of divisions, pools, brackets, and advancement rules.</summary>
+    public string? StructureJson { get; private set; }
 
     private TournamentTemplate() { }
 
@@ -30,6 +32,12 @@ public class TournamentTemplate : Entity, ITenantScoped
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name required", nameof(name));
         Name = name.Trim();
+        Touch();
+    }
+
+    public void SetStructureJson(string? json)
+    {
+        StructureJson = json;
         Touch();
     }
 }

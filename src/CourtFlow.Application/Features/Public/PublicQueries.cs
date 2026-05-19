@@ -1,4 +1,6 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Application.Features.ScheduleVersions;
+using CourtFlow.Application.ReadModels.PublicEventReadiness;
 using CourtFlow.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -80,6 +82,152 @@ public sealed class ListPublicEventsHandler : IRequestHandler<ListPublicEventsQu
     }
 }
 
+public sealed record ListPastPublicEventsQuery() : IRequest<IReadOnlyList<PublicEventDto>>;
+
+public sealed class ListPastPublicEventsHandler : IRequestHandler<ListPastPublicEventsQuery, IReadOnlyList<PublicEventDto>>
+{
+    private readonly IAppDbContext _db;
+
+    public ListPastPublicEventsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<PublicEventDto>> Handle(ListPastPublicEventsQuery request, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var tournaments = await _db.Tournaments
+            .IgnoreQueryFilters()
+            .Where(t =>
+                (t.PublicationStatus == TournamentPublicationStatus.Published
+                 || t.PublicationStatus == TournamentPublicationStatus.Archived)
+                && t.EndDate < today)
+            .OrderByDescending(t => t.EndDate)
+            .ThenByDescending(t => t.StartDate)
+            .Take(50)
+            .ToListAsync(ct);
+
+        if (tournaments.Count == 0) return Array.Empty<PublicEventDto>();
+
+        var tIds = tournaments.Select(t => t.Id).ToList();
+        var orgIds = tournaments.Select(t => t.OrganizationId).Distinct().ToList();
+
+        var orgs = await _db.Organizations
+            .IgnoreQueryFilters()
+            .Where(o => orgIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, ct);
+
+        var venueCounts = await _db.Venues
+            .IgnoreQueryFilters()
+            .Where(v => tIds.Contains(v.TournamentId))
+            .GroupBy(v => v.TournamentId)
+            .Select(g => new { TournamentId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var divisions = await _db.Divisions
+            .IgnoreQueryFilters()
+            .Where(d => tIds.Contains(d.TournamentId))
+            .Select(d => new { d.Id, d.TournamentId })
+            .ToListAsync(ct);
+
+        var divByTourn = divisions.GroupBy(d => d.TournamentId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Id).ToList());
+
+        var teamCounts = await _db.TournamentTeams
+            .IgnoreQueryFilters()
+            .Where(t => tIds.Contains(t.TournamentId))
+            .GroupBy(t => t.TournamentId)
+            .Select(g => new { TournamentId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var teamCountByTourn = teamCounts.ToDictionary(x => x.TournamentId, x => x.Count);
+
+        return tournaments.Select(t =>
+        {
+            var org = orgs.GetValueOrDefault(t.OrganizationId);
+            var vCount = venueCounts.FirstOrDefault(v => v.TournamentId == t.Id)?.Count ?? 0;
+            var divIds = divByTourn.GetValueOrDefault(t.Id) ?? new List<Guid>();
+            return new PublicEventDto(
+                t.Id,
+                t.Name,
+                t.Description,
+                t.StartDate,
+                t.EndDate,
+                t.TimeZoneId,
+                org?.Name ?? string.Empty,
+                org?.Slug ?? string.Empty,
+                vCount,
+                divIds.Count,
+                teamCountByTourn.GetValueOrDefault(t.Id, 0));
+        }).ToList();
+    }
+}
+
+public sealed record GetPublicEventReadinessQuery(Guid EventId) : IRequest<PublicEventReadinessDto?>;
+
+public sealed class GetPublicEventReadinessHandler : IRequestHandler<GetPublicEventReadinessQuery, PublicEventReadinessDto?>
+{
+    private readonly IAppDbContext _db;
+    private readonly IPublicEventReadiness _readiness;
+
+    public GetPublicEventReadinessHandler(IAppDbContext db, IPublicEventReadiness readiness)
+    {
+        _db = db;
+        _readiness = readiness;
+    }
+
+    public async Task<PublicEventReadinessDto?> Handle(GetPublicEventReadinessQuery request, CancellationToken ct)
+    {
+        var exists = await _db.Tournaments
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.Id == request.EventId && t.PublicationStatus != TournamentPublicationStatus.Draft, ct);
+        if (!exists) return null;
+        return await _readiness.EvaluateAsync(request.EventId, ct);
+    }
+}
+
+public sealed record GetPublicTeamsQuery(Guid EventId) : IRequest<IReadOnlyList<PublicDivisionTeamsDto>?>;
+
+public sealed class GetPublicTeamsHandler : IRequestHandler<GetPublicTeamsQuery, IReadOnlyList<PublicDivisionTeamsDto>?>
+{
+    private readonly IAppDbContext _db;
+
+    public GetPublicTeamsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<IReadOnlyList<PublicDivisionTeamsDto>?> Handle(GetPublicTeamsQuery request, CancellationToken ct)
+    {
+        var t = await _db.Tournaments
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
+        if (t is null || t.PublicationStatus == TournamentPublicationStatus.Draft) return null;
+
+        var divisions = await _db.Divisions
+            .IgnoreQueryFilters()
+            .Where(d => d.TournamentId == request.EventId)
+            .OrderBy(d => d.Name)
+            .ToListAsync(ct);
+
+        if (divisions.Count == 0) return Array.Empty<PublicDivisionTeamsDto>();
+
+        var divIds = divisions.Select(d => d.Id).ToList();
+        var teams = await _db.Teams.IgnoreQueryFilters()
+            .Where(x => divIds.Contains(x.DivisionId))
+            .ToListAsync(ct);
+        var pools = await _db.Pools.IgnoreQueryFilters()
+            .Where(p => divIds.Contains(p.DivisionId))
+            .ToDictionaryAsync(p => p.Id, p => p.Name, ct);
+
+        return divisions.Select(d => new PublicDivisionTeamsDto(
+            d.Id,
+            d.Name,
+            teams.Where(t => t.DivisionId == d.Id)
+                .OrderBy(t => t.Name)
+                .Select(t => new PublicTeamRosterDto(
+                    t.Id,
+                    t.Name,
+                    t.PoolId,
+                    t.PoolId.HasValue ? pools.GetValueOrDefault(t.PoolId.Value) : null))
+                .ToList())).ToList();
+    }
+}
+
 public sealed record GetPublicEventQuery(Guid Id) : IRequest<PublicEventDetailDto?>;
 
 public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery, PublicEventDetailDto?>
@@ -93,7 +241,7 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
         var t = await _db.Tournaments
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
+        if (t is null || t.PublicationStatus == TournamentPublicationStatus.Draft) return null;
 
         var org = await _db.Organizations
             .IgnoreQueryFilters()
@@ -159,20 +307,33 @@ public sealed class GetPublicScheduleHandler : IRequestHandler<GetPublicSchedule
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
-        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
+        if (t is null || t.PublicationStatus == TournamentPublicationStatus.Draft) return null;
 
+        var publishedVersion = await _db.ScheduleVersions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.TournamentId == request.EventId && v.Status == ScheduleVersionStatus.Published, ct);
+        if (publishedVersion is null) return Array.Empty<PublicMatchDto>();
+
+        var assignments = await _db.MatchAssignments
+            .IgnoreQueryFilters()
+            .Where(a => a.ScheduleVersionId == publishedVersion.Id)
+            .ToListAsync(ct);
+        if (assignments.Count == 0) return Array.Empty<PublicMatchDto>();
+
+        var matchIds = assignments.Select(a => a.MatchId).Distinct().ToList();
         var matches = await _db.Matches
             .IgnoreQueryFilters()
             .Include(m => m.Sets)
-            .Where(m => m.TournamentId == request.EventId)
-            .OrderBy(m => m.ScheduledStartUtc)
+            .Where(m => matchIds.Contains(m.Id))
             .ToListAsync(ct);
+        var assignmentByMatch = assignments.ToDictionary(a => a.MatchId);
 
         var divIds = matches.Select(m => m.DivisionId).Distinct().ToList();
         var poolIds = matches.Where(m => m.PoolId.HasValue).Select(m => m.PoolId!.Value).Distinct().ToList();
-        var courtIds = matches.Where(m => m.CourtId.HasValue).Select(m => m.CourtId!.Value).Distinct().ToList();
+        var courtIds = assignments.Select(a => a.CourtId).Distinct().ToList();
         var teamIds = matches
-            .SelectMany(m => new[] { m.HomeTeamId, m.AwayTeamId })
+            .SelectMany(m => new[] { m.HomeTeamId, m.AwayTeamId, m.RefTeamId })
             .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
 
         var divisions = await _db.Divisions.IgnoreQueryFilters()
@@ -187,32 +348,38 @@ public sealed class GetPublicScheduleHandler : IRequestHandler<GetPublicSchedule
         var teams = await _db.Teams.IgnoreQueryFilters()
             .Where(t => teamIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
 
-        return matches.Select(m =>
-        {
-            var court = m.CourtId.HasValue ? courts.FirstOrDefault(c => c.Id == m.CourtId.Value) : null;
-            return new PublicMatchDto(
-                m.Id,
-                m.DivisionId,
-                divisions.GetValueOrDefault(m.DivisionId, string.Empty),
-                m.PoolId,
-                m.PoolId.HasValue ? pools.GetValueOrDefault(m.PoolId.Value) : null,
-                m.CourtId,
-                court?.Name,
-                court is null ? null : venues.GetValueOrDefault(court.VenueId),
-                m.HomeTeamId,
-                m.HomeTeamId.HasValue ? teams.GetValueOrDefault(m.HomeTeamId.Value) : null,
-                m.AwayTeamId,
-                m.AwayTeamId.HasValue ? teams.GetValueOrDefault(m.AwayTeamId.Value) : null,
-                m.Wave,
-                m.ScheduledStartUtc,
-                m.DurationMinutes,
-                m.ActualStartUtc,
-                m.State,
-                m.WinnerTeamId,
-                m.Sets.OrderBy(s => s.SetNumber)
-                    .Select(s => new PublicMatchSetDto(s.SetNumber, s.HomeScore, s.AwayScore))
-                    .ToList());
-        }).ToList();
+        return matches
+            .Where(m => assignmentByMatch.ContainsKey(m.Id))
+            .OrderBy(m => assignmentByMatch[m.Id].ScheduledStart)
+            .Select(m =>
+            {
+                var a = assignmentByMatch[m.Id];
+                var court = courts.FirstOrDefault(c => c.Id == a.CourtId);
+                return new PublicMatchDto(
+                    m.Id,
+                    m.DivisionId,
+                    divisions.GetValueOrDefault(m.DivisionId, string.Empty),
+                    m.PoolId,
+                    m.PoolId.HasValue ? pools.GetValueOrDefault(m.PoolId.Value) : null,
+                    a.CourtId,
+                    court?.Name,
+                    court is null ? null : venues.GetValueOrDefault(court.VenueId),
+                    m.HomeTeamId,
+                    m.HomeTeamId.HasValue ? teams.GetValueOrDefault(m.HomeTeamId.Value) : null,
+                    m.AwayTeamId,
+                    m.AwayTeamId.HasValue ? teams.GetValueOrDefault(m.AwayTeamId.Value) : null,
+                    m.RefTeamId,
+                    m.RefTeamId.HasValue ? teams.GetValueOrDefault(m.RefTeamId.Value) : null,
+                    m.Wave,
+                    a.ScheduledStart,
+                    (int)(a.ScheduledEnd - a.ScheduledStart).TotalMinutes,
+                    m.ActualStartUtc,
+                    m.State,
+                    m.WinnerTeamId,
+                    m.Sets.OrderBy(s => s.SetNumber)
+                        .Select(s => new PublicMatchSetDto(s.SetNumber, s.HomeScore, s.AwayScore))
+                        .ToList());
+            }).ToList();
     }
 }
 
@@ -230,7 +397,7 @@ public sealed class GetPublicBracketsHandler : IRequestHandler<GetPublicBrackets
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
-        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
+        if (t is null || t.PublicationStatus == TournamentPublicationStatus.Draft) return null;
 
         var brackets = await _db.Brackets
             .IgnoreQueryFilters()
@@ -295,7 +462,7 @@ public sealed class GetPublicStandingsHandler : IRequestHandler<GetPublicStandin
             .IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == request.EventId, ct);
-        if (t is null || t.PublicationStatus != TournamentPublicationStatus.Published) return null;
+        if (t is null || t.PublicationStatus == TournamentPublicationStatus.Draft) return null;
 
         var divisions = await _db.Divisions
             .IgnoreQueryFilters()

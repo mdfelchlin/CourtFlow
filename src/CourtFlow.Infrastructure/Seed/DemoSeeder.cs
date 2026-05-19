@@ -1,4 +1,5 @@
 using CourtFlow.Application.Brackets;
+using CourtFlow.Application.Features.Stages;
 using CourtFlow.Application.Scheduling;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
@@ -89,6 +90,9 @@ public static class DemoSeeder
             var womensDivision = new Division(org.Id, tournament.Id, "Women's Open", DivisionFormat.PoolPlusBracket, 16);
             db.Divisions.AddRange(mensDivision, womensDivision);
 
+            await DefaultDivisionStages.EnsureProvisionedAsync(db, mensDivision, ct);
+            await DefaultDivisionStages.EnsureProvisionedAsync(db, womensDivision, ct);
+
             var mensPools = new[]
             {
                 new Pool(org.Id, mensDivision.Id, "Men's Pool A"),
@@ -117,20 +121,30 @@ public static class DemoSeeder
                 "Tidal Force", "Lightning", "Breakers", "Pacific Power"
             };
 
+            var mensTeams = new List<Team>();
             for (var i = 0; i < mensTeamNames.Length; i++)
             {
                 var pool = mensPools[i / 3];
                 var wave = i % 2 == 0 ? Wave.AM : Wave.PM;
-                var team = new Team(org.Id, mensDivision.Id, mensTeamNames[i], wave, pool.Id, club: "Demo Club", seedHint: (i % 3) + 1);
+                var rank = i + 1;
+                var team = new Team(org.Id, mensDivision.Id, mensTeamNames[i], wave, pool.Id, club: "Demo Club", seedHint: rank);
                 db.Teams.Add(team);
+                mensTeams.Add(team);
             }
+            var womensTeams = new List<Team>();
             for (var i = 0; i < womensTeamNames.Length; i++)
             {
                 var pool = womensPools[i / 4];
                 var wave = i % 2 == 0 ? Wave.AM : Wave.PM;
-                var team = new Team(org.Id, womensDivision.Id, womensTeamNames[i], wave, pool.Id, club: "Demo Club", seedHint: (i % 4) + 1);
+                var rank = i + 1;
+                var team = new Team(org.Id, womensDivision.Id, womensTeamNames[i], wave, pool.Id, club: "Demo Club", seedHint: rank);
                 db.Teams.Add(team);
+                womensTeams.Add(team);
             }
+            await db.SaveChangesAsync(ct);
+
+            await SeedDivisionRankingsAsync(db, org.Id, tournament.Id, mensDivision, mensTeams, ct);
+            await SeedDivisionRankingsAsync(db, org.Id, tournament.Id, womensDivision, womensTeams, ct);
             await db.SaveChangesAsync(ct);
 
             var scheduler = scope.ServiceProvider.GetRequiredService<IScheduleGenerator>();
@@ -157,6 +171,40 @@ public static class DemoSeeder
             await db.SaveChangesAsync(ct);
 
             logger.LogInformation("Seeded demo tournament {TournamentId}", tournament.Id);
+        }
+    }
+
+    private static async Task SeedDivisionRankingsAsync(
+        AppDbContext db,
+        Guid organizationId,
+        Guid tournamentId,
+        Division division,
+        IReadOnlyList<Team> teams,
+        CancellationToken ct)
+    {
+        for (var i = 0; i < teams.Count; i++)
+        {
+            var rank = i + 1;
+            var team = teams[i];
+            var tournamentTeam = await db.TournamentTeams.FirstOrDefaultAsync(
+                tt => tt.TournamentId == tournamentId && tt.TeamId == team.Id, ct);
+            if (tournamentTeam is null)
+            {
+                tournamentTeam = new TournamentTeam(organizationId, tournamentId, division.Id, team.Id);
+                db.TournamentTeams.Add(tournamentTeam);
+            }
+
+            var existingRanking = await db.DivisionRankings.FirstOrDefaultAsync(
+                r => r.DivisionId == division.Id && r.TournamentTeamId == tournamentTeam.Id, ct);
+            if (existingRanking is null)
+            {
+                db.DivisionRankings.Add(new DivisionRanking(
+                    organizationId, division.Id, tournamentTeam.Id, rank, source: "manual"));
+            }
+            else
+            {
+                existingRanking.SetRank(rank, "manual", isManualOverride: false);
+            }
         }
     }
 }

@@ -17,21 +17,54 @@
              Dense="true"
              Hover="true"
              MultiSelection="false">
-            <Columns>
-                <PropertyColumn Property="x => x.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Format" Title="Format" />
-                <PropertyColumn Property="x => x.MaxTeams" Title="Max teams" />
-                <TemplateColumn Title="Actions">
-                    <CellTemplate>
-                        <MudTooltip Text="Manage pools & brackets">
-                            <MudIconButton Icon="@Icons.Material.Filled.Dashboard" Size="Size.Small" Href="@($"/divisions/{context.Item.Id}")" aria-label="Manage division" />
-                        </MudTooltip>
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" aria-label="Edit division" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" aria-label="Delete division" />
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-        </MudDataGrid>
+    <Columns>
+        <PropertyColumn Property="x => x.Name" Title="Name" />
+        <TemplateColumn Title="Format">
+            <CellTemplate>@FormatLabel(context.Item.Format)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Stages">
+            <CellTemplate>
+                @if (context.Item.StageHints.Count == 0)
+                {
+                    <span class="mud-text-secondary">—</span>
+                }
+                else
+                {
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        @foreach (var hint in context.Item.StageHints)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StageChipColor(hint.Status)">
+                                @StageChipLabel(hint)
+                            </MudChip>
+                        }
+                    </MudStack>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Wave">
+            <CellTemplate>
+                @if (string.IsNullOrWhiteSpace(context.Item.WaveCode))
+                {
+                    <span class="mud-text-secondary">—</span>
+                }
+                else
+                {
+                    @context.Item.WaveCode
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.MaxTeams" Title="Max teams" />
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <MudTooltip Text="Manage stages, pools &amp; brackets">
+                    <MudIconButton Icon="@Icons.Material.Filled.Dashboard" Size="Size.Small" Href="@($"/divisions/{context.Item.Id}")" aria-label="Manage division" />
+                </MudTooltip>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context.Item))" aria-label="Edit division" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context.Item))" aria-label="Delete division" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
 
 @code {
     [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
@@ -88,4 +121,40 @@
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
+    private static string FormatLabel(DivisionFormatDto format) => format switch
+    {
+        DivisionFormatDto.PoolOnly => "Pool only",
+        DivisionFormatDto.PoolPlusBracket => "Pool + bracket",
+        DivisionFormatDto.BracketOnly => "Bracket only",
+        _ => format.ToString(),
+    };
+
+    private static string StageChipLabel(DivisionStageHintDto hint)
+    {
+        var type = hint.StageType switch
+        {
+            StageTypeDto.Pool => "Pool",
+            StageTypeDto.Bracket => "Bracket",
+            _ => hint.StageType.ToString(),
+        };
+        var status = hint.Status switch
+        {
+            StageStatusDto.Draft => "Draft",
+            StageStatusDto.Configured => "Configured",
+            StageStatusDto.Seeded => "Seeded",
+            StageStatusDto.InProgress => "In progress",
+            StageStatusDto.Completed => "Completed",
+            _ => hint.Status.ToString(),
+        };
+        return $"{type}: {status}";
+    }
+
+    private static Color StageChipColor(StageStatusDto status) => status switch
+    {
+        StageStatusDto.Completed => Color.Success,
+        StageStatusDto.InProgress => Color.Primary,
+        StageStatusDto.Seeded => Color.Info,
+        StageStatusDto.Configured => Color.Warning,
+        _ => Color.Default,
+    };
 }

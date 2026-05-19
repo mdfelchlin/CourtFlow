@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="CourtFlow.Infrastructure" />
+    <InternalsVisibleTo Include="CourtFlow.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CourtFlow.Domain\CourtFlow.Domain.csproj" />
   </ItemGroup>
 

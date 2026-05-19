@@ -1,5 +1,6 @@
 using CourtFlow.Application.Abstractions;
 using CourtFlow.Application.Brackets;
+using CourtFlow.Application.Features.ScheduleVersions;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
 using FluentValidation;
@@ -31,12 +32,19 @@ public sealed record MatchDto(
 
 internal static class MatchMapping
 {
-    public static MatchDto ToDto(this Match m) => new(
-        m.Id, m.TournamentId, m.DivisionId, m.PoolId, m.CourtId,
+    public static MatchDto ToDto(this Match m, MatchAssignment? assignment = null) => new(
+        m.Id, m.TournamentId, m.DivisionId, m.PoolId,
+        assignment?.CourtId ?? m.CourtId,
         m.HomeTeamId, m.AwayTeamId, m.RefTeamId, m.Wave,
-        m.ScheduledStartUtc, m.DurationMinutes, m.ActualStartUtc, m.LastScoreAtUtc,
+        assignment?.ScheduledStart ?? m.ScheduledStartUtc,
+        assignment is null
+            ? m.DurationMinutes
+            : (int)(assignment.ScheduledEnd - assignment.ScheduledStart).TotalMinutes,
+        m.ActualStartUtc, m.LastScoreAtUtc,
         m.State, m.WinnerTeamId, m.BracketNodeId,
         m.Sets.OrderBy(s => s.SetNumber).Select(s => new MatchSetDto(s.SetNumber, s.HomeScore, s.AwayScore)).ToList());
+
+    public static MatchDto ToDto(this Match m) => ToDto(m, assignment: null);
 }
 
 public sealed record ListMatchesQuery(Guid? TournamentId, Guid? DivisionId) : IRequest<IReadOnlyList<MatchDto>>;
@@ -51,7 +59,24 @@ public sealed class ListMatchesHandler : IRequestHandler<ListMatchesQuery, IRead
         if (request.TournamentId is { } t) q = q.Where(m => m.TournamentId == t);
         if (request.DivisionId is { } d) q = q.Where(m => m.DivisionId == d);
         var items = await q.OrderBy(m => m.ScheduledStartUtc).ToListAsync(ct);
-        return items.Select(MatchMapping.ToDto).ToList();
+
+        Dictionary<Guid, MatchAssignment>? assignmentByMatch = null;
+        if (request.TournamentId is { } tournamentId)
+        {
+            var version = await ScheduleVersionProvisioning.GetLatestNonSupersededAsync(_db, tournamentId, ct);
+            if (version is not null)
+            {
+                var assignments = await _db.MatchAssignments
+                    .Where(a => a.ScheduleVersionId == version.Id)
+                    .ToListAsync(ct);
+                assignmentByMatch = assignments.ToDictionary(a => a.MatchId);
+            }
+        }
+
+        return items.Select(m =>
+            assignmentByMatch is not null && assignmentByMatch.TryGetValue(m.Id, out var assignment)
+                ? m.ToDto(assignment)
+                : m.ToDto()).ToList();
     }
 }
 
@@ -182,6 +207,40 @@ public sealed class ForfeitMatchHandler : IRequestHandler<ForfeitMatchCommand, M
         if (m.BracketNodeId is not null)
             await _progression.AdvanceAsync(m.Id, ct);
 
+        return m.ToDto();
+    }
+}
+
+public sealed record StartMatchCommand(Guid Id) : IRequest<MatchDto?>;
+
+public sealed class StartMatchHandler : IRequestHandler<StartMatchCommand, MatchDto?>
+{
+    private readonly IAppDbContext _db;
+    public StartMatchHandler(IAppDbContext db) => _db = db;
+
+    public async Task<MatchDto?> Handle(StartMatchCommand request, CancellationToken ct)
+    {
+        var m = await _db.Matches.Include(x => x.Sets).FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (m is null) return null;
+        m.Start();
+        await _db.SaveChangesAsync(ct);
+        return m.ToDto();
+    }
+}
+
+public sealed record ChangeMatchRefereeCommand(Guid Id, Guid? RefTeamId) : IRequest<MatchDto?>;
+
+public sealed class ChangeMatchRefereeHandler : IRequestHandler<ChangeMatchRefereeCommand, MatchDto?>
+{
+    private readonly IAppDbContext _db;
+    public ChangeMatchRefereeHandler(IAppDbContext db) => _db = db;
+
+    public async Task<MatchDto?> Handle(ChangeMatchRefereeCommand request, CancellationToken ct)
+    {
+        var m = await _db.Matches.Include(x => x.Sets).FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        if (m is null) return null;
+        m.AssignReferee(request.RefTeamId);
+        await _db.SaveChangesAsync(ct);
         return m.ToDto();
     }
 }

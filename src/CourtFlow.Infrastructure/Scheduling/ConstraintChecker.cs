@@ -1,5 +1,6 @@
 using CourtFlow.Application.Scheduling;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Infrastructure.Observability;
 using CourtFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace CourtFlow.Infrastructure.Scheduling;
 public class ConstraintChecker : IConstraintChecker
 {
     private readonly AppDbContext _db;
+    private readonly CourtFlowMetrics _metrics;
 
-    public ConstraintChecker(AppDbContext db)
+    public ConstraintChecker(AppDbContext db, CourtFlowMetrics metrics)
     {
         _db = db;
+        _metrics = metrics;
     }
 
     internal sealed record MatchOverlapRow(
@@ -34,6 +37,7 @@ public class ConstraintChecker : IConstraintChecker
         await AppendWaveViolationsAsync(tournamentId, conflicts, ct);
         await AppendPartnerConflictsAsync(tournamentId, snapshots, conflicts, ct);
 
+        _metrics.RecordConflictCheck(tournamentId, conflicts.Count);
         return new ConflictReport(conflicts);
     }
 

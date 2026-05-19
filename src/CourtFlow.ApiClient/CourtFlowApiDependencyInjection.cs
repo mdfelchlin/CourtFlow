@@ -13,6 +13,8 @@ public static class CourtFlowApiDependencyInjection
         services.AddCourtFlowTypedClient<ICourtFlowVenuesApi>();
         services.AddCourtFlowTypedClient<ICourtFlowCourtsApi>();
         services.AddCourtFlowTypedClient<ICourtFlowDivisionsApi>();
+        services.AddCourtFlowTypedClient<ICourtFlowWavesApi>();
+        services.AddCourtFlowTypedClient<ICourtFlowStagesApi>();
         services.AddCourtFlowTypedClient<ICourtFlowPoolsApi>();
         services.AddCourtFlowTypedClient<ICourtFlowTeamsApi>();
         services.AddCourtFlowTypedClient<ICourtFlowImportsApi>();

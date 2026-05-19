@@ -1,0 +1,100 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudSelect T="string"
+                       @bind-Value="_code"
+                       Label="Code"
+                       Required="true"
+                       Disabled="@(Existing is not null)">
+                @foreach (var c in AvailableCodes)
+                {
+                    <MudSelectItem Value="@c">@c</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_startTime" Label="Default start time (HH:mm)" />
+            <MudTextField @bind-Value="_endTime" Label="Default end time (HH:mm)" />
+            <MudTextField @bind-Value="_notes" Label="Notes" Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="_saving">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid TournamentId { get; set; }
+    [Parameter] public TournamentWaveDto? Existing { get; set; }
+    [Parameter] public IReadOnlyList<string> UsedCodes { get; set; } = Array.Empty<string>();
+
+    private static readonly string[] AllCodes = ["AM", "PM", "1", "2"];
+
+    private string _code = "AM";
+    private string? _startTime;
+    private string? _endTime;
+    private string? _notes;
+    private bool _saving;
+
+    private IEnumerable<string> AvailableCodes =>
+        Existing is not null
+            ? new[] { Existing.Code }
+            : AllCodes.Where(c => !UsedCodes.Contains(c, StringComparer.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        if (Existing is { } w)
+        {
+            _code = w.Code;
+            _startTime = w.DefaultStartTime;
+            _endTime = w.DefaultEndTime;
+            _notes = w.Notes;
+        }
+        else if (AvailableCodes.Any())
+        {
+            _code = AvailableCodes.First();
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            Snackbar.Add("Code is required.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (Existing is { } w)
+            {
+                await Api.Waves.UpdateAsync(
+                    TournamentId,
+                    w.Id,
+                    new UpdateTournamentWaveDto(_startTime, _endTime, _notes));
+            }
+            else
+            {
+                await Api.Waves.CreateAsync(
+                    TournamentId,
+                    new CreateTournamentWaveDto(_code, _startTime, _endTime, _notes));
+            }
+
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

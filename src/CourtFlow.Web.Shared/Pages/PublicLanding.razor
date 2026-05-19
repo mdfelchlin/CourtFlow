@@ -31,99 +31,92 @@
             <MudStack AlignItems="AlignItems.Center" Spacing="2">
                 <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" />
                 <MudText Typo="Typo.h6">No events scheduled right now</MudText>
-                <MudText Typo="Typo.body2" Align="Align.Center">Check back soon — new tournaments are added regularly.</MudText>
             </MudStack>
         </MudPaper>
     }
     else
     {
-        <MudGrid>
-            @foreach (var e in _events)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Outlined="true" Class="h-100 d-flex flex-column" Style="cursor: pointer;" @onclick="() => View(e.Id)">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6">@e.Name</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">@e.OrganizationName</MudText>
-                            </CardHeaderContent>
-                            <CardHeaderActions>
-                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(e)" Variant="Variant.Filled">@StatusLabel(e)</MudChip>
-                            </CardHeaderActions>
-                        </MudCardHeader>
-                        <MudCardContent Class="flex-grow-1">
-                            <MudStack Spacing="2">
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Color="Color.Primary" />
-                                    <MudText Typo="Typo.body2">@FormatDates(e.StartDate, e.EndDate)</MudText>
-                                </MudStack>
-                                @if (!string.IsNullOrWhiteSpace(e.Description))
-                                {
-                                    <MudText Typo="Typo.body2" Style="opacity: 0.8;">@Truncate(e.Description!, 120)</MudText>
-                                }
-                                <MudStack Row="true" Spacing="4" Class="mt-2">
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Venues</MudText>
-                                        <MudText Typo="Typo.subtitle2">@e.VenueCount</MudText>
-                                    </MudStack>
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Divisions</MudText>
-                                        <MudText Typo="Typo.subtitle2">@e.DivisionCount</MudText>
-                                    </MudStack>
-                                    <MudStack Spacing="0">
-                                        <MudText Typo="Typo.caption" Style="opacity: 0.7;">Teams</MudText>
-                                        <MudText Typo="Typo.subtitle2">@e.TeamCount</MudText>
-                                    </MudStack>
-                                </MudStack>
-                            </MudStack>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => View(e.Id))">View event</MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
+        @EventGrid(_events)
+    }
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mt-4">
+        <MudText Typo="Typo.h5">Past events</MudText>
+    </MudStack>
+
+    @if (_pastLoading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_pastEvents.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">No archived or completed events yet.</MudAlert>
+    }
+    else
+    {
+        @EventGrid(_pastEvents)
     }
 </MudStack>
 
 @code {
     private IReadOnlyList<CourtFlow.ApiClient.PublicEventDto> _events = Array.Empty<CourtFlow.ApiClient.PublicEventDto>();
+    private IReadOnlyList<CourtFlow.ApiClient.PublicEventDto> _pastEvents = Array.Empty<CourtFlow.ApiClient.PublicEventDto>();
     private bool _loading = true;
+    private bool _pastLoading = true;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
         _loading = true;
-        try
-        {
-            _events = await Api.PublicEvents.ListAsync();
-        }
-        catch
-        {
-            _events = Array.Empty<CourtFlow.ApiClient.PublicEventDto>();
-        }
-        finally
-        {
-            _loading = false;
-        }
+        _pastLoading = true;
+        try { _events = await Api.PublicEvents.ListAsync(); }
+        catch { _events = Array.Empty<CourtFlow.ApiClient.PublicEventDto>(); }
+        finally { _loading = false; }
+
+        try { _pastEvents = await Api.PublicEvents.ListPastAsync(); }
+        catch { _pastEvents = Array.Empty<CourtFlow.ApiClient.PublicEventDto>(); }
+        finally { _pastLoading = false; }
     }
 
     private void View(Guid id) => Nav.NavigateTo($"/events/{id}");
 
+    private RenderFragment EventGrid(IReadOnlyList<CourtFlow.ApiClient.PublicEventDto> events) => @<MudGrid>
+        @foreach (var e in events)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Outlined="true" Class="h-100 d-flex flex-column" Style="cursor: pointer;" @onclick="() => View(e.Id)">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@e.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@e.OrganizationName</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(e)" Variant="Variant.Filled">@StatusLabel(e)</MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent Class="flex-grow-1">
+                        <MudText Typo="Typo.body2">@FormatDates(e.StartDate, e.EndDate)</MudText>
+                        <MudStack Row="true" Spacing="2" Class="mt-2" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.caption">@e.VenueCount venues</MudText>
+                            <MudText Typo="Typo.caption">·</MudText>
+                            <MudText Typo="Typo.caption">@e.DivisionCount divisions</MudText>
+                            <MudText Typo="Typo.caption">·</MudText>
+                            <MudText Typo="Typo.caption">@e.TeamCount teams</MudText>
+                        </MudStack>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward">View event</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>;
+
     private static string FormatDates(DateOnly start, DateOnly end)
     {
         if (start == end) return start.ToString("MMM d, yyyy");
-        if (start.Year == end.Year && start.Month == end.Month)
-            return $"{start:MMM d}-{end:d}, {end.Year}";
-        return $"{start:MMM d, yyyy} - {end:MMM d, yyyy}";
+        return $"{start:MMM d} – {end:MMM d, yyyy}";
     }
-
-    private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n].TrimEnd() + "...";
 
     private static string StatusLabel(CourtFlow.ApiClient.PublicEventDto e)
     {

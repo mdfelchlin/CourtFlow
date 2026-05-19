@@ -10,6 +10,8 @@ public class Division : Entity, ITenantScoped
     public string Name { get; private set; } = string.Empty;
     public DivisionFormat Format { get; private set; } = DivisionFormat.PoolPlusBracket;
     public int MaxTeams { get; private set; } = 32;
+    public Guid? WaveId { get; private set; }
+    public DivisionTiebreakerPreset TiebreakerPreset { get; private set; } = DivisionTiebreakerPreset.WinsH2HSetsPoints;
 
     private readonly List<Pool> _pools = new();
     public IReadOnlyCollection<Pool> Pools => _pools.AsReadOnly();
@@ -41,6 +43,18 @@ public class Division : Entity, ITenantScoped
     {
         if (maxTeams <= 0) throw new ArgumentException("Max teams must be > 0", nameof(maxTeams));
         MaxTeams = maxTeams;
+        Touch();
+    }
+
+    public void SetWave(Guid? waveId)
+    {
+        WaveId = waveId;
+        Touch();
+    }
+
+    public void SetTiebreakerPreset(DivisionTiebreakerPreset preset)
+    {
+        TiebreakerPreset = preset;
         Touch();
     }
 }

@@ -25,6 +25,8 @@ public interface IAppDbContext
     DbSet<PoolEntry> PoolEntries { get; }
     DbSet<AdvancementRule> AdvancementRules { get; }
     DbSet<BracketSeedSlot> BracketSeedSlots { get; }
+    DbSet<PoolCourtAllocation> PoolCourtAllocations { get; }
+    DbSet<BracketSeedSlotOverride> BracketSeedSlotOverrides { get; }
     DbSet<MatchAssignment> MatchAssignments { get; }
     DbSet<MatchOfficials> MatchOfficials { get; }
     DbSet<RepairJob> RepairJobs { get; }

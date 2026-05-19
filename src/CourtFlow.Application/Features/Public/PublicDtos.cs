@@ -31,6 +31,10 @@ public sealed record PublicCourtDto(Guid Id, string Name);
 
 public sealed record PublicDivisionDto(Guid Id, string Name, DivisionFormat Format, int TeamCount);
 
+public sealed record PublicDivisionTeamsDto(Guid DivisionId, string DivisionName, IReadOnlyList<PublicTeamRosterDto> Teams);
+
+public sealed record PublicTeamRosterDto(Guid TeamId, string TeamName, Guid? PoolId, string? PoolName);
+
 public sealed record PublicMatchDto(
     Guid Id,
     Guid DivisionId,
@@ -44,6 +48,8 @@ public sealed record PublicMatchDto(
     string? HomeTeamName,
     Guid? AwayTeamId,
     string? AwayTeamName,
+    Guid? RefTeamId,
+    string? RefTeamName,
     Wave Wave,
     DateTime ScheduledStartUtc,
     int DurationMinutes,

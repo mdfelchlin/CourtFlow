@@ -1,5 +1,6 @@
 using CourtFlow.Domain.Common;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Domain.Events;
 
 namespace CourtFlow.Domain.Entities;
 
@@ -92,6 +93,7 @@ public class Tournament : Entity, ITenantScoped
         PublishedAtUtc = DateTime.UtcNow;
         ArchivedAtUtc = null;
         Touch();
+        RaiseEvent(new TournamentPublished(Id));
     }
 
     public void Unpublish()
@@ -101,6 +103,7 @@ public class Tournament : Entity, ITenantScoped
 
         PublicationStatus = TournamentPublicationStatus.Draft;
         Touch();
+        RaiseEvent(new TournamentUnpublished(Id));
     }
 
     public void Archive()
@@ -111,6 +114,7 @@ public class Tournament : Entity, ITenantScoped
         PublicationStatus = TournamentPublicationStatus.Archived;
         ArchivedAtUtc = DateTime.UtcNow;
         Touch();
+        RaiseEvent(new TournamentArchived(Id));
     }
 
     public void RestoreFromArchive()

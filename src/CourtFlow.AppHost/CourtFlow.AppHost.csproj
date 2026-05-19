@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CourtFlow.Api\CourtFlow.Api.csproj" />
+    <ProjectReference Include="..\CourtFlow.DbMigrator\CourtFlow.DbMigrator.csproj" />
     <ProjectReference Include="..\CourtFlow.Web\CourtFlow.Web.csproj" />
   </ItemGroup>
 

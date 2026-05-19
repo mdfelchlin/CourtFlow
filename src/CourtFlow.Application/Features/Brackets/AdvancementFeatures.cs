@@ -1,5 +1,6 @@
 using CourtFlow.Application.Abstractions;
 using CourtFlow.Application.Brackets;
+using CourtFlow.Application.Persistence;
 using CourtFlow.Application.Standings;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
@@ -49,8 +50,8 @@ public sealed class GeneratePoolAdvancementBracketsHandler : IRequestHandler<Gen
 
         var divisionTeamIds = await _db.Teams.Where(t => t.DivisionId == division.Id).Select(t => t.Id).ToHashSetAsync(ct);
 
-        var standingRows = await _standings.ForDivisionAsync(division.Id, ct);
-        var (computedGold, computedSilver) = ComputeFromStandings(standingRows, request.TopNPerPool);
+        var standingResult = await _standings.ForDivisionAsync(division.Id, ct);
+        var (computedGold, computedSilver) = ComputeFromStandings(standingResult.Pools, request.TopNPerPool);
 
         var gold = request.GoldTeamIds is null ? computedGold : request.GoldTeamIds.ToList();
         var silver = request.SilverTeamIds is null ? computedSilver : request.SilverTeamIds.ToList();
@@ -61,13 +62,15 @@ public sealed class GeneratePoolAdvancementBracketsHandler : IRequestHandler<Gen
         if (gold.Count < 2 && silver.Count < 2)
             return new GeneratePoolAdvancementBracketsResult(Array.Empty<BracketDto>(), "Need at least 2 teams in Gold or Silver to generate a bracket.");
 
-        var old = await _db.Brackets
+        var oldBracketIds = await _db.Brackets
             .Where(b => b.DivisionId == division.Id && (b.DisplayName == "Gold" || b.DisplayName == "Silver"))
+            .Select(b => b.Id)
             .ToListAsync(ct);
-        foreach (var b in old)
-            _db.Brackets.Remove(b);
-
-        await _db.SaveChangesAsync(ct);
+        foreach (var bracketId in oldBracketIds)
+        {
+            await EntityGraphDeletes.ClearBracketSeedSlotsAsync(_db, bracketId, ct);
+            await EntityGraphDeletes.DeleteBracketAsync(_db, bracketId, ct);
+        }
 
         var results = new List<BracketDto>();
 

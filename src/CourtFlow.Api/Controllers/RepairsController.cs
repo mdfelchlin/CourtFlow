@@ -79,6 +79,23 @@ public class RepairsController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return Ok(new RepairJobDto(job.Id, job.TriggerType, job.Status, job.DivisionId, job.CreatedAtUtc));
     }
+
+    [HttpPost("referee-reassignment")]
+    public async Task<IActionResult> RefereeReassignment(Guid tournamentId, [FromBody] RefereeReassignmentBody body, CancellationToken ct)
+    {
+        var orgId = _tenant.OrganizationId ?? throw new UnauthorizedAccessException();
+        var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == body.MatchId && m.TournamentId == tournamentId, ct);
+        if (match is null) return NotFound();
+
+        match.AssignReferee(body.RefTeamId);
+
+        var job = new RepairJob(orgId, tournamentId, RepairTriggerType.RefereeReassignment, divisionId: match.DivisionId);
+        job.AddAction(RepairActionType.WorkTeamReassignment, body.MatchId.ToString(), null, body.RefTeamId?.ToString());
+        job.MarkApplied();
+        _db.RepairJobs.Add(job);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new RepairJobDto(job.Id, job.TriggerType, job.Status, job.DivisionId, job.CreatedAtUtc));
+    }
 }
 
 public sealed record RepairJobDto(Guid Id, RepairTriggerType TriggerType, RepairJobStatus Status, Guid? DivisionId, DateTime CreatedAt);
@@ -89,3 +106,4 @@ public sealed record RepairJobDetailDto(
 public sealed record RepairActionDto(Guid Id, RepairActionType ActionType, string? TargetId, string? Before, string? After);
 public sealed record TeamWithdrawalBody(Guid TournamentTeamId, string? Reason, Guid? EffectiveAfterMatchId);
 public sealed record CourtOutageBody(Guid CourtId, DateTime StartsAt, DateTime EndsAt, string? Reason);
+public sealed record RefereeReassignmentBody(Guid MatchId, Guid? RefTeamId);

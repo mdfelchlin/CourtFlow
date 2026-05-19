@@ -17,6 +17,7 @@ public class Match : Entity, ITenantScoped
     public Wave Wave { get; private set; } = Wave.AM;
     public DateTime ScheduledStartUtc { get; private set; }
     public int DurationMinutes { get; private set; } = 60;
+    public Guid? StageId { get; private set; }
     public DateTime? ActualStartUtc { get; private set; }
     public DateTime? LastScoreAtUtc { get; private set; }
     public DateTime? FinalizedAtUtc { get; private set; }
@@ -40,7 +41,8 @@ public class Match : Entity, ITenantScoped
         Guid? courtId = null,
         Guid? homeTeamId = null,
         Guid? awayTeamId = null,
-        Guid? refTeamId = null)
+        Guid? refTeamId = null,
+        Guid? stageId = null)
     {
         OrganizationId = organizationId;
         TournamentId = tournamentId;
@@ -54,6 +56,7 @@ public class Match : Entity, ITenantScoped
         HomeTeamId = homeTeamId;
         AwayTeamId = awayTeamId;
         RefTeamId = refTeamId;
+        StageId = stageId;
     }
 
     public DateTime ScheduledEndUtc => ScheduledStartUtc.AddMinutes(DurationMinutes);
@@ -68,6 +71,22 @@ public class Match : Entity, ITenantScoped
     public void AssignTeams(Guid? home, Guid? away) { HomeTeamId = home; AwayTeamId = away; Touch(); }
     public void AssignReferee(Guid? refTeamId) { RefTeamId = refTeamId; Touch(); }
     public void SetWave(Wave wave) { Wave = wave; Touch(); }
+
+    public void Start()
+    {
+        if (State == MatchState.Final || State == MatchState.Canceled)
+            throw new InvalidOperationException($"Cannot start match in state {State}.");
+        State = MatchState.InProgress;
+        ActualStartUtc ??= DateTime.UtcNow;
+        Touch();
+    }
+
+    /// <summary>Associates scheduled play with its parent <see cref="Stage"/> container.</summary>
+    public void AssignStage(Guid? stageId)
+    {
+        StageId = stageId;
+        Touch();
+    }
 
     public MatchSet ReportSet(int setNumber, int homeScore, int awayScore)
     {

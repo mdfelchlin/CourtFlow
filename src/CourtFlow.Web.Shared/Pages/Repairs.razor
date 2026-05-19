@@ -73,12 +73,14 @@ else
     private async Task TeamWithdrawalAsync()
     {
         if (_tid is null) return;
-        var teamIdStr = await PromptInputAsync("Team withdrawal", "Enter TournamentTeam ID to withdraw:");
-        if (string.IsNullOrWhiteSpace(teamIdStr) || !Guid.TryParse(teamIdStr, out var ttId)) return;
+        var parms = new DialogParameters { ["TournamentId"] = _tid.Value };
+        var dialog = await DialogService.ShowAsync<WithdrawTeamDialog>("Withdraw team", parms);
+        var result = await dialog.Result;
+        if (result?.Canceled != false || result.Data is not TeamWithdrawalDto dto) return;
 
         try
         {
-            await Api.Repairs.TeamWithdrawalAsync(_tid.Value, new TeamWithdrawalDto(ttId, "Admin withdrawal", null));
+            await Api.Repairs.TeamWithdrawalAsync(_tid.Value, dto);
             Snackbar.Add("Team withdrawn", Severity.Success);
             await ReloadAsync();
         }
@@ -88,24 +90,18 @@ else
     private async Task CourtOutageAsync()
     {
         if (_tid is null) return;
-        var courtIdStr = await PromptInputAsync("Court outage", "Enter Court ID to mark as unavailable:");
-        if (string.IsNullOrWhiteSpace(courtIdStr) || !Guid.TryParse(courtIdStr, out var cId)) return;
+        var parms = new DialogParameters { ["TournamentId"] = _tid.Value };
+        var dialog = await DialogService.ShowAsync<CourtOutageDialog>("Court unavailable", parms);
+        var result = await dialog.Result;
+        if (result?.Canceled != false || result.Data is not CourtOutageDto dto) return;
 
         try
         {
-            var now = DateTime.UtcNow;
-            await Api.Repairs.CourtOutageAsync(_tid.Value,
-                new CourtOutageDto(cId, now, now.AddHours(2), "Court outage"));
+            await Api.Repairs.CourtOutageAsync(_tid.Value, dto);
             Snackbar.Add("Court outage recorded", Severity.Success);
             await ReloadAsync();
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-    }
-
-    private async Task<string?> PromptInputAsync(string title, string message)
-    {
-        var result = await DialogService.ShowMessageBoxAsync(title, message, yesText: "OK", cancelText: "Cancel");
-        return result == true ? "placeholder" : null;
     }
 
     private static Color StatusColor(RepairJobStatusDto s) => s switch

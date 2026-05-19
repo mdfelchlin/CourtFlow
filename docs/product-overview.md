@@ -87,13 +87,12 @@ A multi-tenant API and Blazor admin web app — designed so the same UI componen
 
 ### 3.3 Planned but not yet shipped
 
-- **Court Status & Delay Dashboard** with both **Cards view** and **Grid view** layouts, **TV mode** for wall-monitor projection, the **Match clock** (explicit Start / Mark-complete affordances), and the **Reflow preview** drawer — modeled in [`features/court-status.md`](features/court-status.md).
-- **Work team rotation** for pool and bracket matches — modeled in [`features/work-teams.md`](features/work-teams.md).
 - **Print outputs** for pool sheets, score sheets, bracket sheets, daily court runs, work rotations, and standings pages — modeled in [`features/print-outputs.md`](features/print-outputs.md).
-- **Clone tournament** via [Tournament templates](data-model.md#12-tournament-templates) — modeled in [`features/tournaments.md`](features/tournaments.md).
-- **My-team mobile lookup** on the public event detail page — modeled in [`features/public-event.md`](features/public-event.md#my-team-filter-mobile-first-lookup).
-- Repair-job UI on top of the data-layer repair model.
-- Schedule version preview / publish UI.
+- **Capture template / create from template** — persist and instantiate `template_*` graphs — modeled in [`data-model.md` §12](data-model.md#12-tournament-templates).
+- Repair-job UI polish on top of the data-layer repair model (list/detail UX beyond basic `/repairs`).
+- Realtime push (refresh-only in V1).
+
+**Recently shipped** (moved out of this list): Court Status Cards + Grid + TV mode, Match clock, Reflow preview + apply, Work team auto-rotation + division review panel, Schedule version preview/publish UI, My-team filter on public event detail, Clone tournament (full + structure-only), Public Teams tab + past events + per-tab readiness gates, Auto-archive job.
 
 ---
 

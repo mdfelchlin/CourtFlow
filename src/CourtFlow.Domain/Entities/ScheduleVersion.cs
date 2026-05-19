@@ -1,5 +1,6 @@
 using CourtFlow.Domain.Common;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Domain.Events;
 
 namespace CourtFlow.Domain.Entities;
 
@@ -44,7 +45,10 @@ public sealed class ScheduleVersion : Entity, ITenantScoped
 
         Status = target;
         if (target == ScheduleVersionStatus.Published)
+        {
             PublishedAt = DateTime.UtcNow;
+            RaiseEvent(new SchedulePublished(Id, TournamentId));
+        }
         Touch();
     }
 

@@ -10,6 +10,12 @@
                 <MudSelectItem Value="DivisionFormatDto.PoolPlusBracket">Pool + bracket</MudSelectItem>
                 <MudSelectItem Value="DivisionFormatDto.BracketOnly">Bracket only</MudSelectItem>
             </MudSelect>
+            <MudSelect T="Guid?" @bind-Value="_waveId" Label="Wave" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
+                @foreach (var wave in _waves)
+                {
+                    <MudSelectItem T="Guid?" Value="@wave.Id">@wave.Code</MudSelectItem>
+                }
+            </MudSelect>
             <MudNumericField @bind-Value="_maxTeams" Label="Max teams" Min="2" Max="128" />
         </MudStack>
     </DialogContent>
@@ -27,14 +33,26 @@
     private string _name = "";
     private DivisionFormatDto _format = DivisionFormatDto.PoolPlusBracket;
     private int _maxTeams = 16;
+    private Guid? _waveId;
+    private List<TournamentWaveDto> _waves = new();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (Existing is not null)
         {
             _name = Existing.Name;
             _format = Existing.Format;
             _maxTeams = Existing.MaxTeams;
+            _waveId = Existing.WaveId;
+        }
+
+        try
+        {
+            _waves = (await Api.Waves.ListAsync(TournamentId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
@@ -45,9 +63,9 @@
         try
         {
             if (Existing is null)
-                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name, _format, _maxTeams));
+                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name, _format, _maxTeams, _waveId));
             else
-                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name, _format, _maxTeams));
+                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name, _format, _maxTeams, _waveId));
             Snackbar.Add("Saved", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

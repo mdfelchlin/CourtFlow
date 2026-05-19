@@ -28,4 +28,10 @@ public class WaveEntity : Entity, ITenantScoped
         DefaultEndTime = endTime;
         Touch();
     }
+
+    public void SetNotes(string? notes)
+    {
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        Touch();
+    }
 }

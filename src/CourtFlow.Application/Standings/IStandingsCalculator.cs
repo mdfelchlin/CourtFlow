@@ -16,7 +16,11 @@ public sealed record PoolStandingRow(
 
 public sealed record PoolStandings(Guid PoolId, string PoolName, IReadOnlyList<PoolStandingRow> Rows);
 
+public sealed record DivisionStandingsResult(
+    string TiebreakerPreset,
+    IReadOnlyList<PoolStandings> Pools);
+
 public interface IStandingsCalculator
 {
-    Task<IReadOnlyList<PoolStandings>> ForDivisionAsync(Guid divisionId, CancellationToken ct = default);
+    Task<DivisionStandingsResult> ForDivisionAsync(Guid divisionId, CancellationToken ct = default);
 }

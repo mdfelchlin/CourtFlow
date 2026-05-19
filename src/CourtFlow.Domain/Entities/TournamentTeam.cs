@@ -1,5 +1,6 @@
 using CourtFlow.Domain.Common;
 using CourtFlow.Domain.Enums;
+using CourtFlow.Domain.Events;
 
 namespace CourtFlow.Domain.Entities;
 
@@ -38,6 +39,7 @@ public class TournamentTeam : Entity, ITenantScoped
         WithdrawalReason = reason;
         EffectiveAfterMatchId = effectiveAfterMatchId;
         Touch();
+        RaiseEvent(new TournamentTeamWithdrawn(Id, TournamentId));
     }
 
     public void Reinstate()
@@ -49,6 +51,13 @@ public class TournamentTeam : Entity, ITenantScoped
         WithdrawnAt = null;
         WithdrawalReason = null;
         EffectiveAfterMatchId = null;
+        Touch();
+    }
+
+    public void MoveToDivision(Guid divisionId)
+    {
+        if (divisionId == Guid.Empty) throw new ArgumentException("Division required", nameof(divisionId));
+        DivisionId = divisionId;
         Touch();
     }
 }

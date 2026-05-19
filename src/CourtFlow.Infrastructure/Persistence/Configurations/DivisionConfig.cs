@@ -12,6 +12,9 @@ public class DivisionConfig : IEntityTypeConfiguration<Division>
         b.HasKey(x => x.Id);
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
         b.Property(x => x.Format).HasConversion<int>();
+        b.Property(x => x.TiebreakerPreset).HasConversion<int>();
+        b.Property(x => x.WaveId);
+        b.HasIndex(x => x.WaveId);
         b.HasMany(x => x.Pools).WithOne().HasForeignKey(p => p.DivisionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Teams).WithOne().HasForeignKey(t => t.DivisionId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => x.TournamentId);
@@ -25,7 +28,10 @@ public class PoolConfig : IEntityTypeConfiguration<Pool>
         b.ToTable("pools");
         b.HasKey(x => x.Id);
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Sequence).HasDefaultValue(0);
+        b.Property(x => x.TargetSize).HasDefaultValue(4);
         b.HasIndex(x => x.DivisionId);
+        b.HasIndex(x => new { x.DivisionId, x.Sequence });
     }
 }
 

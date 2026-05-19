@@ -2,13 +2,19 @@ using CourtFlow.Application.Abstractions;
 using CourtFlow.Application.Features.Matches;
 using CourtFlow.Application.Scheduling;
 using CourtFlow.Domain.Entities;
+using CourtFlow.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Application.Features.ScheduleVersions;
 
-public sealed record ScheduleVersionSummaryDto(Guid Id, long MutationSequence);
+public sealed record ScheduleVersionSummaryDto(
+    Guid Id,
+    ScheduleVersionStatus Status,
+    long MutationSequence,
+    DateTime? PublishedAt,
+    bool IsWorking);
 
 public sealed record PreviewScheduleMoveResult(
     Guid ScheduleVersionId,
@@ -18,6 +24,8 @@ public sealed record PreviewScheduleMoveResult(
     bool CanApply);
 
 public sealed record ListScheduleVersionsQuery(Guid TournamentId) : IRequest<IReadOnlyList<ScheduleVersionSummaryDto>>;
+
+public sealed record PublishScheduleVersionCommand(Guid TournamentId) : IRequest<ScheduleVersionSummaryDto?>;
 
 public sealed record PreviewScheduleMoveCommand(
     Guid TournamentId,
@@ -54,8 +62,40 @@ public sealed class ListScheduleVersionsHandler : IRequestHandler<ListScheduleVe
 
     public async Task<IReadOnlyList<ScheduleVersionSummaryDto>> Handle(ListScheduleVersionsQuery request, CancellationToken ct)
     {
-        var version = await ScheduleVersionProvisioning.EnsurePublishedAsync(_db, request.TournamentId, ct);
-        return new[] { new ScheduleVersionSummaryDto(version.Id, version.MutationSequence) };
+        var workingId = (await ScheduleVersionProvisioning.GetLatestNonSupersededAsync(_db, request.TournamentId, ct))?.Id;
+        var versions = await _db.ScheduleVersions
+            .AsNoTracking()
+            .Where(v => v.TournamentId == request.TournamentId)
+            .OrderByDescending(v => v.CreatedAtUtc)
+            .ToListAsync(ct);
+
+        return versions.Select(v => new ScheduleVersionSummaryDto(
+            v.Id,
+            v.Status,
+            v.MutationSequence,
+            v.PublishedAt,
+            v.Id == workingId)).ToList();
+    }
+}
+
+public sealed class PublishScheduleVersionHandler : IRequestHandler<PublishScheduleVersionCommand, ScheduleVersionSummaryDto?>
+{
+    private readonly IAppDbContext _db;
+
+    public PublishScheduleVersionHandler(IAppDbContext db) => _db = db;
+
+    public async Task<ScheduleVersionSummaryDto?> Handle(PublishScheduleVersionCommand request, CancellationToken ct)
+    {
+        var tournament = await _db.Tournaments.FirstOrDefaultAsync(t => t.Id == request.TournamentId, ct);
+        if (tournament is null) return null;
+
+        var published = await ScheduleVersionProvisioning.PublishAsync(_db, request.TournamentId, ct);
+        return new ScheduleVersionSummaryDto(
+            published.Id,
+            published.Status,
+            published.MutationSequence,
+            published.PublishedAt,
+            IsWorking: true);
     }
 }
 
@@ -79,7 +119,7 @@ public sealed class PreviewScheduleMoveHandler : IRequestHandler<PreviewSchedule
             return null;
 
         var dur = request.DurationMinutes ?? match.DurationMinutes;
-        var version = await ScheduleVersionProvisioning.EnsurePublishedAsync(_db, request.TournamentId, ct);
+        var version = await ScheduleVersionProvisioning.EnsureWorkingForMutationAsync(_db, request.TournamentId, ct);
 
         var report = await _checker.CheckHypotheticalMoveAsync(
             request.TournamentId,
@@ -147,29 +187,37 @@ public sealed class ApplyScheduleMoveHandler : IRequestHandler<ApplyScheduleMove
         if (recheck.HasConflicts)
             throw new ScheduleConflictAfterPreviewException();
 
+        version = await ScheduleVersionProvisioning.EnsureWorkingForMutationAsync(_db, request.TournamentId, ct);
+        if (version.Id != envelope.ScheduleVersionId)
+            throw new StaleScheduleApplyException();
+
         match.AssignCourt(envelope.CourtId);
         match.Reschedule(envelope.ScheduledStartUtc, envelope.DurationMinutes);
-        version.BumpAfterCommittedApply();
 
+        if (envelope.CourtId is { } courtId)
+        {
+            var end = envelope.ScheduledStartUtc.AddMinutes(envelope.DurationMinutes);
+            var assignment = await _db.MatchAssignments
+                .FirstOrDefaultAsync(a => a.ScheduleVersionId == version.Id && a.MatchId == match.Id, ct);
+
+            if (assignment is null)
+            {
+                _db.MatchAssignments.Add(new MatchAssignment(
+                    match.OrganizationId,
+                    version.Id,
+                    match.Id,
+                    courtId,
+                    envelope.ScheduledStartUtc,
+                    end));
+            }
+            else
+            {
+                assignment.Reassign(courtId, envelope.ScheduledStartUtc, end);
+            }
+        }
+
+        version.BumpAfterCommittedApply();
         await _db.SaveChangesAsync(ct);
         return match.ToDto();
-    }
-}
-
-internal static class ScheduleVersionProvisioning
-{
-    public static async Task<ScheduleVersion> EnsurePublishedAsync(IAppDbContext db, Guid tournamentId, CancellationToken ct)
-    {
-        var existing = await db.ScheduleVersions.FirstOrDefaultAsync(s => s.TournamentId == tournamentId, ct);
-        if (existing is not null)
-            return existing;
-
-        var tournament = await db.Tournaments.FirstOrDefaultAsync(t => t.Id == tournamentId, ct)
-                         ?? throw new InvalidOperationException("Tournament not found.");
-
-        var created = new ScheduleVersion(tournament.OrganizationId, tournamentId);
-        db.ScheduleVersions.Add(created);
-        await db.SaveChangesAsync(ct);
-        return created;
     }
 }

@@ -2,6 +2,7 @@ using CourtFlow.Api.Infrastructure;
 using CourtFlow.Application.Features.Matches;
 using CourtFlow.Application.Features.ScheduleVersions;
 using CourtFlow.Application.Scheduling;
+using CourtFlow.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,6 +46,15 @@ public sealed class ScheduleVersionsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpPost("publish")]
+    [ProducesResponseType(typeof(ScheduleVersionSummaryResponseDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Publish(Guid tournamentId, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new PublishScheduleVersionCommand(tournamentId), ct);
+        return r is null ? NotFound() : Ok(new ScheduleVersionSummaryResponseDto(
+            r.Id, r.Status, r.MutationSequence, r.PublishedAt, r.IsWorking));
+    }
+
     private static ConflictReportDto ToConflictDto(ConflictReport r) =>
         new(r.Conflicts.Select(c => new ScheduleConflictDto(
                 c.Kind,
@@ -77,3 +87,9 @@ public sealed record ScheduleConflictDto(
     DateTime StartUtc,
     DateTime EndUtc,
     string Message);
+public sealed record ScheduleVersionSummaryResponseDto(
+    Guid Id,
+    ScheduleVersionStatus Status,
+    long MutationSequence,
+    DateTime? PublishedAt,
+    bool IsWorking);
