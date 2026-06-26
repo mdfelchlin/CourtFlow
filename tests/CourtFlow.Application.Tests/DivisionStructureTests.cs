@@ -34,7 +34,7 @@ public sealed class DivisionStructureTests
         await db.SaveChangesAsync();
 
         var tenant = new FakeTenant(orgId);
-        var mediator = new TestMediator(db);
+        var mediator = new TestMediator(db, tenant);
         var saveHandler = new SaveDivisionPoolStructureHandler(db, tenant, mediator);
 
         var poolDtos = new List<DivisionPoolStructureDto>
@@ -90,7 +90,7 @@ public sealed class DivisionStructureTests
         await db.SaveChangesAsync();
 
         var tenant = new FakeTenant(orgId);
-        var mediator = new TestMediator(db);
+        var mediator = new TestMediator(db, tenant);
         var saveHandler = new SaveDivisionPoolStructureHandler(db, tenant, mediator);
 
         var onePool = new List<DivisionPoolStructureDto>
@@ -125,12 +125,12 @@ public sealed class DivisionStructureTests
         public string RequireUserId() => "test";
     }
 
-    private sealed class TestMediator(IAppDbContext db) : IMediator
+    private sealed class TestMediator(IAppDbContext db, ITenantContext tenant) : IMediator
     {
         public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
         {
             if (request is GetDivisionWizardStateQuery q)
-                return (Task<TResponse>)(object)new GetDivisionWizardStateHandler(db).Handle(q, cancellationToken);
+                return (Task<TResponse>)(object)new GetDivisionWizardStateHandler(db, tenant).Handle(q, cancellationToken);
             throw new NotSupportedException(request.GetType().Name);
         }
 

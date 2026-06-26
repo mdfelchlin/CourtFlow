@@ -131,15 +131,140 @@ h1:focus {
 }
 
 .cf-select--sm {
-    min-width: 200px;
+    width: 200px;
+    max-width: 200px;
+    flex: 0 0 auto;
 }
 
 .cf-select--md {
-    min-width: 220px;
+    width: 220px;
+    max-width: 220px;
+    flex: 0 0 auto;
 }
 
 .cf-select--lg {
-    min-width: 240px;
+    width: 280px;
+    max-width: 280px;
+    flex: 0 0 auto;
+}
+
+.cf-field--sm {
+    width: 11rem;
+    max-width: 11rem;
+    flex: 0 0 auto;
+}
+
+.cf-field--md {
+    width: 13rem;
+    max-width: 13rem;
+    flex: 0 0 auto;
+}
+
+.cf-field--lg {
+    width: 15rem;
+    max-width: 15rem;
+    flex: 0 0 auto;
+}
+
+/* Wrapper keeps picker/text/select widths consistent when MudBlazor class placement varies */
+.cf-field-wrap {
+    flex: 0 0 auto;
+}
+
+.cf-field-wrap.cf-field--sm { width: 11rem; }
+.cf-field-wrap.cf-field--md { width: 13rem; }
+.cf-field-wrap.cf-field--lg { width: 15rem; }
+.cf-field-wrap.cf-select--sm { width: 200px; }
+.cf-field-wrap.cf-select--md { width: 220px; }
+.cf-field-wrap.cf-select--lg { width: 280px; }
+
+.cf-field-wrap .mud-picker,
+.cf-field-wrap .mud-input-control,
+.cf-field-wrap .mud-select,
+.cf-field-wrap .mud-input-control-input-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.cf-form-details ::deep .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.cf-form-details__grid {
+    display: grid;
+    grid-template-columns: 13rem 13rem 17.5rem;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    align-items: start;
+    width: max-content;
+    max-width: 100%;
+}
+
+.cf-form-details__grid .cf-field-wrap {
+    width: 100%;
+    min-width: 0;
+}
+
+.cf-form-details__grid ::deep .mud-picker,
+.cf-form-details__grid ::deep .mud-input-control,
+.cf-form-details__grid ::deep .mud-select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.cf-form-details__times {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 13rem);
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    align-items: start;
+}
+
+.cf-form-details__times .cf-field-wrap {
+    width: 100%;
+    min-width: 0;
+}
+
+.cf-form-details__times ::deep .mud-picker,
+.cf-form-details__times ::deep .mud-input-control {
+    width: 100%;
+    max-width: 100%;
+}
+
+@media (max-width: 960px) {
+    .cf-form-details__grid {
+        grid-template-columns: repeat(2, minmax(0, 13rem));
+    }
+}
+
+@media (max-width: 520px) {
+    .cf-form-details__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cf-date-field,
+.cf-time-field {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.cf-date-field:not(.cf-field--sm):not(.cf-field--md):not(.cf-field--lg),
+.cf-time-field:not(.cf-field--sm):not(.cf-field--md):not(.cf-field--lg) {
+    width: 100%;
+}
+
+.mud-picker.cf-field--sm,
+.mud-picker.cf-field--md,
+.mud-picker.cf-field--lg {
+    flex: 0 0 auto;
+}
+
+.cf-session-mode .mud-radio {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .mud-select.header-tournament-select {

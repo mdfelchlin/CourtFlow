@@ -17,7 +17,7 @@ The model is grouped into the following aggregates and contexts. Each aggregate 
 | Bounded context | Aggregate roots | Notes |
 |-----------------|-----------------|-------|
 | Identity & tenancy | `Organization`, `User` (with `OrganizationUser` membership), `League` | Master data partitioning all other aggregates by `OrganizationId`. |
-| Facilities | `Venue` (owns `Court` and `CourtAvailabilityWindow`) | Reused across tournaments. |
+| Facilities | `Venue` (owns `Court`) | Reused across tournaments. V1 assumes each court is available all day for every tournament day; per-window availability is deferred (see §2). |
 | Tournament setup | `Tournament` (owns `TournamentVenue`, `Wave`, settings), `TournamentTeam`, `TournamentTemplate` (owns `TemplateDivision`, `TemplateStage`, `TemplateAdvancementRule`, `TemplateWave`) | Event shell; team participation is event-scoped. Templates capture the structural subset of a tournament for reuse. |
 | Competition structure | `Division` (owns `DivisionRanking`, `PoolSettings`, `Pool`+`PoolEntry`, `PoolCourtAllocation`, `Bracket`+`BracketSeedSlot`+`AdvancementRule`) | Carries the competition rules per division. |
 | Match execution | `Match` (owns `MatchParticipantSource`, `MatchOfficialAssignment`, `MatchResultReport`, `MatchSet`) | Match identity is stable across reschedules. `matches.started_at` / `matches.completed_at` are the **Match clock** anchors used by the Court Status & Delay Dashboard. |
@@ -54,20 +54,31 @@ Recommended additions:
 
 ### 2. Tournament creation
 
-Tournament creation defines the event shell and facility context before competitive structure exists. Venue and court availability is event-aware, because court constraints often vary by date, wave, or operational issue.
+Tournament creation defines the event shell and facility context before competitive structure exists.
+
+**V1 scheduling assumptions:**
+- Each **court** linked to the tournament is treated as **available all day** on every calendar day from `start_date` through `end_date`. Per-court availability windows are deferred (see below).
+- **Waves** are limited to **`AM`** and **`PM`** session codes when `session_mode = MultiWave`. Custom numbered waves (`1`, `2`) and wave end times are out of scope for V1.
 
 Required records and fields:
-- `tournaments`: `id`, `organization_id`, `league_id nullable`, `name`, `slug`, `status`, `start_date`, `end_date`, `timezone`, `notes`, `published_at nullable`, `archived_at nullable`.
+- `tournaments`: `id`, `organization_id`, `league_id nullable`, `name`, `slug`, `status`, `start_date`, `end_date`, `timezone`, `session_mode`, `default_start_time nullable`, `notes`, `published_at nullable`, `archived_at nullable`.
   - `status` controls **public visibility** (see [Tournament status lifecycle](#tournament-status-lifecycle) below). All other tournament fields are independent of the publish gate.
+  - **`session_mode`**: `SingleSession` (one start time for the whole tournament; divisions are not pinned to waves) or `MultiWave` (separate AM/PM start times; divisions may pin to a wave). New tournaments default to `SingleSession`.
+  - **`default_start_time`**: local `HH:mm` used when `session_mode = SingleSession`. Ignored in multi-wave mode.
 - `tournament_venues`: `tournament_id`, `venue_id`, `display_order`.
 - `venues`: `id`, `organization_id`, `name`, address fields.
 - `courts`: `id`, `venue_id`, `name`, `sort_order`, `is_active`.
-- `court_availability_windows`: `id`, `court_id`, `tournament_id nullable`, `starts_at`, `ends_at`, `is_available`, `reason`.
-- `waves`: `id`, `tournament_id`, `code`, `display_order`, `default_start_time nullable`, `default_end_time nullable`, `notes nullable`.
-  - **`code`** is the short label organizers use in prose and on the schedule grid — `AM`, `PM`, `1`, or `2` in V1. Unique per tournament.
-  - **`default_start_time` / `default_end_time`** are optional local-time windows used by the scheduler to constrain a wave's matches to a session (e.g. `AM = 08:00–13:00`). Stored as local-time strings; combined with `tournaments.timezone` and the tournament's calendar dates when scheduling.
-  - Divisions pin to a wave via `tournament_divisions.wave_id` (see [§3](#3-division-creation)). A pinned division's matches are constrained to that wave by the scheduler.
-  - CSV import `Wave` values resolve to the wave whose `code` matches; missing waves are auto-created during import with sensible defaults (no time window) and a row-level info on the import result. See [`features/imports.md`](features/imports.md).
+- `waves`: `id`, `tournament_id`, `code`, `display_order`, `default_start_time nullable`.
+  - Used when `tournaments.session_mode = MultiWave`. The tournament editor auto-maintains **`AM`** and **`PM`** rows with start times; organizers do not add, delete, or rename waves manually in V1 UI.
+  - **`code`** is `AM` or `PM` — the short label on the schedule grid and in CSV import. Unique per tournament.
+  - **`default_start_time`** is the local `HH:mm` start for that wave's matches. Combined with `tournaments.timezone` and the tournament's calendar dates when scheduling. V1 does not model wave end times; the scheduler assumes courts are available for the rest of the day after the wave start.
+  - Divisions pin to a wave via `tournament_divisions.wave_id` (see [§3](#3-division-creation)) when `session_mode = MultiWave`. Ignored in single-session mode.
+  - CSV import `Wave` values must be `AM` or `PM`; missing waves are auto-created during import and the import-result panel notes any auto-created wave so the organizer can set start times in the tournament editor **Match start times** section. See [`features/imports.md`](features/imports.md).
+
+Deferred (not required for V1):
+- `court_availability_windows`: `id`, `court_id`, `tournament_id nullable`, `starts_at`, `ends_at`, `is_available`, `reason` — future support for partial-day court closures outside live **CourtOutage** repairs.
+- Wave **`default_end_time`** and **`notes`** columns on `waves` (schema may retain nullable columns; V1 UI and scheduler ignore them).
+- Custom wave codes beyond `AM` / `PM` (e.g. numbered `1` / `2` sessions).
 
 Recommended additions:
 - `tournament_settings` or owned settings on `tournaments` for scheduling defaults, publish rules, and score-entry policy.
@@ -115,7 +126,7 @@ Required records and fields:
 - Division standings settings: `tiebreaker_preset` — one of `WINS_H2H_SETS_POINTS` (USAV default), `WINS_SETS_POINTS` (most common organizer choice), `SETS_POINTS` (round-robin / jamboree), or `H2H_SETS_POINTS` (specialized formats). The full chain semantics live in §10. Set and point comparisons are always **ratio**-based; differential is not exposed in V1.
 
 Recommended additions:
-- A `division_status` column with values `draft`, `teams_loaded`, `seeded`, `stages_in_progress`, `completed`. Stage-level progress (whether the pool round or bracket round is generated, seeded, in progress, or completed) lives on `stages.status` rather than on the division. Its **Lifecycle** (the legal transitions between these values) is documented in §status-lifecycle-definitions below.
+- **Division checklist status (V1):** not a persisted write column. Coarse progress (`draft`, `teams_loaded`, `seeded`, …) is **derived** by the **DivisionReadinessProjection** read model from `stages.status` and team counts — see [`adr/0003-status-lifecycle-per-aggregate.md`](adr/0003-status-lifecycle-per-aggregate.md). Stage-level progress remains authoritative on `stages.status`.
 
 ### 4. Team import and event entry
 
@@ -543,7 +554,7 @@ Required records and fields:
 - `template_pool_settings`: `template_stage_id`, `pool_count`, `teams_per_pool_target`, `pool_size_strategy`, `play_style`, `court_allocation_mode`, `ref_assignment_mode`.
 - `template_brackets` (under a bracket-type `template_stage`): `id`, `template_stage_id`, `name`, `type`, `team_count`, `sequence`, `format_flags`.
 - `template_advancement_rules`: `id`, `template_id`, `source_template_stage_id`, `source_template_pool_id nullable`, `source_finish_position`, `target_template_bracket_id`, `target_seed_slot`, `order_by`, `priority`.
-- `template_waves`: `id`, `template_id`, `code`, `default_start_local nullable`, `default_end_local nullable`, `display_order`.
+- `template_waves`: `id`, `template_id`, `code` (`AM` or `PM`), `default_start_local nullable`, `display_order`.
 
 **What templates explicitly do NOT carry:**
 - `tournament_teams`, `division_rankings`, `pool_entries`, `bracket_seed_slots.resolved_tournament_team_id`, `bracket_seed_slots.manual_tournament_team_id` (overrides are tournament-specific decisions).
@@ -589,7 +600,7 @@ The model already implies many statuses; allowed transitions are defined explici
 
 Important status lifecycles:
 - **Tournament** status (`draft` → `published` → `archived`, with `published → draft` permitted) — see [§2](#tournament-status-lifecycle). Controls public visibility.
-- Division status (coarse checklist; stage detail lives on `stages.status`).
+- **Division checklist** (coarse UI gating only) — **derived** from stages + teams via **DivisionReadinessProjection**; not a persisted aggregate lifecycle in V1 ([`adr/0003-status-lifecycle-per-aggregate.md`](adr/0003-status-lifecycle-per-aggregate.md)).
 - **Stage** status (`draft` → `configured` → `seeded` → `in_progress` → `completed`) — see [§6](#6-stages-the-round-container).
 - Tournament team status.
 - Match status (`not_started` → `in_progress` → `final`, plus `canceled`). The **Match clock** columns (`matches.started_at` / `matches.completed_at`) carry the precise wall-clock anchors that the Court Status & Delay Dashboard reads independently of this coarse status — see [§8 Match clock writes](#match-clock-writes).

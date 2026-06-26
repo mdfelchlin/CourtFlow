@@ -71,9 +71,28 @@ When you change this file, do a hard refresh (Ctrl+Shift+R) in the browser so th
 
 The Web *server* reads its own `Api:BaseUrl` from `appsettings.Development.json` (or the `Api__BaseUrl` env var injected by Aspire). Keep those two in sync when you're not running via Aspire.
 
-## Authentication & personal workspaces
+## Google Maps (venue address autocomplete)
 
-CourtFlow auto-provisions a **personal workspace** (an `organizations` row with `clerk_org_id = NULL`) the first time you sign in. You do **not** need to create a Clerk Organization to use the app — see [`adr/0008-personal-organizations-and-team-upgrade.md`](adr/0008-personal-organizations-and-team-upgrade.md). New logins land in their own empty workspace; the seeded demo tournament lives in a separate `courtflow-demo` org.
+Venue address fields use the **Google Places Autocomplete** widget when an API key is configured. Without a key, the address field behaves as a plain text input.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), enable **Maps JavaScript API** and **Places API** for your project.
+2. Create a **browser-restricted** API key (HTTP referrer restrictions for `https://localhost:*` and your deployed Web origin).
+3. Set the key in either or both of:
+   - `src/CourtFlow.Web/appsettings.Development.json` → `GoogleMaps:ApiKey` (injected into the host page as `window.__courtflowGoogleMapsConfig`)
+   - `src/CourtFlow.Web.Client/wwwroot/appsettings.json` → `GoogleMaps:ApiKey` (fallback when the WASM client loads config directly)
+
+The key is client-side by design; restrict it by referrer in Google Cloud — do not treat it as a server secret.
+
+## Authentication & organizations
+
+Production is **invite-only** — see [`adr/0008-personal-organizations-and-team-upgrade.md`](adr/0008-personal-organizations-and-team-upgrade.md). Prospective customers use **Request access**; operators provision orgs and send the first invite. **Disable public sign-up** in the Clerk Dashboard (Restricted mode).
+
+For local development without admin tooling:
+
+- Set **`Dev:ClerkUserId`** in user-secrets to your Clerk `sub` (see below) so the demo org membership attaches to your login.
+- Optional: **`Dev:AllowPersonalWorkspace=true`** keeps legacy auto-provision in Development only (until removed).
+
+The seeded demo tournament lives in the `courtflow-demo` org.
 
 ### Seeing the demo tournament on your local login
 
@@ -83,9 +102,9 @@ The `DemoSeeder` populates a `CourtFlow Demo Club` org with a `Spring Classic` t
 dotnet user-secrets --project src/CourtFlow.Api set "Dev:ClerkUserId" "user_3CihXXXXXXXXXXXXXXXXX"
 ```
 
-Restart the AppHost. The seeder will add an `Admin` `OrganizationMembership` row linking your `sub` to the demo org, and your tenant context resolution will pick the demo org over your personal workspace on every request.
+Restart the AppHost. The seeder will add an `Admin` `OrganizationMembership` row linking your `sub` to the demo org.
 
-If you leave `Dev:ClerkUserId` unset, the demo tournament is still seeded but no real user has access to it — you'll see your empty personal workspace instead. That's the expected behaviour for prod-like local sessions.
+If you leave `Dev:ClerkUserId` unset, the demo tournament is still seeded but no real user has access to it — you'll need a membership row (via provision tooling once AUTH-02 ships, or manual DB seed) to sign in successfully in production-like mode.
 
 You can read your `sub` off any Clerk-issued JWT (decode the middle segment), or from the Clerk dashboard → Users → click yourself → "User ID".
 

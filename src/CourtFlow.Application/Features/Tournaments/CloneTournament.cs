@@ -2,6 +2,7 @@ using CourtFlow.Application.Features.Divisions;
 using CourtFlow.Application.Features.Stages;
 using CourtFlow.Application.Abstractions;
 using CourtFlow.Domain.Entities;
+using CourtFlow.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -48,8 +49,28 @@ public sealed class CloneTournamentHandler : IRequestHandler<CloneTournamentComm
             source.DefaultMatchDurationMinutes);
         if (source.Description is not null)
             copy.SetDescription(source.Description);
+        copy.SetContactInfo(source.WebsiteUrl, source.ContactEmail);
+        copy.SetSessionMode(source.SessionMode);
+        copy.SetDefaultStartTime(source.DefaultStartTime);
 
         _db.Tournaments.Add(copy);
+
+        var waveOldToNew = new Dictionary<Guid, Guid>();
+        if (source.SessionMode == TournamentSessionMode.MultiWave)
+        {
+            var sourceWaves = await _db.Waves.AsNoTracking()
+                .Where(w => w.TournamentId == source.Id)
+                .OrderBy(w => w.DisplayOrder)
+                .ThenBy(w => w.Code)
+                .ToListAsync(ct);
+            foreach (var oldWave in sourceWaves)
+            {
+                var newWave = new WaveEntity(source.OrganizationId, copy.Id, oldWave.Code, oldWave.DisplayOrder);
+                newWave.SetTimeWindow(oldWave.DefaultStartTime, oldWave.DefaultEndTime);
+                _db.Waves.Add(newWave);
+                waveOldToNew[oldWave.Id] = newWave.Id;
+            }
+        }
 
         foreach (var oldVenue in source.Venues.OrderBy(v => v.Name))
         {
@@ -65,7 +86,10 @@ public sealed class CloneTournamentHandler : IRequestHandler<CloneTournamentComm
             {
                 var div = new Division(source.OrganizationId, copy.Id, oldDiv.Name, oldDiv.Format, oldDiv.MaxTeams);
                 div.SetTiebreakerPreset(oldDiv.TiebreakerPreset);
-                div.SetWave(oldDiv.WaveId);
+                Guid? waveId = oldDiv.WaveId is { } oldWaveId && waveOldToNew.TryGetValue(oldWaveId, out var newWaveId)
+                    ? newWaveId
+                    : null;
+                div.SetWave(waveId);
                 _db.Divisions.Add(div);
                 await DefaultDivisionStages.EnsureProvisionedAsync(_db, div, ct);
 

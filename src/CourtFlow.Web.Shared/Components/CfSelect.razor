@@ -1,0 +1,38 @@
+@typeparam T
+
+<MudSelect T="T"
+           Value="Value"
+           ValueChanged="ValueChanged"
+           Label="@Label"
+           Dense="true"
+           Margin="Margin.Dense"
+           Variant="Variant.Outlined"
+           Class="@Class"
+           Style="@Style"
+           Required="@Required"
+           Clearable="@Clearable"
+           FullWidth="@FullWidth"
+           Placeholder="@Placeholder"
+           ToStringFunc="@ToStringFunc"
+           MultiSelection="@MultiSelection"
+           SelectedValues="@SelectedValues"
+           SelectedValuesChanged="@SelectedValuesChanged">
+    @ChildContent
+</MudSelect>
+
+@code {
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T?> ValueChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Clearable { get; set; }
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public Func<T?, string>? ToStringFunc { get; set; }
+    [Parameter] public bool MultiSelection { get; set; }
+    [Parameter] public IReadOnlyCollection<T>? SelectedValues { get; set; }
+    [Parameter] public EventCallback<IReadOnlyCollection<T>?> SelectedValuesChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

@@ -13,8 +13,11 @@ public static class DefaultDivisionStages
         if (await db.Stages.AsNoTracking().AnyAsync(s => s.DivisionId == division.Id, ct))
             return;
 
+        var poolStage = new Stage(division.OrganizationId, division.Id, 1, StageType.Pool, "Pool play");
         db.Stages.AddRange(
-            new Stage(division.OrganizationId, division.Id, 1, StageType.Pool, "Pool play"),
+            poolStage,
             new Stage(division.OrganizationId, division.Id, 2, StageType.Bracket, "Bracket"));
+
+        db.PoolSettings.Add(new PoolSettings(division.OrganizationId, poolStage.Id));
     }
 }

@@ -9,6 +9,8 @@ public sealed record UpdateTournamentCommand(
     Guid Id,
     string Name,
     string? Description,
+    string? WebsiteUrl,
+    string? ContactEmail,
     DateOnly StartDate,
     DateOnly EndDate,
     string TimeZoneId,
@@ -24,6 +26,12 @@ public sealed class UpdateTournamentValidator : AbstractValidator<UpdateTourname
         RuleFor(x => x.TimeZoneId).NotEmpty();
         RuleFor(x => x.DefaultMatchDurationMinutes).GreaterThan(0);
         RuleFor(x => x).Must(x => x.EndDate >= x.StartDate).WithMessage("End date must be on or after start date");
+        RuleFor(x => x.WebsiteUrl).MaximumLength(500)
+            .Must(TournamentContactValidation.IsValidWebsiteUrl)
+            .WithMessage("Website must be a valid URL.")
+            .When(x => !string.IsNullOrWhiteSpace(x.WebsiteUrl));
+        RuleFor(x => x.ContactEmail).MaximumLength(254).EmailAddress()
+            .When(x => !string.IsNullOrWhiteSpace(x.ContactEmail));
     }
 }
 
@@ -43,6 +51,7 @@ public sealed class UpdateTournamentHandler : IRequestHandler<UpdateTournamentCo
 
         t.Rename(request.Name);
         t.SetDescription(request.Description);
+        t.SetContactInfo(request.WebsiteUrl, request.ContactEmail);
         t.SetDates(request.StartDate, request.EndDate);
         t.SetTimeZone(request.TimeZoneId);
         t.SetDefaultMatchDuration(request.DefaultMatchDurationMinutes);

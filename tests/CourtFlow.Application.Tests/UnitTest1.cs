@@ -489,6 +489,7 @@ internal sealed class TestAppDbContext : DbContext, IAppDbContext
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<Division> Divisions => Set<Division>();
     public DbSet<Pool> Pools => Set<Pool>();
+    public DbSet<PoolSettings> PoolSettings => Set<PoolSettings>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchSet> MatchSets => Set<MatchSet>();

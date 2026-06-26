@@ -34,6 +34,9 @@ public interface ICourtFlowTournamentsApi
 
     [Post("/api/v1/tournaments/{id}/clone")]
     Task<TournamentDto> CloneAsync(Guid id, [Query] bool structureOnly = false, CancellationToken cancellationToken = default);
+
+    [Put("/api/v1/tournaments/{id}/session-settings")]
+    Task<TournamentDto> UpsertSessionSettingsAsync(Guid id, [Body] UpsertTournamentSessionSettingsDto dto, CancellationToken cancellationToken = default);
 }
 
 public interface ICourtFlowVenuesApi
@@ -112,6 +115,9 @@ public interface ICourtFlowDivisionsApi
 
     [Put("/api/v1/divisions/{divisionId}/wizard/pools")]
     Task<DivisionWizardStateDto?> SavePoolStructureAsync(Guid divisionId, [Body] SaveDivisionPoolStructureDto dto, CancellationToken cancellationToken);
+
+    [Put("/api/v1/divisions/{divisionId}/wizard/pool-settings")]
+    Task<DivisionWizardStateDto?> SavePoolSettingsAsync(Guid divisionId, [Body] SaveDivisionPoolSettingsDto dto, CancellationToken cancellationToken);
 
     [Put("/api/v1/divisions/{divisionId}/wizard/brackets")]
     Task<DivisionWizardStateDto?> SaveBracketStructureAsync(Guid divisionId, [Body] SaveDivisionBracketStructureDto dto, CancellationToken cancellationToken);

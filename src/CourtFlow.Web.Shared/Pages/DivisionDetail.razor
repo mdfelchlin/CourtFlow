@@ -1,8 +1,10 @@
 @page "/divisions/{DivisionId:guid}"
 @attribute [Authorize]
+@using CourtFlow.Web.Shared.Common
 @inject CourtFlow.ApiClient.CourtFlowApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>@(_division?.Name ?? "Division") · CourtFlow</PageTitle>
 
@@ -47,7 +49,7 @@ else
                              Size="Size.Small"
                              Variant="@(_wizardStep == stepIdx ? Variant.Filled : Variant.Outlined)"
                              Color="@(_wizardStep == stepIdx ? Color.Primary : Color.Default)"
-                             OnClick="@(() => _wizardStep = stepIdx)"
+                             OnClick="@(() => GoToStep(stepIdx))"
                              Style="cursor:pointer">
                         @label
                     </MudChip>
@@ -92,7 +94,6 @@ else
                         <span class="cf-ranking-handle"></span>
                         <span class="cf-ranking-num">#</span>
                         <span>Team</span>
-                        <span>Club</span>
                     </div>
                     @if (_editingRankings)
                     {
@@ -106,7 +107,7 @@ else
                                 <MudDropZone T="TeamDto" Identifier="@RankingZoneId" AllowReorder="true" Class="mud-width-full" />
                             </ChildContent>
                             <ItemRenderer>
-                                <MudPaper Elevation="0" Outlined="true" Class="cf-ranking-card">
+                                <MudPaper @key="context.Id" Elevation="0" Outlined="true" Class="cf-ranking-card">
                                     <div class="cf-ranking-row">
                                         <div class="cf-ranking-handle">
                                             <MudTooltip Text="Drag row to reorder">
@@ -117,8 +118,7 @@ else
                                             </MudTooltip>
                                         </div>
                                         <MudText Typo="Typo.body2" Class="cf-ranking-num">@RankLabelInDraft(context)</MudText>
-                                        <MudText Typo="Typo.body2" Class="cf-ranking-team">@context.Name</MudText>
-                                        <MudText Typo="Typo.body2" Class="cf-ranking-club">@(string.IsNullOrEmpty(context.Club) ? "—" : context.Club)</MudText>
+                                        <MudText Typo="Typo.body2" Class="cf-ranking-team">@TeamDisplay.Label(context.Club, context.Name)</MudText>
                                     </div>
                                 </MudPaper>
                             </ItemRenderer>
@@ -132,8 +132,7 @@ else
                                 <div class="cf-ranking-row">
                                     <div class="cf-ranking-handle"></div>
                                     <MudText Typo="Typo.body2" Class="cf-ranking-num">@RankLabel(t)</MudText>
-                                    <MudText Typo="Typo.body2" Class="cf-ranking-team">@t.Name</MudText>
-                                    <MudText Typo="Typo.body2" Class="cf-ranking-club">@(string.IsNullOrEmpty(t.Club) ? "—" : t.Club)</MudText>
+                                    <MudText Typo="Typo.body2" Class="cf-ranking-team">@TeamDisplay.Label(t.Club, t.Name)</MudText>
                                 </div>
                             </MudPaper>
                         }
@@ -151,39 +150,70 @@ else
                         <MudText Typo="Typo.caption" Class="mb-1">@pool.PoolName</MudText>
                         @foreach (var row in pool.Rows.Take(6))
                         {
-                            <MudText Typo="Typo.body2">@row.Rank. @row.TeamName — @row.MatchWins-@row.MatchLosses</MudText>
+                            <MudText Typo="Typo.body2">@row.Rank. @StandingsTeamLabel(row) — @row.MatchWins-@row.MatchLosses</MudText>
                         }
                     }
                 }
-                <MudDivider Class="my-3" />
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Materialize</MudText>
-                <MudStack Spacing="1">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.GridView"
-                               Disabled="_materializeBusy || _editingRankings || _teams.Count < 3 || !CanSnakeIntoPools"
-                               OnClick="SnakeIntoPoolsAsync">
-                        Snake rankings into pools
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Secondary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.AccountTree"
-                               Disabled="_materializeBusy || !CanResolveBracketSlots"
-                               OnClick="ResolveBracketSlotsAsync">
-                        Resolve bracket slots
-                    </MudButton>
-                    @if (!CanSnakeIntoPools && _poolDraft.Count > 0)
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            @SnakePrerequisiteHint
-                        </MudText>
-                    }
-                </MudStack>
             }
             else if (_wizardStep == 1)
             {
+                <MudPaper Class="pa-3 mb-3" Outlined="true" Elevation="0">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Pool settings</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6" md="4">
+                            <CfSelect T="string" @bind-Value="_poolSettingsDraft.SeedingMethod" Label="Seeding method">
+                                <MudSelectItem T="string" Value="@("snake")">Snake</MudSelectItem>
+                            </CfSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <CfSelect T="string" @bind-Value="_poolSettingsDraft.PoolSizeStrategy" Label="Pool size strategy">
+                                <MudSelectItem T="string" Value="@("auto_3_4")">Auto 3/4</MudSelectItem>
+                            </CfSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <CfNumericField T="int" @bind-Value="_poolSettingsDraft.TeamsPerPoolTarget" Label="Default pool size" Min="2" Max="8" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <CfSelect T="string" @bind-Value="_poolSettingsDraft.ClubSeparationMode" Label="Club separation">
+                                <MudSelectItem T="string" Value="@("none")">None</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("avoid_same_club")">Avoid same club</MudSelectItem>
+                            </CfSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <CfSelect T="string" @bind-Value="_poolSettingsDraft.RefAssignmentMode" Label="Work team assignment">
+                                <MudSelectItem T="string" Value="@("next_in_pool")">Next in pool</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("manual_only")">Manual only</MudSelectItem>
+                            </CfSelect>
+                        </MudItem>
+                    </MudGrid>
+                    <MudStack Row="true" Spacing="1" Class="mt-2" Wrap="Wrap.Wrap">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="SavePoolSettingsAsync" Disabled="_wizardSaveBusy">Save settings</MudButton>
+                    </MudStack>
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Materialize</MudText>
+                    <MudStack Spacing="1">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.GridView"
+                                   Disabled="_materializeBusy || _editingRankings || _teams.Count < 3 || !CanSnakeIntoPools"
+                                   OnClick="SnakeIntoPoolsAsync">
+                            Snake rankings into pools
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.AccountTree"
+                                   Disabled="_materializeBusy || !CanResolveBracketSlots"
+                                   OnClick="ResolveBracketSlotsAsync">
+                            Resolve bracket slots
+                        </MudButton>
+                        @if (!CanSnakeIntoPools && _poolDraft.Count > 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@SnakePrerequisiteHint</MudText>
+                        }
+                    </MudStack>
+                </MudPaper>
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
                             <MudText Typo="Typo.h6">Step 2 · Pool structure</MudText>
                             <MudSpacer />
@@ -215,16 +245,29 @@ else
                             {
                                 <MudItem xs="12" md="6">
                                     <MudPaper Class="pa-2" Outlined="true">
-                                        <MudStack Spacing="1">
-                                            <MudTextField @bind-Value="pool.Name" Label="Pool name" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                            <MudNumericField T="int" @bind-Value="pool.TargetSize" Label="Target size" Min="2" Max="8" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                            <MudSelect T="Guid" Label="Courts" MultiSelection="true" SelectedValues="@GetPoolCourtSelection(pool)" SelectedValuesChanged="@(ids => SetPoolCourts(pool, ids.ToList()))" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                        <MudStack Spacing="0">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
+                                                <CfTextField @bind-Value="pool.Name" Label="Pool name" Class="flex-grow-1" />
+                                                <CfNumericField T="int" @bind-Value="pool.TargetSize" Label="Size" Min="2" Max="8" Style="max-width:6rem;" />
+                                                <MudTooltip Text="@PoolScheduleTooltip(pool)">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                                                   Size="Size.Small"
+                                                                   Disabled="@(!PoolHasMatches(pool))"
+                                                                   OnClick="@(() => OpenPoolScheduleDialogAsync(pool))" />
+                                                </MudTooltip>
+                                            </MudStack>
+                                            <CfSelect T="Guid"
+                                                       Label="Court(s)"
+                                                       MultiSelection="true"
+                                                       SelectedValues="@GetPoolCourtSelection(pool)"
+                                                       SelectedValuesChanged="@(ids => SetPoolCourts(pool, ids.ToList()))"
+                                                       ToStringFunc="@(id => _courtLabelById.GetValueOrDefault(id, id.ToString()))">
                                                 @foreach (var court in _courts)
                                                 {
-                                                    <MudSelectItem T="Guid" Value="@court.Id">@court.Name</MudSelectItem>
+                                                    <MudSelectItem T="Guid" Value="@court.Id">@court.Label</MudSelectItem>
                                                 }
-                                            </MudSelect>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            </CfSelect>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
                                                 @for (var slot = 1; slot <= pool.TargetSize; slot++)
                                                 {
                                                     var entry = PoolEntryLabel(pool, slot);
@@ -236,105 +279,16 @@ else
                                 </MudItem>
                             }
                         </MudGrid>
-                        @if (ShowWorkRotationPanel)
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Advancement to brackets</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                            Define how pool finish positions fill bracket slots. Resolve bracket slots uses these rules after pool play completes.
+                        </MudText>
+                        @if (_ruleDraft.Count > 0)
                         {
-                            <MudDivider Class="my-3" />
-                            <MudText Typo="Typo.subtitle1" Class="mb-2">Work rotation</MudText>
-                            @if (_workRotationLoading)
-                            {
-                                <MudProgressLinear Indeterminate="true" />
-                            }
-                            else if (_workRotation.Count == 0)
-                            {
-                                <MudAlert Severity="Severity.Info" Dense="true">Available after Snake Rankings into Pools.</MudAlert>
-                            }
-                            else
-                            {
-                                @foreach (var pool in _workRotation)
-                                {
-                                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">@pool.PoolName</MudText>
-                                    <MudTable Items="pool.Matches" Dense="true" Hover="true" Class="mb-2">
-                                        <HeaderContent>
-                                            <MudTh>#</MudTh>
-                                            <MudTh>Match</MudTh>
-                                            <MudTh>WorkTeam</MudTh>
-                                            <MudTh>Source</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate>
-                                            <MudTd>@context.Order</MudTd>
-                                            <MudTd>@context.HomeTeamName vs @context.AwayTeamName</MudTd>
-                                            <MudTd>@(context.WorkTeamName ?? "—")</MudTd>
-                                            <MudTd><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.AssignmentSource</MudChip></MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
-                                }
-                            }
+                            <MudText Typo="Typo.body2" Class="mb-2">@AdvancementRulesSummary()</MudText>
                         }
-                    }
-                    else if (_wizardStep == 2)
-                    {
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
-                            <MudText Typo="Typo.h6">Step 3 · Bracket structure</MudText>
-                            <MudSpacer />
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AddBracketDraft">Add bracket</MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => SaveBracketStructureAsync())" Disabled="_wizardSaveBusy">Save brackets</MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="GenerateBracketsAsync" Disabled="_materializeBusy || _bracketDraft.Count == 0">Generate brackets</MudButton>
-                        </MudStack>
-                        @foreach (var bracket in _bracketDraft)
-                        {
-                            <MudPaper Class="pa-2 mb-2" Outlined="true">
-                                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-                                    <MudTextField @bind-Value="bracket.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Class="flex-grow-1" />
-                                    <MudNumericField T="int" @bind-Value="bracket.TeamCount" Label="Team count" Min="2" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                    <MudSelect T="BracketTypeDto" @bind-Value="bracket.Type" Label="Type" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
-                                        <MudSelectItem T="BracketTypeDto" Value="BracketTypeDto.SingleElimination">Single elimination</MudSelectItem>
-                                        <MudSelectItem T="BracketTypeDto" Value="BracketTypeDto.DoubleElimination">Double elimination</MudSelectItem>
-                                    </MudSelect>
-                                    <MudSwitch T="bool" @bind-Value="bracket.IfNecessaryFinal" Label="If-necessary final" Color="Color.Primary" />
-                                </MudStack>
-                                @{
-                                    var slots = _wizard?.BracketSeedSlots.Where(s => s.BracketName.Equals(bracket.Name, StringComparison.OrdinalIgnoreCase)).OrderBy(s => s.SeedPosition).ToList() ?? new();
-                                }
-                                @if (slots.Count > 0)
-                                {
-                                    @foreach (var slot in slots)
-                                    {
-                                        <MudText Typo="Typo.body2" Class="mt-1">
-                                            Slot @slot.SeedPosition: @(slot.Label ?? "—")
-                                            @if (slot.ManualTournamentTeamId is not null) { <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pinned</MudChip> }
-                                            @if (slot.ResolvedTournamentTeamId is not null) { <span> → @TeamNameForTournamentTeam(slot.ResolvedTournamentTeamId)</span> }
-                                        </MudText>
-                                    }
-                                }
-                                @if (bracket.Id is { } bracketId)
-                                {
-                                    <MudExpansionPanels Class="mt-2" Elevation="0">
-                                        <MudExpansionPanel Text="Preview bracket tree" Dense="true">
-                                            <BracketView BracketId="bracketId" Compact="true" />
-                                        </MudExpansionPanel>
-                                    </MudExpansionPanels>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Generate brackets to preview the tree.</MudText>
-                                }
-                            </MudPaper>
-                        }
-                    }
-                    else if (_wizardStep == 3)
-                    {
-                        @if (_bracketBlockingReasons.Count > 0)
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                                @foreach (var reason in _bracketBlockingReasons)
-                                {
-                                    <div>@reason</div>
-                                }
-                            </MudAlert>
-                        }
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
-                            <MudText Typo="Typo.h6">Step 4 · Advancement rules</MudText>
-                            <MudSpacer />
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Class="mb-2">
                             <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => ApplyTopNPreset(1))">Top 1 → Gold</MudButton>
                             <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => ApplyTopNPreset(2))">Top 2 → Gold</MudButton>
                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SaveAdvancementRulesAsync())" Disabled="_wizardSaveBusy">Save rules</MudButton>
@@ -350,73 +304,146 @@ else
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd>
-                                    <MudSelect T="Guid?" @bind-Value="context.SourcePoolId" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                    <CfSelect T="Guid?" @bind-Value="context.SourcePoolId">
                                         <MudSelectItem T="Guid?" Value="@((Guid?)null)">Any pool</MudSelectItem>
                                         @foreach (var p in _poolDraft)
                                         {
                                             <MudSelectItem T="Guid?" Value="@(p.Id == Guid.Empty ? null : p.Id)">@p.Name</MudSelectItem>
                                         }
-                                    </MudSelect>
+                                    </CfSelect>
                                 </MudTd>
-                                <MudTd><MudNumericField T="int" @bind-Value="context.SourceFinishPosition" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudTd>
+                                <MudTd><CfNumericField T="int" @bind-Value="context.SourceFinishPosition" Min="1" /></MudTd>
                                 <MudTd>
-                                    <MudSelect T="string" @bind-Value="context.TargetBracketName" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                    <CfSelect T="string" @bind-Value="context.TargetBracketName">
                                         @foreach (var b in _bracketDraft)
                                         {
                                             <MudSelectItem T="string" Value="@b.Name">@b.Name</MudSelectItem>
                                         }
-                                    </MudSelect>
+                                    </CfSelect>
                                 </MudTd>
-                                <MudTd><MudNumericField T="int" @bind-Value="context.TargetSeedSlot" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudTd>
+                                <MudTd><CfNumericField T="int" @bind-Value="context.TargetSeedSlot" Min="1" /></MudTd>
                                 <MudTd>
-                                    <MudSelect T="string" @bind-Value="context.OrderBy" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                    <CfSelect T="string" @bind-Value="context.OrderBy">
                                         <MudSelectItem T="string" Value="@("pool_sequence")">Pool sequence</MudSelectItem>
                                         <MudSelectItem T="string" Value="@("tiebreaker_rank")">Tiebreaker rank</MudSelectItem>
-                                    </MudSelect>
+                                    </CfSelect>
                                 </MudTd>
                                 <MudTd><MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveRule(context))" /></MudTd>
                             </RowTemplate>
                         </MudTable>
                         <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="AddRuleDraft">Add rule</MudButton>
                     }
+                    else if (_wizardStep == 2)
+                    {
+                        @if (_bracketBlockingReasons.Count > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                                @foreach (var reason in _bracketBlockingReasons)
+                                {
+                                    <div>@reason</div>
+                                }
+                            </MudAlert>
+                        }
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.h6">Step 3 · Bracket structure</MudText>
+                            <MudSpacer />
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AddBracketDraft">Add bracket</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => SaveBracketStructureAsync())" Disabled="_wizardSaveBusy">Save brackets</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="GenerateBracketsAsync" Disabled="_materializeBusy || _bracketDraft.Count == 0">Generate brackets</MudButton>
+                        </MudStack>
+                        @foreach (var bracket in _bracketDraft)
+                        {
+                            var suggestedCount = SuggestedTeamCountForBracket(bracket.Name);
+                            <MudPaper Class="pa-2 mb-2" Outlined="true">
+                                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                                    <CfTextField @bind-Value="bracket.Name" Label="Name" Class="flex-grow-1" />
+                                    <CfNumericField T="int" @bind-Value="bracket.TeamCount" Label="Team count" Min="2" Style="max-width:7rem;" />
+                                    <MudTooltip Text="@BracketPreviewTooltip(bracket)">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                                       Size="Size.Small"
+                                                       Disabled="@(bracket.Id is null)"
+                                                       OnClick="@(() => OpenBracketPreviewDialogAsync(bracket))" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="@(BracketsLocked ? "Bracket structure is locked" : "Remove bracket")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       Disabled="@(BracketsLocked || _bracketDraft.Count <= 1)"
+                                                       OnClick="@(() => RemoveBracketDraftAsync(bracket))" />
+                                    </MudTooltip>
+                                    <CfSelect T="BracketTypeDto" @bind-Value="bracket.Type" Label="Type">
+                                        <MudSelectItem T="BracketTypeDto" Value="BracketTypeDto.SingleElimination">Single elimination</MudSelectItem>
+                                        <MudSelectItem T="BracketTypeDto" Value="BracketTypeDto.DoubleElimination">Double elimination</MudSelectItem>
+                                    </CfSelect>
+                                    <MudSwitch T="bool" @bind-Value="bracket.IfNecessaryFinal" Label="If-necessary final" Color="Color.Primary" />
+                                </MudStack>
+                                @if (bracket.TeamCount != suggestedCount)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Suggested: @suggestedCount from advancement rules</MudText>
+                                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ApplySuggestedTeamCount(bracket))">Use suggested</MudButton>
+                                    </MudStack>
+                                }
+                            </MudPaper>
+                        }
+                    }
+
+            <MudDivider Class="my-3" />
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.ChevronLeft"
+                           Disabled="_wizardStep == 0"
+                           OnClick="@(() => GoToStep(_wizardStep - 1))">
+                    Previous
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           EndIcon="@Icons.Material.Filled.ChevronRight"
+                           Disabled="_wizardStep >= WizardSteps.Length - 1"
+                           OnClick="@(() => GoToStep(_wizardStep + 1))">
+                    Next
+                </MudButton>
+            </MudStack>
         </MudStack>
     </MudPaper>
 }
 
 @code {
     [Parameter] public Guid DivisionId { get; set; }
+    [SupplyParameterFromQuery(Name = "step")] public string? StepQuery { get; set; }
     [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
 
     private DivisionDto? _division;
     private List<TeamDto> _teams = new();
     private List<StageDto> _stages = new();
     private DivisionWizardStateDto? _wizard;
-    private List<CourtDto> _courts = new();
+    private List<CourtOption> _courts = new();
+    private Dictionary<Guid, string> _courtLabelById = new();
     private bool _loading = true;
     private int _wizardStep;
 
     private List<EditablePool> _poolDraft = new();
     private List<EditableBracket> _bracketDraft = new();
     private List<EditableRule> _ruleDraft = new();
+    private PoolSettingsDraft _poolSettingsDraft = new();
 
     private bool _editingRankings;
     private List<TeamDto> _rankingDraft = new();
     private bool _rankingSaveBusy;
     private bool _materializeBusy;
     private bool _wizardSaveBusy;
-    private bool _workRotationLoading;
     private List<CourtFlow.ApiClient.DivisionPoolWorkRotationDto> _workRotation = new();
 
-    private bool ShowWorkRotationPanel => _stages.Any(s =>
-        s.StageType == CourtFlow.ApiClient.StageTypeDto.Pool
-        && s.Status is CourtFlow.ApiClient.StageStatusDto.Seeded
-            or CourtFlow.ApiClient.StageStatusDto.InProgress
-            or CourtFlow.ApiClient.StageStatusDto.Completed);
+    private sealed record CourtOption(Guid Id, string Label);
 
     private MudDropContainer<TeamDto>? _dropContainer;
     private const string RankingZoneId = "rankings";
 
     private bool RankingsLocked => _stages.Any(s => s.Status is StageStatusDto.InProgress or StageStatusDto.Completed);
+    private bool BracketsLocked => _stages.Any(s =>
+        s.StageType == StageTypeDto.Bracket
+        && s.Status is StageStatusDto.InProgress or StageStatusDto.Completed);
     private IReadOnlyList<int> _suggestedPoolSizes => PoolLayoutHints.BuildPoolSizes(_teams.Count);
 
     private bool PoolsMatchSuggestedLayout =>
@@ -438,7 +465,36 @@ else
 
     private bool ItemInRankingZone(TeamDto item, string zoneIdentifier) => zoneIdentifier == RankingZoneId;
 
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+        ApplyStepFromQuery();
+    }
+
+    private void ApplyStepFromQuery()
+    {
+        if (_division is null) return;
+        _wizardStep = ParseWizardStep(StepQuery);
+    }
+
+    private static int ParseWizardStep(string? stepQuery)
+    {
+        if (string.IsNullOrWhiteSpace(stepQuery)) return 0;
+        var slug = stepQuery.Trim().ToLowerInvariant();
+        if (slug == "rules") return 1;
+        for (var i = 0; i < WizardStepSlugs.Length; i++)
+        {
+            if (WizardStepSlugs[i] == slug) return i;
+        }
+        return 0;
+    }
+
+    private void GoToStep(int index)
+    {
+        var step = Math.Clamp(index, 0, WizardSteps.Length - 1);
+        _wizardStep = step;
+        Nav.NavigateTo($"/divisions/{DivisionId}?step={WizardStepSlugs[step]}", replace: true);
+    }
 
     private async Task LoadAsync()
     {
@@ -460,6 +516,7 @@ else
             SyncDraftsFromWizard();
             await LoadWorkRotationAsync();
             await LoadStandingsPreviewAsync();
+            ApplyStepFromQuery();
         }
         catch (Exception ex)
         {
@@ -474,11 +531,17 @@ else
     private async Task LoadCourtsAsync(Guid tournamentId)
     {
         _courts = new();
+        _courtLabelById = new();
         var venues = await Api.Venues.ListAsync(tournamentId);
-        foreach (var venue in venues)
+        foreach (var venue in venues.OrderBy(v => v.Name))
         {
             var courts = await Api.Courts.ListAsync(venue.Id);
-            _courts.AddRange(courts);
+            foreach (var court in courts.OrderBy(c => c.Name))
+            {
+                var label = $"CT {court.Name} · {venue.Name}";
+                _courts.Add(new CourtOption(court.Id, label));
+                _courtLabelById[court.Id] = label;
+            }
         }
     }
 
@@ -486,8 +549,8 @@ else
     {
         if (_wizard is null)
         {
-            _poolDraft = new() { new EditablePool { Name = "Pool A", TargetSize = 4, Sequence = 0 } };
-            _bracketDraft = new() { new EditableBracket { Name = "Gold", TeamCount = 8, Type = BracketTypeDto.SingleElimination } };
+            _poolDraft = new() { new EditablePool { Name = "Pool A", TargetSize = _poolSettingsDraft.TeamsPerPoolTarget, Sequence = 0 } };
+            _bracketDraft = new() { new EditableBracket { Name = "Gold", TeamCount = DefaultBracketTeamCount("Gold"), Type = BracketTypeDto.SingleElimination } };
             _ruleDraft = new();
             return;
         }
@@ -502,7 +565,7 @@ else
         }).ToList();
 
         if (_poolDraft.Count == 0)
-            _poolDraft.Add(new EditablePool { Name = "Pool A", TargetSize = 4, Sequence = 0 });
+            _poolDraft.Add(new EditablePool { Name = "Pool A", TargetSize = _poolSettingsDraft.TeamsPerPoolTarget, Sequence = 0 });
 
         _bracketDraft = _wizard.Brackets.Select(b => new EditableBracket
         {
@@ -515,7 +578,7 @@ else
         }).ToList();
 
         if (_bracketDraft.Count == 0)
-            _bracketDraft.Add(new EditableBracket { Name = "Gold", TeamCount = 8, Type = BracketTypeDto.SingleElimination });
+            _bracketDraft.Add(new EditableBracket { Name = "Gold", TeamCount = DefaultBracketTeamCount("Gold"), Type = BracketTypeDto.SingleElimination });
 
         _ruleDraft = _wizard.AdvancementRules.Select(r => new EditableRule
         {
@@ -527,12 +590,31 @@ else
             OrderBy = r.OrderBy,
             Priority = r.Priority
         }).ToList();
+
+        if (_wizard.PoolSettings is { } ps)
+        {
+            _poolSettingsDraft = new PoolSettingsDraft
+            {
+                TeamsPerPoolTarget = ps.TeamsPerPoolTarget,
+                PoolSizeStrategy = ps.PoolSizeStrategy,
+                SeedingMethod = ps.SeedingMethod,
+                ClubSeparationMode = ps.ClubSeparationMode,
+                PlayStyle = ps.PlayStyle,
+                CourtAllocationMode = ps.CourtAllocationMode,
+                RefAssignmentMode = ps.RefAssignmentMode
+            };
+        }
+
+        if (_ruleDraft.Count > 0)
+            SyncBracketTeamCountsFromRules();
     }
 
     private async Task LoadWorkRotationAsync()
     {
-        if (!ShowWorkRotationPanel) { _workRotation = new(); return; }
-        _workRotationLoading = true;
+        var showRotation = _stages.Any(s =>
+            s.StageType == StageTypeDto.Pool
+            && s.Status is StageStatusDto.Seeded or StageStatusDto.InProgress or StageStatusDto.Completed);
+        if (!showRotation) { _workRotation = new(); return; }
         try
         {
             _workRotation = (await Api.Divisions.GetWorkRotationAsync(DivisionId)).ToList();
@@ -541,7 +623,6 @@ else
         {
             _workRotation = new();
         }
-        finally { _workRotationLoading = false; }
     }
 
     private async Task ReloadTeamsAsync()
@@ -599,6 +680,7 @@ else
         list.Insert(to, moved);
         _rankingDraft = list;
         _dropContainer?.Refresh();
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
@@ -614,6 +696,7 @@ else
         }
         _rankingDraft = list;
         _dropContainer?.Refresh();
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
@@ -622,14 +705,14 @@ else
         if (_poolBlockingReasons.Count > 0)
         {
             Snackbar.Add("Fix pool structure issues in Step 2 before snaking.", Severity.Warning);
-            _wizardStep = 1;
+            GoToStep(1);
             return;
         }
 
         if (_poolDraft.Any(p => p.Id == Guid.Empty))
         {
             Snackbar.Add("Save pool structure in Step 2 before snaking.", Severity.Warning);
-            _wizardStep = 1;
+            GoToStep(1);
             return;
         }
 
@@ -642,7 +725,7 @@ else
             _wizard = await Api.Divisions.GetWizardStateAsync(DivisionId);
             SyncDraftsFromWizard();
             await LoadWorkRotationAsync();
-            _wizardStep = 1;
+            GoToStep(1);
             Snackbar.Add("Rankings snaked into pools; pool matches generated.", Severity.Success);
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -651,9 +734,17 @@ else
 
     private async Task GenerateBracketsAsync()
     {
+        if (_ruleDraft.Count == 0)
+        {
+            Snackbar.Add("Add advancement rules on the Pool step before generating brackets.", Severity.Warning);
+            GoToStep(1);
+            return;
+        }
+
         _materializeBusy = true;
         try
         {
+            SyncBracketTeamCountsFromRules();
             await SaveBracketStructureAsync(silent: true);
             await SaveAdvancementRulesAsync(silent: true);
             await Api.Divisions.GenerateBracketsAsync(DivisionId);
@@ -677,6 +768,28 @@ else
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         finally { _materializeBusy = false; }
+    }
+
+    private async Task SavePoolSettingsAsync()
+    {
+        _wizardSaveBusy = true;
+        try
+        {
+            var dto = new PoolSettingsDto(
+                _poolSettingsDraft.TeamsPerPoolTarget,
+                _poolSettingsDraft.PoolSizeStrategy,
+                _poolSettingsDraft.SeedingMethod,
+                _poolSettingsDraft.ClubSeparationMode,
+                _poolSettingsDraft.PlayStyle,
+                _poolSettingsDraft.CourtAllocationMode,
+                _poolSettingsDraft.RefAssignmentMode);
+            _wizard = await Api.Divisions.SavePoolSettingsAsync(DivisionId, new SaveDivisionPoolSettingsDto(dto));
+            SyncDraftsFromWizard();
+            _stages = (await Api.Stages.ListAsync(DivisionId)).OrderBy(s => s.StageNumber).ToList();
+            Snackbar.Add("Pool settings saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _wizardSaveBusy = false; }
     }
 
     private async Task SavePoolStructureAsync(bool silent = false)
@@ -734,7 +847,12 @@ else
                 r.Priority)).ToList();
             _wizard = await Api.Divisions.SaveAdvancementRulesAsync(DivisionId, new SaveDivisionAdvancementRulesDto(rules));
             SyncDraftsFromWizard();
-            if (!silent) Snackbar.Add("Advancement rules saved", Severity.Success);
+            if (!silent)
+            {
+                Snackbar.Add("Advancement rules saved; bracket team counts updated from rules.", Severity.Success);
+                if (_bracketDraft.Any(b => b.Id != null))
+                    await SaveBracketStructureAsync(silent: true);
+            }
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         finally { _wizardSaveBusy = false; }
@@ -774,12 +892,60 @@ else
     private Task AddPoolDraftAsync()
     {
         var letter = (char)('A' + _poolDraft.Count);
-        _poolDraft.Add(new EditablePool { Name = $"Pool {letter}", TargetSize = 4, Sequence = _poolDraft.Count });
+        _poolDraft.Add(new EditablePool
+        {
+            Name = $"Pool {letter}",
+            TargetSize = _poolSettingsDraft.TeamsPerPoolTarget,
+            Sequence = _poolDraft.Count
+        });
         return Task.CompletedTask;
     }
 
-    private void AddBracketDraft() =>
-        _bracketDraft.Add(new EditableBracket { Name = $"Bracket {_bracketDraft.Count + 1}", TeamCount = 8, Type = BracketTypeDto.SingleElimination, Sequence = _bracketDraft.Count });
+    private void AddBracketDraft()
+    {
+        var name = $"Bracket {_bracketDraft.Count + 1}";
+        _bracketDraft.Add(new EditableBracket
+        {
+            Name = name,
+            TeamCount = DefaultBracketTeamCount(name),
+            Type = BracketTypeDto.SingleElimination,
+            Sequence = _bracketDraft.Count
+        });
+    }
+
+    private async Task RemoveBracketDraftAsync(EditableBracket bracket)
+    {
+        if (BracketsLocked)
+        {
+            Snackbar.Add("Bracket structure cannot be changed while the bracket stage is in progress.", Severity.Warning);
+            return;
+        }
+
+        if (_bracketDraft.Count <= 1)
+        {
+            Snackbar.Add("At least one bracket is required.", Severity.Warning);
+            return;
+        }
+
+        var name = bracket.Name;
+        var wasSaved = bracket.Id is not null;
+        _bracketDraft.Remove(bracket);
+        _ruleDraft.RemoveAll(r => r.TargetBracketName.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        if (wasSaved)
+        {
+            try
+            {
+                await SaveBracketStructureAsync(silent: true);
+                await SaveAdvancementRulesAsync(silent: true);
+                Snackbar.Add($"Bracket \"{name}\" removed.", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+            }
+        }
+    }
 
     private void AddRuleDraft() =>
         _ruleDraft.Add(new EditableRule { SourceFinishPosition = 1, TargetBracketName = _bracketDraft.FirstOrDefault()?.Name ?? "Gold", TargetSeedSlot = 1, OrderBy = "pool_sequence" });
@@ -804,6 +970,8 @@ else
             });
         }
 
+        gold.TeamCount = SuggestedTeamCountForBracket(gold.Name);
+
         var silver = _bracketDraft.FirstOrDefault(b => b.Name.Equals("Silver", StringComparison.OrdinalIgnoreCase));
         if (silver is not null)
         {
@@ -814,27 +982,121 @@ else
                 TargetSeedSlot = 1,
                 OrderBy = "pool_sequence"
             });
+            silver.TeamCount = SuggestedTeamCountForBracket(silver.Name);
         }
     }
 
-    private static readonly string[] WizardSteps = ["Ranking", "Pool", "Bracket", "Rules"];
+    private static readonly string[] WizardSteps = ["Ranking", "Pool", "Bracket"];
+    private static readonly string[] WizardStepSlugs = ["ranking", "pool", "bracket"];
+
+    private int DefaultBracketTeamCount(string bracketName) =>
+        SuggestedTeamCountForBracket(bracketName);
+
+    private int SuggestedTeamCountForBracket(string bracketName)
+    {
+        var poolCount = Math.Max(1, _poolDraft.Count);
+        var rules = _ruleDraft
+            .Where(r => r.TargetBracketName.Equals(bracketName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (rules.Count == 0)
+            return Math.Max(2, poolCount);
+
+        var maxSlot = 0;
+        foreach (var rule in rules)
+        {
+            var endSlot = rule.SourcePoolId is null
+                ? rule.TargetSeedSlot + poolCount - 1
+                : rule.TargetSeedSlot;
+            maxSlot = Math.Max(maxSlot, endSlot);
+        }
+        return Math.Max(2, maxSlot);
+    }
+
+    private void SyncBracketTeamCountsFromRules()
+    {
+        foreach (var bracket in _bracketDraft)
+            bracket.TeamCount = SuggestedTeamCountForBracket(bracket.Name);
+    }
+
+    private void ApplySuggestedTeamCount(EditableBracket bracket) =>
+        bracket.TeamCount = SuggestedTeamCountForBracket(bracket.Name);
+
+    private string AdvancementRulesSummary()
+    {
+        if (_ruleDraft.Count == 0) return "";
+        var parts = _ruleDraft
+            .GroupBy(r => r.TargetBracketName, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var wildcard = g.Where(r => r.SourcePoolId is null).ToList();
+                if (wildcard.Count == 0)
+                    return $"{g.Key}: {g.Count()} rule(s)";
+                var maxFinish = wildcard.Max(r => r.SourceFinishPosition);
+                var order = wildcard.First().OrderBy == "tiebreaker_rank" ? "tiebreaker rank" : "pool sequence";
+                return $"{g.Key} ← top {maxFinish} from each pool ({order})";
+            });
+        return string.Join(" · ", parts);
+    }
+
+    private static string BracketPreviewTooltip(EditableBracket bracket) =>
+        bracket.Id is null ? "Generate brackets first" : "Preview bracket tree";
+
+    private async Task OpenBracketPreviewDialogAsync(EditableBracket bracket)
+    {
+        var parameters = new DialogParameters<BracketPreviewDialog>
+        {
+            { x => x.BracketId, bracket.Id },
+            { x => x.BracketName, bracket.Name }
+        };
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraExtraLarge,
+            FullWidth = true,
+            CloseButton = true
+        };
+        await DialogService.ShowAsync<BracketPreviewDialog>(null, parameters, options);
+    }
 
     private IReadOnlyCollection<Guid> GetPoolCourtSelection(EditablePool pool) => pool.CourtIds.ToList();
     private void SetPoolCourts(EditablePool pool, IReadOnlyCollection<Guid> ids) => pool.CourtIds = ids.ToHashSet();
 
     private string PoolEntryLabel(EditablePool pool, int slot)
     {
-        if (_wizard is null) return $"{pool.Name} · {slot}: —";
+        if (_wizard is null) return $"{slot}: —";
         var entries = _teams.Where(t => t.PoolId == pool.Id).OrderBy(t => t.SeedHint ?? int.MaxValue).ToList();
-        if (slot <= entries.Count) return $"{pool.Name} · {slot}: {entries[slot - 1].Name}";
-        return $"{pool.Name} · {slot}: —";
+        if (slot <= entries.Count)
+            return $"{slot}: {TeamDisplay.Label(entries[slot - 1].Club, entries[slot - 1].Name)}";
+        return $"{slot}: —";
     }
 
     private string TeamNameForTournamentTeam(Guid? tournamentTeamId)
     {
         if (tournamentTeamId is null) return "—";
         var team = _teams.FirstOrDefault(t => t.TournamentTeamId == tournamentTeamId);
-        return team?.Name ?? tournamentTeamId.Value.ToString()[..8];
+        return team is null ? tournamentTeamId.Value.ToString()[..8] : TeamDisplay.Label(team.Club, team.Name);
+    }
+
+    private string StandingsTeamLabel(PoolStandingRowDto row)
+    {
+        var team = _teams.FirstOrDefault(t => t.Id == row.TeamId);
+        return team is null ? row.TeamName : TeamDisplay.Label(team.Club, team.Name);
+    }
+
+    private bool PoolHasMatches(EditablePool pool) =>
+        pool.Id != Guid.Empty && _workRotation.Any(w => w.PoolId == pool.Id && w.Matches.Count > 0);
+
+    private static string PoolScheduleTooltip(EditablePool pool) =>
+        pool.Id == Guid.Empty ? "Save pools first" : "View proposed schedule";
+
+    private async Task OpenPoolScheduleDialogAsync(EditablePool pool)
+    {
+        var parameters = new DialogParameters<PoolProposedScheduleDialog>
+        {
+            { x => x.DivisionId, DivisionId },
+            { x => x.PoolId, pool.Id },
+            { x => x.PoolName, pool.Name }
+        };
+        await DialogService.ShowAsync<PoolProposedScheduleDialog>(null, parameters);
     }
 
     private async Task LoadStandingsPreviewAsync()
@@ -883,6 +1145,17 @@ else
         _ => Color.Default,
     };
 
+    private sealed class PoolSettingsDraft
+    {
+        public int TeamsPerPoolTarget { get; set; } = 4;
+        public string PoolSizeStrategy { get; set; } = "auto_3_4";
+        public string SeedingMethod { get; set; } = "snake";
+        public string ClubSeparationMode { get; set; } = "none";
+        public string PlayStyle { get; set; } = "round_robin";
+        public string CourtAllocationMode { get; set; } = "preferred";
+        public string RefAssignmentMode { get; set; } = "next_in_pool";
+    }
+
     private sealed class EditablePool
     {
         public Guid Id { get; set; }
@@ -896,7 +1169,7 @@ else
     {
         public Guid? Id { get; set; }
         public string Name { get; set; } = "Gold";
-        public int TeamCount { get; set; } = 8;
+        public int TeamCount { get; set; } = 4;
         public BracketTypeDto Type { get; set; } = BracketTypeDto.SingleElimination;
         public bool IfNecessaryFinal { get; set; }
         public int Sequence { get; set; }

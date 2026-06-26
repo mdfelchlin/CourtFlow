@@ -50,8 +50,8 @@
     </MudDrawer>
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="py-4">
-            @* Key forces route content to remount when tournament changes so data reloads reliably. *@
-            <div @key="@($"tournament-{TournamentStore.SelectedTournamentId?.ToString() ?? "none"}")">
+            @* Key forces route content to remount when tournament selection or catalog metadata changes. *@
+            <div @key="@($"tournament-{TournamentStore.SelectedTournamentId?.ToString() ?? "none"}-{TournamentStore.CatalogVersion}")">
                 @Body
             </div>
         </MudContainer>

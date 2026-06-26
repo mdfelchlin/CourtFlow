@@ -8,6 +8,8 @@ namespace CourtFlow.Application.Features.Tournaments;
 public sealed record CreateTournamentCommand(
     string Name,
     string? Description,
+    string? WebsiteUrl,
+    string? ContactEmail,
     DateOnly StartDate,
     DateOnly EndDate,
     string TimeZoneId,
@@ -21,6 +23,12 @@ public sealed class CreateTournamentValidator : AbstractValidator<CreateTourname
         RuleFor(x => x.TimeZoneId).NotEmpty().MaximumLength(100);
         RuleFor(x => x.DefaultMatchDurationMinutes).GreaterThan(0);
         RuleFor(x => x).Must(x => x.EndDate >= x.StartDate).WithMessage("End date must be on or after start date");
+        RuleFor(x => x.WebsiteUrl).MaximumLength(500)
+            .Must(TournamentContactValidation.IsValidWebsiteUrl)
+            .WithMessage("Website must be a valid URL.")
+            .When(x => !string.IsNullOrWhiteSpace(x.WebsiteUrl));
+        RuleFor(x => x.ContactEmail).MaximumLength(254).EmailAddress()
+            .When(x => !string.IsNullOrWhiteSpace(x.ContactEmail));
     }
 }
 
@@ -40,6 +48,7 @@ public sealed class CreateTournamentHandler : IRequestHandler<CreateTournamentCo
         var orgId = _tenant.RequireOrganizationId();
         var tournament = new Tournament(orgId, request.Name, request.StartDate, request.EndDate, request.TimeZoneId, request.DefaultMatchDurationMinutes);
         if (request.Description is not null) tournament.SetDescription(request.Description);
+        tournament.SetContactInfo(request.WebsiteUrl, request.ContactEmail);
 
         _db.Tournaments.Add(tournament);
         await _db.SaveChangesAsync(ct);

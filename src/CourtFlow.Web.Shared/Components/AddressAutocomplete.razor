@@ -1,0 +1,55 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div @ref="_containerRef" class="cf-address-autocomplete">
+    <CfTextField @bind-Value="Value"
+                 Label="@Label"
+                 Lines="@Lines"
+                 Immediate="true"
+                 Placeholder="@Placeholder" />
+</div>
+
+@code {
+    private ElementReference _containerRef;
+    private DotNetObjectReference<AddressAutocomplete>? _dotNetRef;
+    private bool _autocompleteAttached;
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Address";
+    [Parameter] public int Lines { get; set; } = 2;
+    [Parameter] public string? Placeholder { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_autocompleteAttached) return;
+
+        try
+        {
+            var apiKey = await JS.InvokeAsync<string>("courtflowGoogleMaps.getApiKey");
+            if (string.IsNullOrWhiteSpace(apiKey)) return;
+
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("courtflowGoogleMaps.attachAutocomplete", _containerRef, _dotNetRef);
+            _autocompleteAttached = true;
+        }
+        catch
+        {
+            // Missing API key or Maps script — plain text field remains usable.
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnPlaceSelected(string address)
+    {
+        Value = address;
+        await ValueChanged.InvokeAsync(address);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dotNetRef?.Dispose();
+        await Task.CompletedTask;
+    }
+}

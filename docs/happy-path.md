@@ -9,7 +9,7 @@ Vocabulary is pinned in [`../CONTEXT.md`](../CONTEXT.md). The canonical schema i
 ## At a glance
 
 ```
-Tournament (DRAFT, invisible to public) → Venues → Courts → Waves      (tournaments.md)
+Tournament (DRAFT, invisible to public) → Venues → Courts → Match start times (AM/PM)   (tournaments.md)
    ↓                          ↑ alternative: Clone from prior tournament (tournament templates)
 Divisions (gender / age / skill / wave / tiebreaker preset)            (divisions.md)
    ↓
@@ -52,19 +52,19 @@ The admin signs in via Clerk. The header tournament selector starts empty for ne
 
 ## 1. Create the Tournament and add Venues + Courts
 
-The admin opens **Tournaments**, clicks **Add**, fills in name, dates, time zone, and default match duration. After saving, the editor reveals the **Venues & courts** panel. They add each venue and inline-add the courts under it.
+The admin opens **Tournaments**, clicks **Add**, fills in name, dates, time zone, and default match duration. After saving, the editor reveals the **Venues & courts** panel. They add each venue and inline-add the courts under it. V1 treats every court as available all day on each tournament day (no per-court availability windows).
 
-Writes: `tournaments`, `tournament_venues`, `venues`, `courts`, `court_availability_windows`.
+Writes: `tournaments`, `tournament_venues`, `venues`, `courts`.
 
 → [`features/tournaments.md`](features/tournaments.md), [`data-model.md` §2](data-model.md#2-tournament-creation)
 
 ---
 
-## 2. Define Waves (AM / PM / 1 / 2)
+## 2. Set match start times (single session or AM / PM)
 
-In the tournament editor's **Waves** panel, the admin adds the waves their tournament uses — typically `AM` and `PM`, but some events use `1` / `2`. Waves are first-class scheduling constraints; pinning a division to a wave keeps its matches inside that session.
+In the tournament editor **Match start times** section, the admin chooses **Single session** (one start time for the whole tournament) or **Multiple waves** (AM and PM start times). The editor auto-maintains `AM` and `PM` `waves` rows — no separate Waves panel, end times, or notes. Pinning a division to a wave keeps its matches in that session.
 
-Writes: `waves`.
+Writes: `waves` (when `session_mode = MultiWave`), `tournaments.session_mode`, session start-time fields.
 
 → [`features/tournaments.md`](features/tournaments.md), [`data-model.md` §2](data-model.md#2-tournament-creation), **Wave** in [`../CONTEXT.md`](../CONTEXT.md)
 

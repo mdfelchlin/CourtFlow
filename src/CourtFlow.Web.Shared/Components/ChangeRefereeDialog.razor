@@ -3,12 +3,12 @@
 
 <MudDialog>
     <DialogContent>
-        <MudSelect T="Guid?" @bind-Value="_refTeamId" Label="Referee team" Clearable="true">
+        <CfSelect T="Guid?" @bind-Value="_refTeamId" Label="Referee team" Clearable="true">
             @foreach (var t in Teams)
             {
                 <MudSelectItem T="Guid?" Value="@t.Id">@t.Name</MudSelectItem>
             }
-        </MudSelect>
+        </CfSelect>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>

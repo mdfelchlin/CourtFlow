@@ -35,6 +35,27 @@ else
                 </MudStack>
                 <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_event.OrganizationName</MudText>
                 <MudText Typo="Typo.body2">@FormatDates(_event.StartDate, _event.EndDate)</MudText>
+                @if (!string.IsNullOrWhiteSpace(_event.WebsiteUrl) || !string.IsNullOrWhiteSpace(_event.ContactEmail))
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+                        @if (!string.IsNullOrWhiteSpace(_event.WebsiteUrl))
+                        {
+                            <MudLink Href="@NormalizeWebsiteHref(_event.WebsiteUrl)"
+                                     Target="_blank"
+                                     Typo="Typo.body2">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
+                                @WebsiteDisplayLabel(_event.WebsiteUrl)
+                            </MudLink>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_event.ContactEmail))
+                        {
+                            <MudLink Href="@($"mailto:{_event.ContactEmail}")" Typo="Typo.body2">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-1" />
+                                @_event.ContactEmail
+                            </MudLink>
+                        }
+                    </MudStack>
+                }
             </MudStack>
         </MudPaper>
 
@@ -44,14 +65,13 @@ else
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     <MudIcon Icon="@Icons.Material.Filled.Person" />
                     <MudText Typo="Typo.caption">Filter to my team</MudText>
-                    <MudAutocomplete T="PublicTeamOption"
+                    <CfAutocomplete T="PublicTeamOption"
                                        Placeholder="Type your team or club name"
                                        SearchFunc="SearchTeams"
                                        ToStringFunc="@(t => t?.Label ?? "")"
                                        Value="_pinnedTeam"
                                        ValueChanged="PinTeamAsync"
                                        Clearable="true"
-                                       Dense="true"
                                        Style="flex:1; min-width:200px;" />
                 </MudStack>
             }
@@ -424,6 +444,18 @@ else
 
     private static string FormatDates(DateOnly start, DateOnly end) =>
         start == end ? start.ToString("MMM d, yyyy") : $"{start:MMM d} – {end:MMM d, yyyy}";
+
+    private static string NormalizeWebsiteHref(string url)
+    {
+        var trimmed = url.Trim();
+        return trimmed.Contains("://", StringComparison.Ordinal) ? trimmed : $"https://{trimmed}";
+    }
+
+    private static string WebsiteDisplayLabel(string url)
+    {
+        var href = NormalizeWebsiteHref(url);
+        return Uri.TryCreate(href, UriKind.Absolute, out var uri) ? uri.Host : url.Trim();
+    }
 
     private sealed record PublicTeamOption(Guid TeamId, string TeamName, Guid DivisionId, string DivisionName, string Label);
 }

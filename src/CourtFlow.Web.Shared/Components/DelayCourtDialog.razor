@@ -4,7 +4,7 @@
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-3">Delay all upcoming matches on <b>@CourtName</b>.</MudText>
-        <MudNumericField @bind-Value="_slots" Label="Slots to delay (each = default match duration)" Min="1" Max="20" />
+        <CfNumericField T="int" @bind-Value="_slots" Label="Slots to delay (each = default match duration)" Min="1" Max="20" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>

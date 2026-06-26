@@ -4,11 +4,11 @@
 <MudDialog>
     <DialogContent>
         <MudStack>
-            <MudSelect T="BracketTypeDto" @bind-Value="_type" Label="Bracket type" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
+            <CfSelect T="BracketTypeDto" @bind-Value="_type" Label="Bracket type" Class="cf-select--md">
                 <MudSelectItem Value="BracketTypeDto.SingleElimination">Single Elimination</MudSelectItem>
                 <MudSelectItem Value="BracketTypeDto.DoubleElimination">Double Elimination</MudSelectItem>
-            </MudSelect>
-            <MudNumericField @bind-Value="_capacity" Label="Team capacity (power of 2)" Min="2" Max="64" />
+            </CfSelect>
+            <CfNumericField T="int" @bind-Value="_capacity" Label="Team capacity (power of 2)" Min="2" Max="64" />
             <MudCheckBox T="bool" @bind-Value="_ifNecessaryFinal" Label="If-necessary final (DE only)" />
             <MudCheckBox T="bool" @bind-Value="_thirdPlaceMatch" Label="Add third-place match" />
         </MudStack>

@@ -14,14 +14,14 @@
         }
     </MudStack>
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-        <MudSelect T="Guid?" @bind-Value="_divisionId" Label="Division" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined"
+        <CfSelect T="Guid?" @bind-Value="_divisionId" Label="Division"
                    @bind-Value:after="ReloadAsync" Class="cf-select--md"
                    ToStringFunc="_divisionName">
             @foreach (var d in _divisions)
             {
                 <MudSelectItem T="Guid?" Value="@((Guid?)d.Id)">@d.Name</MudSelectItem>
             }
-        </MudSelect>
+        </CfSelect>
     </MudStack>
 </MudStack>
 

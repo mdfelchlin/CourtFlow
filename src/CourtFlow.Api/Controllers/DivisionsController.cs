@@ -121,6 +121,13 @@ public class DivisionsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpPut("{id:guid}/wizard/pool-settings")]
+    public async Task<IActionResult> SavePoolSettings(Guid id, [FromBody] SavePoolSettingsBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SaveDivisionPoolSettingsCommand(id, body.Settings), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
     [HttpPut("{id:guid}/wizard/brackets")]
     public async Task<IActionResult> SaveBracketStructure(Guid id, [FromBody] SaveBracketStructureBody body, CancellationToken ct)
     {
@@ -153,6 +160,7 @@ public class DivisionsController : ControllerBase
 public sealed record BracketSlotOverrideBody(Guid? ManualTournamentTeamId, string? Reason);
 
 public sealed record SavePoolStructureBody(IReadOnlyList<DivisionPoolStructureDto> Pools);
+public sealed record SavePoolSettingsBody(PoolSettingsDto Settings);
 public sealed record SaveBracketStructureBody(IReadOnlyList<DivisionBracketStructureDto> Brackets);
 public sealed record SaveAdvancementRulesBody(IReadOnlyList<DivisionAdvancementRuleDto> Rules);
 

@@ -48,26 +48,60 @@ public sealed record BracketSeedSlotDto(
     Guid? ResolvedTournamentTeamId,
     string ExpectedSourceType);
 
+public sealed record PoolSettingsDto(
+    int TeamsPerPoolTarget,
+    string PoolSizeStrategy,
+    string SeedingMethod,
+    string ClubSeparationMode,
+    string PlayStyle,
+    string CourtAllocationMode,
+    string RefAssignmentMode);
+
 public sealed record DivisionWizardStateDto(
     Guid DivisionId,
     IReadOnlyList<DivisionPoolStructureDto> Pools,
     IReadOnlyList<DivisionBracketStructureDto> Brackets,
     IReadOnlyList<DivisionAdvancementRuleDto> AdvancementRules,
     IReadOnlyList<BracketSeedSlotDto> BracketSeedSlots,
-    IReadOnlyList<Guid> AvailableCourtIds);
+    IReadOnlyList<Guid> AvailableCourtIds,
+    PoolSettingsDto? PoolSettings);
 
 public sealed record GetDivisionWizardStateQuery(Guid DivisionId) : IRequest<DivisionWizardStateDto?>;
 
 public sealed class GetDivisionWizardStateHandler : IRequestHandler<GetDivisionWizardStateQuery, DivisionWizardStateDto?>
 {
     private readonly IAppDbContext _db;
+    private readonly ITenantContext _tenant;
 
-    public GetDivisionWizardStateHandler(IAppDbContext db) => _db = db;
+    public GetDivisionWizardStateHandler(IAppDbContext db, ITenantContext tenant)
+    {
+        _db = db;
+        _tenant = tenant;
+    }
 
     public async Task<DivisionWizardStateDto?> Handle(GetDivisionWizardStateQuery request, CancellationToken ct)
     {
         var division = await _db.Divisions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == request.DivisionId, ct);
         if (division is null) return null;
+
+        var poolStage = await _db.Stages
+            .Where(s => s.DivisionId == division.Id && s.StageType == StageType.Pool)
+            .OrderBy(s => s.StageNumber)
+            .FirstOrDefaultAsync(ct);
+
+        PoolSettingsDto? poolSettingsDto = null;
+        if (poolStage is not null)
+        {
+            var settings = await _db.PoolSettings.FirstOrDefaultAsync(s => s.StageId == poolStage.Id, ct);
+            if (settings is null)
+            {
+                settings = new PoolSettings(_tenant.RequireOrganizationId(), poolStage.Id);
+                _db.PoolSettings.Add(settings);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            poolSettingsDto = MapPoolSettings(settings);
+        }
 
         var pools = await _db.Pools.AsNoTracking()
             .Where(p => p.DivisionId == division.Id)
@@ -85,15 +119,11 @@ public sealed class GetDivisionWizardStateHandler : IRequestHandler<GetDivisionW
             .OrderBy(b => b.DisplayName)
             .ToListAsync(ct);
 
-        var poolStage = await _db.Stages.AsNoTracking()
-            .Where(s => s.DivisionId == division.Id && s.StageType == StageType.Pool)
-            .OrderBy(s => s.StageNumber)
-            .FirstOrDefaultAsync(ct);
-
-        var rules = poolStage is null
+        var poolStageForRules = poolStage;
+        var rules = poolStageForRules is null
             ? new List<AdvancementRule>()
             : await _db.AdvancementRules.AsNoTracking()
-                .Where(r => r.SourceStageId == poolStage.Id)
+                .Where(r => r.SourceStageId == poolStageForRules.Id)
                 .OrderBy(r => r.Priority).ThenBy(r => r.TargetSeedSlot)
                 .ToListAsync(ct);
 
@@ -148,8 +178,18 @@ public sealed class GetDivisionWizardStateHandler : IRequestHandler<GetDivisionW
                 s.ManualTournamentTeamId,
                 s.ResolvedTournamentTeamId,
                 s.ExpectedSourceType)).ToList(),
-            courtIds);
+            courtIds,
+            poolSettingsDto);
     }
+
+    private static PoolSettingsDto MapPoolSettings(PoolSettings settings) => new(
+        settings.TeamsPerPoolTarget,
+        settings.PoolSizeStrategy,
+        settings.SeedingMethod,
+        settings.ClubSeparationMode,
+        settings.PlayStyle,
+        settings.CourtAllocationMode,
+        settings.RefAssignmentMode);
 }
 
 public sealed record SaveDivisionPoolStructureCommand(
@@ -430,6 +470,83 @@ public sealed class SaveDivisionAdvancementRulesHandler : IRequestHandler<SaveDi
                 dto.SourcePoolId,
                 dto.OrderBy,
                 dto.Priority));
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return await _mediator.Send(new GetDivisionWizardStateQuery(division.Id), ct);
+    }
+}
+
+public sealed record SaveDivisionPoolSettingsCommand(Guid DivisionId, PoolSettingsDto Settings) : IRequest<DivisionWizardStateDto?>;
+
+public sealed class SaveDivisionPoolSettingsValidator : AbstractValidator<SaveDivisionPoolSettingsCommand>
+{
+    private static readonly HashSet<string> ValidPoolSizeStrategies = ["auto_3_4"];
+    private static readonly HashSet<string> ValidSeedingMethods = ["snake"];
+    private static readonly HashSet<string> ValidClubSeparationModes = ["none", "avoid_same_club"];
+    private static readonly HashSet<string> ValidPlayStyles = ["round_robin"];
+    private static readonly HashSet<string> ValidCourtAllocationModes = ["preferred"];
+    private static readonly HashSet<string> ValidRefAssignmentModes = ["next_in_pool", "manual_only"];
+
+    public SaveDivisionPoolSettingsValidator()
+    {
+        RuleFor(x => x.DivisionId).NotEmpty();
+        RuleFor(x => x.Settings.TeamsPerPoolTarget).InclusiveBetween(2, 8);
+        RuleFor(x => x.Settings.PoolSizeStrategy).Must(s => ValidPoolSizeStrategies.Contains(s));
+        RuleFor(x => x.Settings.SeedingMethod).Must(s => ValidSeedingMethods.Contains(s));
+        RuleFor(x => x.Settings.ClubSeparationMode).Must(s => ValidClubSeparationModes.Contains(s));
+        RuleFor(x => x.Settings.PlayStyle).Must(s => ValidPlayStyles.Contains(s));
+        RuleFor(x => x.Settings.CourtAllocationMode).Must(s => ValidCourtAllocationModes.Contains(s));
+        RuleFor(x => x.Settings.RefAssignmentMode).Must(s => ValidRefAssignmentModes.Contains(s));
+    }
+}
+
+public sealed class SaveDivisionPoolSettingsHandler : IRequestHandler<SaveDivisionPoolSettingsCommand, DivisionWizardStateDto?>
+{
+    private readonly IAppDbContext _db;
+    private readonly ITenantContext _tenant;
+    private readonly IMediator _mediator;
+
+    public SaveDivisionPoolSettingsHandler(IAppDbContext db, ITenantContext tenant, IMediator mediator)
+    {
+        _db = db;
+        _tenant = tenant;
+        _mediator = mediator;
+    }
+
+    public async Task<DivisionWizardStateDto?> Handle(SaveDivisionPoolSettingsCommand request, CancellationToken ct)
+    {
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == request.DivisionId, ct);
+        if (division is null) return null;
+
+        var poolStage = await _db.Stages
+            .Where(s => s.DivisionId == division.Id && s.StageType == StageType.Pool)
+            .OrderBy(s => s.StageNumber)
+            .FirstOrDefaultAsync(ct);
+        if (poolStage is null) return null;
+
+        var orgId = _tenant.RequireOrganizationId();
+        var settings = await _db.PoolSettings.FirstOrDefaultAsync(s => s.StageId == poolStage.Id, ct);
+        if (settings is null)
+        {
+            settings = new PoolSettings(orgId, poolStage.Id);
+            _db.PoolSettings.Add(settings);
+        }
+
+        var dto = request.Settings;
+        settings.Update(
+            dto.TeamsPerPoolTarget,
+            dto.PoolSizeStrategy,
+            dto.SeedingMethod,
+            dto.ClubSeparationMode,
+            dto.PlayStyle,
+            dto.CourtAllocationMode,
+            dto.RefAssignmentMode);
+
+        if (poolStage.Status == StageStatus.Draft
+            && await _db.Pools.AnyAsync(p => p.DivisionId == division.Id, ct))
+        {
+            poolStage.TransitionTo(StageStatus.Configured);
         }
 
         await _db.SaveChangesAsync(ct);

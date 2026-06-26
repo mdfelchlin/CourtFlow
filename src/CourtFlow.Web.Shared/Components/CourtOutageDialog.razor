@@ -10,7 +10,7 @@
         else
         {
             <MudStack Spacing="2">
-                <MudSelect T="Guid"
+                <CfSelect T="Guid"
                            @bind-Value="_courtId"
                            Label="Court"
                            Required="true">
@@ -18,12 +18,10 @@
                     {
                         <MudSelectItem Value="c.Id">@c.Label</MudSelectItem>
                     }
-                </MudSelect>
-                <MudDatePicker @bind-Date="_startDate" Label="Starts (date)" />
-                <MudTimePicker @bind-Time="_startTime" Label="Starts (time)" />
-                <MudDatePicker @bind-Date="_endDate" Label="Ends (date)" />
-                <MudTimePicker @bind-Time="_endTime" Label="Ends (time)" />
-                <MudTextField @bind-Value="_reason" Label="Reason" Lines="2" />
+                </CfSelect>
+                <CfDateTimeRow Label="Starts" @bind-Date="_startDate" @bind-Time="_startTime" Class="cf-field--sm" />
+                <CfDateTimeRow Label="Ends" @bind-Date="_endDate" @bind-Time="_endTime" Class="cf-field--sm" />
+                <CfTextField @bind-Value="_reason" Label="Reason" Lines="2" />
             </MudStack>
         }
     </DialogContent>

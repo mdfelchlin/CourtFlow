@@ -11,7 +11,6 @@ All dialogs are MudBlazor `MudDialog`s with a `DialogContent` body and a `Dialog
 | Dialog | Title | Used from |
 | --- | --- | --- |
 | [`VenueDialog`](#venuedialog) | Add venue / Edit venue | Tournament editor |
-| [`WaveDialog`](#wavedialog) | Add wave / Edit wave | Tournament editor (Waves panel) |
 | [`CloneTournamentDialog`](#clonetournamentdialog) | Clone tournament | Tournaments list (target) |
 | [`TeamDialog`](#teamdialog) | New team / Edit team | Teams page |
 | [`DivisionDialog`](#divisiondialog) | New division / Edit division | Divisions table |
@@ -31,22 +30,14 @@ All dialogs are MudBlazor `MudDialog`s with a `DialogContent` body and a `Dialog
 
 ## VenueDialog
 
-- **Fields:** **Name** (required), **Address** (multi-line, 2 rows).
-- **Divider.**
-- **Sub-section "Courts":** either an info alert when empty, or a dense `MudList` of existing courts (`SportsVolleyball` icon + name + red delete button).
-- **Inline "New court name" field** with `Add` button. Pressing Enter adds the court. Duplicate names (case-insensitive) are rejected via a warning snackbar. After adding, focus returns to the new field.
-- **Save behavior:** Save button is disabled while saving. On save, the dialog upserts the venue, then deletes any removed pre-existing courts and creates any newly-staged courts.
+- **Fields:** **Name** (required), **Address** (multi-line, 2 rows, with Google Places Autocomplete when `GoogleMaps:ApiKey` is configured; otherwise a plain text field), **Number of courts** numeric (0–99).
+- **Save behavior:** Save button is disabled while saving. On save, the dialog upserts the venue and atomically syncs courts to the requested count. New courts are auto-named `1`, `2`, … `N`. Reducing the count removes the highest-numbered courts first; the save is rejected if any court to be removed has scheduled or in-progress matches.
 
-## WaveDialog
+## Waves (tournament editor — not a dialog)
 
-- **Fields:**
-  - **Code** select (required) — one of `AM`, `PM`, `1`, `2`. Pre-filters out codes already in use on the parent tournament.
-  - **Default start time** (optional time picker, local time).
-  - **Default end time** (optional time picker, local time). Validated `start < end` when both are set.
-  - **Notes** text field (multi-line, 2 rows, optional).
-- **Validation:** `code` is required and unique per tournament; if either time is set the pair must be valid.
-- **Save behavior:** upserts a `waves` row. New waves are appended to the end of the tournament's `display_order` sequence. Edits preserve `display_order`.
-- Used from [`features/tournaments.md`](../features/tournaments.md) (Waves panel). Wave assignment of a division happens on the division editor, not in this dialog.
+V1 does **not** use a separate wave dialog or Waves panel. When `session_mode = MultiWave`, the tournament editor **Match start times** section auto-maintains `AM` and `PM` `waves` rows with **start times only** (no end times, no notes). Wave assignment of a division happens on the division editor (`Wave` select), not here.
+
+See [`features/tournaments.md`](../features/tournaments.md) · Match start times.
 
 ## DivisionDialog
 
@@ -196,7 +187,7 @@ Target. Opens from the Tournaments table **Clone** action. See [`../features/tou
 ## ImportFormatHelpDialog
 
 - **Tabs:** **Predefined pools** and **Ranked teams**.
-- Each tab lists required and optional columns, accepted Wave values (`AM` / `PM` / `1` / `2`), and a syntax-highlighted example block (`<pre class="cf-import-example">`).
+- Each tab lists required and optional columns, accepted **Wave** values (`AM` / `PM` only), and a syntax-highlighted example block (`<pre class="cf-import-example">`).
 - **Action:** single **Close** button.
 
 ---

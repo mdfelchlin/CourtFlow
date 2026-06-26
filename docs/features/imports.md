@@ -61,7 +61,7 @@ Let admins bulk-load teams (and the pools / divisions they belong to) from a CSV
 - Header row must contain either `PoolName` (→ predefined pools) or `Rank` (→ ranked teams).
 - Predefined-pools required columns: `DivisionName`, `PoolName`, `TeamName`, `Club`, `Wave`. Optional: `SeedHint` (integer; written to `division_rankings.rank` per division when present, deduplicated and renormalised within each division).
 - Ranked-teams required columns: `DivisionName`, `Rank`, `TeamName`, `Club`, `Wave`. `Rank` is written directly to `division_rankings.rank`.
-- Wave values: `AM`, `PM`, `1`, or `2`. The importer resolves each row's `Wave` value to a `waves` row on the parent tournament by matching `waves.code`. Missing waves are auto-created with `display_order` appended and no default time window; the import-result panel notes any auto-created wave so the organizer can fill the time window in the Tournament editor's **Waves** panel ([`tournaments.md`](tournaments.md)).
+- Wave values: `AM` or `PM` only. The importer resolves each row's `Wave` value to a `waves` row on the parent tournament by matching `waves.code`. Missing waves are auto-created with `display_order` appended; the import-result panel notes any auto-created wave so the organizer can set start times in the tournament editor **Match start times** section ([`tournaments.md`](tournaments.md)).
 
 ## Ranking write rules
 

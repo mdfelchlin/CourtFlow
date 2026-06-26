@@ -23,6 +23,7 @@
     <CourtFlow.Web.Client.Components.Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_content/CourtFlow.Web.Shared/courtflowTheme.js"></script>
+    <script src="_content/CourtFlow.Web.Shared/googleMapsInterop.js"></script>
     <script>
         window.__courtflowClerkConfig = {
             publishableKey: "@(Configuration["Clerk:PublishableKey"] ?? string.Empty)",
@@ -31,6 +32,9 @@
         };
         window.__clerk_publishable_key = window.__courtflowClerkConfig.publishableKey;
         window.__clerk_frontend_api = window.__courtflowClerkConfig.frontendApi;
+        window.__courtflowGoogleMapsConfig = {
+            apiKey: "@(Configuration["GoogleMaps:ApiKey"] ?? string.Empty)"
+        };
     </script>
     <script src="clerkInterop.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>

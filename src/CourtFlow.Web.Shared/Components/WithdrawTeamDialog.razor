@@ -10,7 +10,7 @@
         else
         {
             <MudStack Spacing="2">
-                <MudSelect T="Guid?"
+                <CfSelect T="Guid?"
                            @bind-Value="_tournamentTeamId"
                            Label="Team"
                            Required="true"
@@ -19,8 +19,8 @@
                     {
                         <MudSelectItem Value="@t.TournamentTeamId">@FormatTeam(t.TournamentTeamId)</MudSelectItem>
                     }
-                </MudSelect>
-                <MudTextField @bind-Value="_reason" Label="Reason" Lines="2" />
+                </CfSelect>
+                <CfTextField @bind-Value="_reason" Label="Reason" Lines="2" />
                 <MudText Typo="Typo.caption" Class="mud-text-secondary">
                     Withdrawal is recorded against the tournament team entry and creates a repair job audit trail.
                 </MudText>

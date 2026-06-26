@@ -46,6 +46,9 @@ public sealed class TournamentEndpoints(ICourtFlowTournamentsApi api)
 
     public Task<TournamentDto> CloneAsync(Guid id, bool structureOnly = false, CancellationToken ct = default)
         => _api.CloneAsync(id, structureOnly, ct);
+
+    public Task<TournamentDto> UpsertSessionSettingsAsync(Guid id, UpsertTournamentSessionSettingsDto dto, CancellationToken ct = default)
+        => _api.UpsertSessionSettingsAsync(id, dto, ct);
 }
 
 public sealed class VenueEndpoints(ICourtFlowVenuesApi api)
@@ -151,6 +154,9 @@ public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
 
     public Task<DivisionWizardStateDto?> SavePoolStructureAsync(Guid divisionId, SaveDivisionPoolStructureDto dto, CancellationToken ct = default)
         => _api.SavePoolStructureAsync(divisionId, dto, ct);
+
+    public Task<DivisionWizardStateDto?> SavePoolSettingsAsync(Guid divisionId, SaveDivisionPoolSettingsDto dto, CancellationToken ct = default)
+        => _api.SavePoolSettingsAsync(divisionId, dto, ct);
 
     public Task<DivisionWizardStateDto?> SaveBracketStructureAsync(Guid divisionId, SaveDivisionBracketStructureDto dto, CancellationToken ct = default)
         => _api.SaveBracketStructureAsync(divisionId, dto, ct);

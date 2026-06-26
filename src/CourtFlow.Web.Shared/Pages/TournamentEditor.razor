@@ -87,33 +87,103 @@
 else
 {
     <MudStack Spacing="4">
-        <MudPaper Class="pa-5" Elevation="1">
-            <MudStack Spacing="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudStack Spacing="2" Class="cf-form-details">
                 <MudText Typo="Typo.h6">Details</MudText>
-                <MudTextField @bind-Value="_name" Label="Name" Required="true" />
-                <MudTextField @bind-Value="_description" Label="Description" Lines="2" />
-                <MudStack Row="true" Spacing="3">
-                    <MudDatePicker @bind-Date="_startDate" Label="Start date" />
-                    <MudDatePicker @bind-Date="_endDate" Label="End date" />
+                <CfTextField @bind-Value="_name" Label="Name" Required="true" />
+                <CfTextField @bind-Value="_description" Label="Description" Lines="2" />
+
+                <MudDivider Class="my-1" />
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2">Contact &amp; links</MudText>
+                    <CfTextField @bind-Value="_websiteUrl"
+                                 Label="Website"
+                                 InputType="InputType.Url"
+                                 Placeholder="https://example.com" />
+                    <CfTextField @bind-Value="_contactEmail"
+                                 Label="Contact email"
+                                 InputType="InputType.Email"
+                                 Placeholder="info@example.com" />
                 </MudStack>
-                <MudStack Row="true" Spacing="3">
-                    <MudSelect T="string" @bind-Value="_tz" Label="Time zone" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--lg"
-                               ToStringFunc="@(id => TimeZoneOptions.Label(id))">
-                        @foreach (var tz in TimeZoneOptions.All)
+
+                <div class="cf-form-details__grid">
+                    <div class="cf-field-wrap">
+                        <CfDateField @bind-Date="_startDate" Label="Start date" />
+                    </div>
+                    <div class="cf-field-wrap">
+                        <CfDateField @bind-Date="_endDate" Label="End date" />
+                    </div>
+                    <div class="cf-field-wrap">
+                        <CfSelect T="string" @bind-Value="_tz" Label="Time zone"
+                                   ToStringFunc="@(id => TimeZoneOptions.Label(id))">
+                            @foreach (var tz in TimeZoneOptions.All)
+                            {
+                                <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
+                            }
+                        </CfSelect>
+                    </div>
+                </div>
+
+                @if (_current is not null)
+                {
+                    <MudDivider Class="my-1" />
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle2">Match start times</MudText>
+                        @if (_loadingWaves)
                         {
-                            <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
+                            <MudProgressLinear Indeterminate="true" />
                         }
-                    </MudSelect>
-                    <MudNumericField @bind-Value="_duration" Label="Default match duration (min)" Min="15" Max="240" />
+                        else
+                        {
+                            <MudRadioGroup T="TournamentSessionModeDto" @bind-Value="_sessionMode" Class="cf-session-mode">
+                                <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                                    <MudRadio Value="TournamentSessionModeDto.SingleSession" Color="Color.Primary" Dense="true">
+                                        Single session
+                                    </MudRadio>
+                                    <MudRadio Value="TournamentSessionModeDto.MultiWave" Color="Color.Primary" Dense="true">
+                                        AM / PM waves
+                                    </MudRadio>
+                                </MudStack>
+                            </MudRadioGroup>
+
+                            <div class="cf-form-details__times">
+                                @if (_sessionMode == TournamentSessionModeDto.SingleSession)
+                                {
+                                    <div class="cf-field-wrap">
+                                        <CfTimeField @bind-Value="_singleStartTime" Label="Start time" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="cf-field-wrap">
+                                        <CfTimeField @bind-Value="_amStartTime" Label="AM start" />
+                                    </div>
+                                    <div class="cf-field-wrap">
+                                        <CfTimeField @bind-Value="_pmStartTime" Label="PM start" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </MudStack>
+                }
+
+                <MudDivider Class="my-1" />
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2">Match duration</MudText>
+                    <div class="cf-form-details__times">
+                        <div class="cf-field-wrap">
+                            <CfNumericField T="int" @bind-Value="_duration" Label="Duration (min)" Min="15" Max="240" />
+                        </div>
+                    </div>
                 </MudStack>
+
                 <MudStack Row="true" Justify="Justify.FlexEnd">
-                    <MudButton
-                        Color="Color.Primary"
-                        Variant="Variant.Filled"
-                        StartIcon="@Icons.Material.Filled.Save"
-                        OnClick="SaveDetailsAsync"
-                        Disabled="_savingDetails">
-                        Save details
+                    <MudButton Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveDetailsAsync"
+                               Disabled="_savingDetails">
+                        Save
                     </MudButton>
                 </MudStack>
             </MudStack>
@@ -121,59 +191,8 @@ else
 
         @if (_current is not null)
         {
-            <MudPaper Class="pa-5" Elevation="1">
-                <MudStack Spacing="3">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.h6">Waves</MudText>
-                        <CfToolbarAddButton OnClick="AddWaveAsync" AriaLabel="Add wave" />
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                        Playing waves (AM/PM or session 1/2) for scheduling and imports.
-                    </MudText>
-                    @if (_loadingWaves)
-                    {
-                        <MudProgressLinear Indeterminate="true" />
-                    }
-                    else if (_waves.Count == 0)
-                    {
-                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
-                            No waves yet. Use Add above — typical tournaments use AM and PM.
-                        </MudAlert>
-                    }
-                    else
-                    {
-                        <MudTable Items="_waves" Dense="true" Hover="true">
-                            <HeaderContent>
-                                <MudTh>Code</MudTh>
-                                <MudTh>Window</MudTh>
-                                <MudTh></MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>@context.Code</MudTd>
-                                <MudTd>
-                                    @if (!string.IsNullOrWhiteSpace(context.DefaultStartTime) || !string.IsNullOrWhiteSpace(context.DefaultEndTime))
-                                    {
-                                        <span>@(context.DefaultStartTime ?? "—") – @(context.DefaultEndTime ?? "—")</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="mud-text-secondary">—</span>
-                                    }
-                                </MudTd>
-                                <MudTd>
-                                    <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Edit wave" OnClick="@(() => EditWaveAsync(context))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" aria-label="Delete wave" OnClick="@(() => DeleteWaveAsync(context))" />
-                                    </MudStack>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudStack>
-            </MudPaper>
-
-            <MudPaper Class="pa-5" Elevation="1">
-                <MudStack Spacing="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudStack Spacing="2">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                         <MudText Typo="Typo.h6">Venues &amp; courts</MudText>
                         <CfToolbarAddButton OnClick="AddVenueAsync" AriaLabel="Add venue" />
@@ -191,85 +210,38 @@ else
                     }
                     else
                     {
-                        <MudExpansionPanels MultiExpansion="true">
+                        <MudStack Spacing="2">
                             @foreach (var v in _venues)
                             {
-                                <MudExpansionPanel>
-                                    <TitleContent>
-                                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
-                                            <MudStack Spacing="0">
-                                                <MudText Typo="Typo.subtitle1">@v.Name</MudText>
-                                                @if (!string.IsNullOrWhiteSpace(v.Address))
-                                                {
-                                                    <MudText Typo="Typo.caption">@v.Address</MudText>
-                                                }
-                                                <MudText Typo="Typo.caption" Class="mt-1">
-                                                    @CourtsFor(v.Id).Count court(s)
-                                                </MudText>
-                                            </MudStack>
-                                            <div @onclick:stopPropagation="true">
-                                                <MudStack Row="true" Spacing="0">
-                                                    <MudIconButton
-                                                        Icon="@Icons.Material.Filled.Edit"
-                                                        Size="Size.Small"
-                                                        aria-label="Edit venue"
-                                                        OnClick="@(() => EditVenueAsync(v))" />
-                                                    <MudIconButton
-                                                        Icon="@Icons.Material.Filled.Delete"
-                                                        Color="Color.Error"
-                                                        Size="Size.Small"
-                                                        aria-label="Delete venue"
-                                                        OnClick="@(() => DeleteVenueAsync(v))" />
-                                                </MudStack>
-                                            </div>
-                                        </MudStack>
-                                    </TitleContent>
-                                    <ChildContent>
-                                        <MudStack Spacing="2">
-                                            @if (CourtsFor(v.Id).Count == 0)
+                                <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle1">@v.Name</MudText>
+                                            @if (!string.IsNullOrWhiteSpace(v.Address))
                                             {
-                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">No courts yet.</MudText>
+                                                <MudText Typo="Typo.caption">@v.Address</MudText>
                                             }
-                                            else
-                                            {
-                                                <MudList T="CourtDto" Dense="true">
-                                                    @foreach (var c in CourtsFor(v.Id))
-                                                    {
-                                                        <MudListItem T="CourtDto">
-                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:100%">
-                                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                                    <MudIcon Icon="@Icons.Material.Filled.SportsVolleyball" Size="Size.Small" />
-                                                                    <MudText Typo="Typo.body2">@c.Name</MudText>
-                                                                </MudStack>
-                                                                <MudIconButton
-                                                                    Icon="@Icons.Material.Filled.Delete"
-                                                                    Color="Color.Error"
-                                                                    Size="Size.Small"
-                                                                    aria-label="Delete court"
-                                                                    OnClick="@(() => DeleteCourtAsync(v.Id, c))" />
-                                                            </MudStack>
-                                                        </MudListItem>
-                                                    }
-                                                </MudList>
-                                            }
-
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                <MudTextField
-                                                    Value="@GetNewCourtName(v.Id)"
-                                                    ValueChanged="@((string s) => SetNewCourtName(v.Id, s))"
-                                                    T="string"
-                                                    Label="New court name"
-                                                    Immediate="true"
-                                                    OnKeyDown="@((KeyboardEventArgs e) => OnCourtKeyDown(v.Id, e))" />
-                                                <CfToolbarAddButton OnClick="@(() => AddCourtAsync(v.Id))"
-                                                                    Disabled="@string.IsNullOrWhiteSpace(GetNewCourtName(v.Id))"
-                                                                    AriaLabel="Add court" />
-                                            </MudStack>
+                                            <MudText Typo="Typo.caption" Class="mt-1">
+                                                @v.CourtCount court@(v.CourtCount == 1 ? "" : "s")
+                                            </MudText>
                                         </MudStack>
-                                    </ChildContent>
-                                </MudExpansionPanel>
+                                        <MudStack Row="true" Spacing="0">
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Edit"
+                                                Size="Size.Small"
+                                                aria-label="Edit venue"
+                                                OnClick="@(() => EditVenueAsync(v))" />
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Delete"
+                                                Color="Color.Error"
+                                                Size="Size.Small"
+                                                aria-label="Delete venue"
+                                                OnClick="@(() => DeleteVenueAsync(v))" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
                             }
-                        </MudExpansionPanels>
+                        </MudStack>
                     }
                 </MudStack>
             </MudPaper>
@@ -285,6 +257,7 @@ else
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
 
     private TournamentDto? _current;
     private bool _loadFailed;
@@ -292,17 +265,21 @@ else
     private bool _loadingVenues;
     private bool _loadingWaves;
     private List<TournamentWaveDto> _waves = new();
+    private TournamentSessionModeDto _sessionMode = TournamentSessionModeDto.SingleSession;
+    private string? _singleStartTime = LocalTimeFormat.DefaultMorningStart;
+    private string? _amStartTime = LocalTimeFormat.DefaultMorningStart;
+    private string? _pmStartTime = LocalTimeFormat.DefaultAfternoonStart;
 
     private string _name = "";
     private string? _description;
+    private string? _websiteUrl;
+    private string? _contactEmail;
     private DateTime? _startDate = DateTime.Today;
     private DateTime? _endDate = DateTime.Today.AddDays(1);
     private string _tz = TimeZoneOptions.DefaultId;
-    private int _duration = 60;
+    private int _duration = TournamentDefaults.DefaultMatchDurationMinutes;
 
     private List<VenueDto> _venues = new();
-    private Dictionary<Guid, List<CourtDto>> _courtsByVenue = new();
-    private Dictionary<Guid, string> _newCourtNameByVenue = new();
 
     private Guid? _lastLoadedId;
     private bool _busyPublication;
@@ -334,13 +311,13 @@ else
         _current = null;
         _name = "";
         _description = null;
+        _websiteUrl = null;
+        _contactEmail = null;
         _startDate = DateTime.Today;
         _endDate = DateTime.Today.AddDays(1);
         _tz = TimeZoneOptions.DefaultId;
-        _duration = 60;
+        _duration = TournamentDefaults.DefaultMatchDurationMinutes;
         _venues = new();
-        _courtsByVenue = new();
-        _newCourtNameByVenue = new();
     }
 
     private async Task LoadTournamentAsync(Guid id)
@@ -356,10 +333,17 @@ else
             _current = t;
             _name = t.Name;
             _description = t.Description;
+            _websiteUrl = t.WebsiteUrl;
+            _contactEmail = t.ContactEmail;
             _startDate = t.StartDate.ToDateTime(TimeOnly.MinValue);
             _endDate = t.EndDate.ToDateTime(TimeOnly.MinValue);
             _tz = t.TimeZoneId;
-            _duration = t.DefaultMatchDurationMinutes;
+            _duration = t.DefaultMatchDurationMinutes > 0
+                ? t.DefaultMatchDurationMinutes
+                : TournamentDefaults.DefaultMatchDurationMinutes;
+            _sessionMode = t.SessionMode;
+            _singleStartTime = t.DefaultStartTime ?? LocalTimeFormat.DefaultMorningStart;
+            BindWaveStartTimes();
         }
         catch (Exception ex)
         {
@@ -376,6 +360,9 @@ else
             return;
         }
 
+        if (_current is not null && !await TryValidateSessionSettingsAsync())
+            return;
+
         _savingDetails = true;
         try
         {
@@ -385,10 +372,11 @@ else
             if (_current is null)
             {
                 var created = await Api.Tournaments.CreateAsync(
-                    new CreateTournamentDto(_name.Trim(), _description, start, end, _tz, _duration));
+                    new CreateTournamentDto(_name.Trim(), _description, _websiteUrl, _contactEmail, start, end, _tz, _duration));
                 _current = created;
                 _lastLoadedId = created.Id;
                 Snackbar.Add("Tournament created", Severity.Success);
+                await TournamentStore.RefreshTournamentsAsync(created.Id);
                 await ReloadVenuesAsync();
                 await ReloadWavesAsync();
                 Nav.NavigateTo($"/tournaments/{created.Id}", replace: true);
@@ -396,8 +384,21 @@ else
             else
             {
                 var updated = await Api.Tournaments.UpdateAsync(
-                    new UpdateTournamentDto(_current.Id, _name.Trim(), _description, start, end, _tz, _duration, _current.TournamentPartnerId));
+                    new UpdateTournamentDto(_current.Id, _name.Trim(), _description, _websiteUrl, _contactEmail, start, end, _tz, _duration, _current.TournamentPartnerId));
                 _current = updated;
+
+                updated = await Api.Tournaments.UpsertSessionSettingsAsync(
+                    _current.Id,
+                    new UpsertTournamentSessionSettingsDto(
+                        _sessionMode,
+                        _sessionMode == TournamentSessionModeDto.SingleSession ? _singleStartTime?.Trim() : null,
+                        _sessionMode == TournamentSessionModeDto.MultiWave ? _amStartTime?.Trim() : null,
+                        _sessionMode == TournamentSessionModeDto.MultiWave ? _pmStartTime?.Trim() : null));
+                _current = updated;
+                _sessionMode = updated.SessionMode;
+                _singleStartTime = updated.DefaultStartTime ?? LocalTimeFormat.DefaultMorningStart;
+                await TournamentStore.RefreshTournamentsAsync();
+                await ReloadWavesAsync();
                 Snackbar.Add("Saved", Severity.Success);
             }
         }
@@ -409,6 +410,63 @@ else
         {
             _savingDetails = false;
         }
+    }
+
+    private async Task<bool> TryValidateSessionSettingsAsync()
+    {
+        if (_sessionMode == TournamentSessionModeDto.SingleSession)
+        {
+            if (string.IsNullOrWhiteSpace(_singleStartTime))
+            {
+                Snackbar.Add("Start time is required.", Severity.Warning);
+                return false;
+            }
+
+            if (!LocalTimeFormat.IsValidHhMm(_singleStartTime))
+            {
+                Snackbar.Add("Enter a valid start time.", Severity.Warning);
+                return false;
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(_amStartTime) || string.IsNullOrWhiteSpace(_pmStartTime))
+            {
+                Snackbar.Add("AM and PM start times are required.", Severity.Warning);
+                return false;
+            }
+
+            if (!LocalTimeFormat.IsValidHhMm(_amStartTime) || !LocalTimeFormat.IsValidHhMm(_pmStartTime))
+            {
+                Snackbar.Add("Enter valid start times.", Severity.Warning);
+                return false;
+            }
+        }
+
+        if (_current!.SessionMode == TournamentSessionModeDto.MultiWave
+            && _sessionMode == TournamentSessionModeDto.SingleSession)
+        {
+            try
+            {
+                var divisions = await Api.Divisions.ListAsync(_current.Id);
+                if (divisions.Any(d => d.WaveId is not null))
+                {
+                    var ok = await DialogService.ShowMessageBoxAsync(
+                        "Switch to single session",
+                        "Divisions will no longer be pinned to a wave. Continue?",
+                        yesText: "Continue",
+                        cancelText: "Cancel");
+                    if (ok != true) return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private Color PublicationChipColor() =>
@@ -520,6 +578,7 @@ else
         {
             var t = await action();
             _current = t;
+            await TournamentStore.RefreshTournamentsAsync();
             Snackbar.Add(successMessage, Severity.Success);
             StateHasChanged();
         }
@@ -540,6 +599,7 @@ else
         try
         {
             _waves = (await Api.Waves.ListAsync(_current.Id)).ToList();
+            BindWaveStartTimes();
         }
         catch (Exception ex)
         {
@@ -551,55 +611,13 @@ else
         }
     }
 
-    private async Task AddWaveAsync()
+    private void BindWaveStartTimes()
     {
-        if (_current is null) return;
-        var parms = new DialogParameters
-        {
-            ["TournamentId"] = _current.Id,
-            ["UsedCodes"] = _waves.Select(w => w.Code).ToList()
-        };
-        var dialog = await DialogService.ShowAsync<WaveDialog>("Add wave", parms);
-        var result = await dialog.Result;
-        if (result is { Canceled: false })
-            await ReloadWavesAsync();
-    }
+        if (_current?.SessionMode != TournamentSessionModeDto.MultiWave)
+            return;
 
-    private async Task EditWaveAsync(TournamentWaveDto wave)
-    {
-        if (_current is null) return;
-        var parms = new DialogParameters
-        {
-            ["TournamentId"] = _current.Id,
-            ["Existing"] = wave,
-            ["UsedCodes"] = _waves.Select(w => w.Code).ToList()
-        };
-        var dialog = await DialogService.ShowAsync<WaveDialog>("Edit wave", parms);
-        var result = await dialog.Result;
-        if (result is { Canceled: false })
-            await ReloadWavesAsync();
-    }
-
-    private async Task DeleteWaveAsync(TournamentWaveDto wave)
-    {
-        if (_current is null) return;
-        var ok = await DialogService.ShowMessageBoxAsync(
-            "Delete wave",
-            $"Delete wave '{wave.Code}'?",
-            yesText: "Delete",
-            cancelText: "Cancel");
-        if (ok != true) return;
-
-        try
-        {
-            await Api.Waves.DeleteAsync(_current.Id, wave.Id);
-            Snackbar.Add("Wave deleted", Severity.Success);
-            await ReloadWavesAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
+        _amStartTime = _waves.FirstOrDefault(w => w.Code == "AM")?.DefaultStartTime ?? LocalTimeFormat.DefaultMorningStart;
+        _pmStartTime = _waves.FirstOrDefault(w => w.Code == "PM")?.DefaultStartTime ?? LocalTimeFormat.DefaultAfternoonStart;
     }
 
     private async Task ReloadVenuesAsync()
@@ -610,17 +628,6 @@ else
         {
             var venues = await Api.Venues.ListAsync(_current.Id);
             _venues = venues.OrderBy(v => v.Name).ToList();
-            var map = new Dictionary<Guid, List<CourtDto>>();
-            foreach (var v in _venues)
-            {
-                var courts = await Api.Courts.ListAsync(v.Id);
-                map[v.Id] = courts.OrderBy(c => c.Name).ToList();
-                if (!_newCourtNameByVenue.ContainsKey(v.Id))
-                {
-                    _newCourtNameByVenue[v.Id] = "";
-                }
-            }
-            _courtsByVenue = map;
         }
         catch (Exception ex)
         {
@@ -629,68 +636,6 @@ else
         finally
         {
             _loadingVenues = false;
-        }
-    }
-
-    private IReadOnlyList<CourtDto> CourtsFor(Guid venueId) =>
-        _courtsByVenue.TryGetValue(venueId, out var list) ? list : (IReadOnlyList<CourtDto>)Array.Empty<CourtDto>();
-
-    private string GetNewCourtName(Guid venueId) =>
-        _newCourtNameByVenue.TryGetValue(venueId, out var s) ? s : "";
-
-    private void SetNewCourtName(Guid venueId, string value) =>
-        _newCourtNameByVenue[venueId] = value ?? "";
-
-    private void OnCourtKeyDown(Guid venueId, KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            _ = AddCourtAsync(venueId);
-        }
-    }
-
-    private async Task AddCourtAsync(Guid venueId)
-    {
-        var name = GetNewCourtName(venueId).Trim();
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var existing = CourtsFor(venueId);
-        if (existing.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
-        {
-            Snackbar.Add("A court with that name already exists.", Severity.Warning);
-            return;
-        }
-
-        try
-        {
-            await Api.Courts.CreateAsync(new CreateCourtDto(venueId, name, Array.Empty<string>()));
-            SetNewCourtName(venueId, "");
-            await ReloadVenuesAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    private async Task DeleteCourtAsync(Guid venueId, CourtDto court)
-    {
-        var ok = await DialogService.ShowMessageBoxAsync(
-            "Delete court",
-            $"Delete '{court.Name}'?",
-            yesText: "Delete",
-            cancelText: "Cancel");
-        if (ok != true) return;
-
-        try
-        {
-            await Api.Courts.DeleteAsync(court.Id);
-            Snackbar.Add("Deleted", Severity.Success);
-            await ReloadVenuesAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 

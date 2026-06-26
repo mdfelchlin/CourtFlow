@@ -1,0 +1,12 @@
+.cf-venue-dialog__content {
+    width: 100%;
+    min-width: 24rem;
+    min-height: 14rem;
+}
+
+.cf-venue-dialog__content ::deep .cf-address-autocomplete textarea {
+    min-height: 4.5rem;
+    max-height: 4.5rem;
+    resize: none;
+    overflow-y: auto;
+}

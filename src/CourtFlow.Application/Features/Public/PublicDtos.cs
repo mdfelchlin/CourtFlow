@@ -23,6 +23,8 @@ public sealed record PublicEventDetailDto(
     DateOnly EndDate,
     string TimeZoneId,
     string OrganizationName,
+    string? WebsiteUrl,
+    string? ContactEmail,
     IReadOnlyList<PublicVenueDto> Venues,
     IReadOnlyList<PublicDivisionDto> Divisions);
 

@@ -4,19 +4,16 @@
 @if (_show)
 {
     <MudText Typo="Typo.body2" Class="mr-2">Tournament</MudText>
-    <MudSelect T="Guid?"
+    <CfSelect T="Guid?"
                Value="@Store.SelectedTournamentId"
                ValueChanged="OnValueChanged"
-               Dense="true"
-               Margin="Margin.Dense"
-               Variant="Variant.Outlined"
                Class="cf-select--lg header-tournament-select"
                ToStringFunc="_tournamentName">
         @foreach (var t in Store.Tournaments)
         {
             <MudSelectItem T="Guid?" Value="@((Guid?)t.Id)">@t.Name</MudSelectItem>
         }
-    </MudSelect>
+    </CfSelect>
 }
 
 @code {

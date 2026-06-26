@@ -39,6 +39,12 @@ public sealed class StageMaterializationService : IStageMaterialization
         if (poolStage.Status is StageStatus.InProgress or StageStatus.Completed)
             throw new InvalidOperationException("Pool stage is in progress or completed — use Repairs to change placements.");
 
+        var poolSettings = await _db.PoolSettings.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.StageId == poolStage.Id, cancellationToken);
+        var seedingMethod = poolSettings?.SeedingMethod ?? "snake";
+        if (!string.Equals(seedingMethod, "snake", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Seeding method '{seedingMethod}' is not supported yet.");
+
         var teams = await _db.Teams.Where(t => t.DivisionId == divisionId).ToListAsync(cancellationToken);
         if (teams.Count < 3)
             throw new InvalidOperationException("At least 3 teams are required in rankings.");
@@ -90,7 +96,7 @@ public sealed class StageMaterializationService : IStageMaterialization
         if (poolStage.Status == StageStatus.Configured)
             poolStage.TransitionTo(StageStatus.Seeded);
 
-        await ReplaceDivisionPoolMatchesAsync(division, poolStage, cancellationToken);
+        await ReplaceDivisionPoolMatchesAsync(division, poolStage, poolSettings, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -477,8 +483,13 @@ public sealed class StageMaterializationService : IStageMaterialization
         }
     }
 
-    private async Task ReplaceDivisionPoolMatchesAsync(Division division, Stage poolStage, CancellationToken ct)
+    private async Task ReplaceDivisionPoolMatchesAsync(
+        Division division,
+        Stage poolStage,
+        PoolSettings? poolSettings,
+        CancellationToken ct)
     {
+        var refAssignmentMode = poolSettings?.RefAssignmentMode ?? "next_in_pool";
         var tournament = await _db.Tournaments.FirstAsync(t => t.Id == division.TournamentId, ct);
         var scheduleVersion = await ScheduleVersionProvisioning.EnsureCurrentAsync(_db, division.TournamentId, ct);
 
@@ -509,7 +520,10 @@ public sealed class StageMaterializationService : IStageMaterialization
             var matchIndex = 0;
             foreach (var (homeId, awayId) in BuildRoundRobin(poolTeams))
             {
-                var workTeamId = WorkTeamAutoRotation.PickWorkTeamTeamId(poolTeams, homeId, awayId, matchIndex);
+                Guid? workTeamId = null;
+                if (string.Equals(refAssignmentMode, "next_in_pool", StringComparison.OrdinalIgnoreCase))
+                    workTeamId = WorkTeamAutoRotation.PickWorkTeamTeamId(poolTeams, homeId, awayId, matchIndex);
+
                 var match = new Match(
                     division.OrganizationId,
                     division.TournamentId,

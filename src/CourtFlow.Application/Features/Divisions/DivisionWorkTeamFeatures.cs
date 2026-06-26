@@ -1,4 +1,5 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +11,11 @@ public sealed record PoolMatchWorkTeamDto(
     Guid MatchId,
     string HomeTeamName,
     string AwayTeamName,
+    string? HomeTeamDisplay,
+    string? AwayTeamDisplay,
     Guid? WorkTeamTournamentTeamId,
     string? WorkTeamName,
+    string? WorkTeamDisplay,
     string AssignmentSource);
 
 public sealed record DivisionPoolWorkRotationDto(
@@ -54,7 +58,10 @@ public sealed class GetDivisionWorkRotationHandler : IRequestHandler<GetDivision
             .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var teams = await _db.Teams.AsNoTracking()
             .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
+            .ToDictionaryAsync(t => t.Id, ct);
+
+        static string Display(Team t) =>
+            string.IsNullOrWhiteSpace(t.Club) ? t.Name : $"{t.Club.Trim()} {t.Name.Trim()}";
 
         var matchIds = matches.Select(m => m.Id).ToList();
         var officials = await _db.MatchOfficials.AsNoTracking()
@@ -67,12 +74,12 @@ public sealed class GetDivisionWorkRotationHandler : IRequestHandler<GetDivision
             .Distinct()
             .ToList();
         var ttNames = ttIds.Count == 0
-            ? new Dictionary<Guid, string>()
+            ? new Dictionary<Guid, (string Name, string? Club)>()
             : await (
                 from tt in _db.TournamentTeams.AsNoTracking()
                 join t in _db.Teams.AsNoTracking() on tt.TeamId equals t.Id
                 where ttIds.Contains(tt.Id)
-                select new { tt.Id, t.Name }).ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+                select new { tt.Id, t.Name, t.Club }).ToDictionaryAsync(x => x.Id, x => (x.Name, x.Club), ct);
 
         return pools.Select(pool =>
         {
@@ -84,13 +91,30 @@ public sealed class GetDivisionWorkRotationHandler : IRequestHandler<GetDivision
                 officials.TryGetValue(m.Id, out var official);
                 var workTtId = official?.WorkTeamTournamentTeamId;
                 var source = official?.AssignmentSource.ToString() ?? "None";
+                teams.TryGetValue(m.HomeTeamId ?? Guid.Empty, out var home);
+                teams.TryGetValue(m.AwayTeamId ?? Guid.Empty, out var away);
+                var homeName = home?.Name ?? "TBD";
+                var awayName = away?.Name ?? "TBD";
+                string? workName = null;
+                string? workDisplay = null;
+                if (workTtId is { } wId && ttNames.TryGetValue(wId, out var workInfo))
+                {
+                    workName = workInfo.Name;
+                    workDisplay = string.IsNullOrWhiteSpace(workInfo.Club)
+                        ? workInfo.Name
+                        : $"{workInfo.Club.Trim()} {workInfo.Name.Trim()}";
+                }
+
                 return new PoolMatchWorkTeamDto(
                     idx + 1,
                     m.Id,
-                    teams.GetValueOrDefault(m.HomeTeamId ?? Guid.Empty, "TBD"),
-                    teams.GetValueOrDefault(m.AwayTeamId ?? Guid.Empty, "TBD"),
+                    homeName,
+                    awayName,
+                    home is null ? null : Display(home),
+                    away is null ? null : Display(away),
                     workTtId,
-                    workTtId is { } wId ? ttNames.GetValueOrDefault(wId) : null,
+                    workName,
+                    workDisplay,
                     source);
             }).ToList();
             return new DivisionPoolWorkRotationDto(pool.Id, pool.Name, rows);

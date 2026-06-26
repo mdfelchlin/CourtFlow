@@ -12,26 +12,38 @@ public enum StageStatusDto { Draft = 1, Configured = 2, Seeded = 3, InProgress =
 
 public enum TournamentPublicationStatusDto { Draft, Published, Archived }
 
+public enum TournamentSessionModeDto { SingleSession, MultiWave }
+
 public sealed record TournamentDto(
     Guid Id,
     Guid OrganizationId,
     string Name,
     string? Description,
+    string? WebsiteUrl,
+    string? ContactEmail,
     DateOnly StartDate,
     DateOnly EndDate,
     string TimeZoneId,
     int DefaultMatchDurationMinutes,
+    TournamentSessionModeDto SessionMode,
+    string? DefaultStartTime,
     Guid? TournamentPartnerId,
     TournamentPublicationStatusDto PublicationStatus,
     DateTime? PublishedAtUtc,
     DateTime? ArchivedAtUtc);
 
-public sealed record CreateTournamentDto(string Name, string? Description, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes);
-public sealed record UpdateTournamentDto(Guid Id, string Name, string? Description, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes, Guid? TournamentPartnerId);
+public sealed record CreateTournamentDto(string Name, string? Description, string? WebsiteUrl, string? ContactEmail, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes);
+public sealed record UpdateTournamentDto(Guid Id, string Name, string? Description, string? WebsiteUrl, string? ContactEmail, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes, Guid? TournamentPartnerId);
 
-public sealed record VenueDto(Guid Id, Guid TournamentId, string Name, string? Address);
-public sealed record CreateVenueDto(Guid TournamentId, string Name, string? Address);
-public sealed record UpdateVenueDto(Guid Id, string Name, string? Address);
+public sealed record UpsertTournamentSessionSettingsDto(
+    TournamentSessionModeDto SessionMode,
+    string? DefaultStartTime,
+    string? AmStartTime,
+    string? PmStartTime);
+
+public sealed record VenueDto(Guid Id, Guid TournamentId, string Name, string? Address, int CourtCount);
+public sealed record CreateVenueDto(Guid TournamentId, string Name, string? Address, int CourtCount);
+public sealed record UpdateVenueDto(Guid Id, string Name, string? Address, int CourtCount);
 
 public sealed record CourtDto(Guid Id, Guid VenueId, string Name, string[] Tags);
 public sealed record CreateCourtDto(Guid VenueId, string Name, string[] Tags);
@@ -148,15 +160,26 @@ public sealed record BracketSeedSlotDto(
     Guid? ResolvedTournamentTeamId,
     string ExpectedSourceType);
 
+public sealed record PoolSettingsDto(
+    int TeamsPerPoolTarget,
+    string PoolSizeStrategy,
+    string SeedingMethod,
+    string ClubSeparationMode,
+    string PlayStyle,
+    string CourtAllocationMode,
+    string RefAssignmentMode);
+
 public sealed record DivisionWizardStateDto(
     Guid DivisionId,
     IReadOnlyList<DivisionPoolStructureDto> Pools,
     IReadOnlyList<DivisionBracketStructureDto> Brackets,
     IReadOnlyList<DivisionAdvancementRuleDto> AdvancementRules,
     IReadOnlyList<BracketSeedSlotDto> BracketSeedSlots,
-    IReadOnlyList<Guid> AvailableCourtIds);
+    IReadOnlyList<Guid> AvailableCourtIds,
+    PoolSettingsDto? PoolSettings);
 
 public sealed record SaveDivisionPoolStructureDto(IReadOnlyList<DivisionPoolStructureDto> Pools);
+public sealed record SaveDivisionPoolSettingsDto(PoolSettingsDto Settings);
 public sealed record SaveDivisionBracketStructureDto(IReadOnlyList<DivisionBracketStructureDto> Brackets);
 public sealed record SaveDivisionAdvancementRulesDto(IReadOnlyList<DivisionAdvancementRuleDto> Rules);
 
@@ -329,6 +352,8 @@ public sealed record PublicEventDetailDto(
     DateOnly EndDate,
     string TimeZoneId,
     string OrganizationName,
+    string? WebsiteUrl,
+    string? ContactEmail,
     IReadOnlyList<PublicVenueDto> Venues,
     IReadOnlyList<PublicDivisionDto> Divisions);
 
@@ -462,8 +487,11 @@ public sealed record PoolMatchWorkTeamDto(
     Guid MatchId,
     string HomeTeamName,
     string AwayTeamName,
+    string? HomeTeamDisplay,
+    string? AwayTeamDisplay,
     Guid? WorkTeamTournamentTeamId,
     string? WorkTeamName,
+    string? WorkTeamDisplay,
     string AssignmentSource);
 
 public sealed record DivisionPoolWorkRotationDto(

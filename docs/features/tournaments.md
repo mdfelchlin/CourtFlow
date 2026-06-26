@@ -75,32 +75,26 @@ Body is a vertical stack (4-spacing) of two sections.
 - Header row: section title "Venues & courts" (`h6`) and `CfToolbarAddButton` (aria "Add venue"). Click opens the **Add venue** dialog.
 - Loading state: indeterminate progress bar.
 - Empty state: `MudAlert Info` "No venues yet. Use Add above."
-- Otherwise, `MudExpansionPanels` (multi-expansion). One panel per venue:
-  - **Title content:**
-    - Venue name (`subtitle1`), optional address (`caption`), and "(N) court(s)" caption.
-    - Right-aligned action cluster (with `@onclick:stopPropagation`) holding **Edit venue** and **Delete venue** icon buttons.
-  - **Child content:**
-    - Either "No courts yet." caption (secondary text) or a dense `MudList` of courts. Each court row shows `SportsVolleyball` icon, court name, and a small red delete icon button.
-    - Inline "New court name" text field with an `Add` button (`CfToolbarAddButton`, aria "Add court"). Pressing **Enter** in the field also adds the court. Names are de-duplicated case-insensitively per venue.
+- Otherwise, a stacked list of outlined venue cards. Each card shows:
+  - Venue name (`subtitle1`), optional address (`caption`), and "N court(s)" caption.
+  - Right-aligned **Edit venue** and **Delete venue** icon buttons.
+  - Court count is edited only in the venue dialog (courts are auto-numbered `1`…`N` on the server).
 
 If the user is on `/tournaments/new` and hasn't saved yet, replaces section B with `MudAlert Info`: "Save tournament details to manage venues and courts."
 
-#### Section C — Waves (visible only after the tournament exists)
+#### Section C — Start times (visible only after the tournament exists)
 
 `MudPaper` elevation 1, padding 5, with stacked layout:
 
-- Header row: section title "Waves" (`h6`) and `CfToolbarAddButton` (aria "Add wave"). Click opens the [`WaveDialog`](../ui/dialogs.md#wavedialog).
-- Caption beneath the header: "Sessions inside a tournament day (AM / PM / 1 / 2). Divisions are pinned to a wave on the division editor; CSV imports resolve the `Wave` column by code."
-- Loading state: indeterminate progress bar.
-- Empty state: `MudAlert Info` "No waves yet. Use Add above. Most tournaments use AM and PM."
-- Otherwise, a dense `MudTable` of waves with columns:
-  - **Code** (`AM` / `PM` / `1` / `2`).
-  - **Default start** / **Default end** (formatted local-time; em-dash when unset).
-  - **Divisions using this wave** (count, derived from `tournament_divisions.wave_id = wave.id`).
-  - **Actions:** Edit icon → reopens [`WaveDialog`](../ui/dialogs.md#wavedialog) seeded; Delete icon → confirmation message box. Delete is disabled when any division references the wave.
-- Reorder: each row has a drag handle that updates `waves.display_order`.
+- Section title "Start times" (`h6`).
+- Caption: "When do matches start?"
+- **`MudRadioGroup`** with two options:
+  - **Single session** — one start time (`HH:mm`) for the whole tournament. Divisions are not pinned to a wave.
+  - **Multiple waves** — inline **AM start** and **PM start** fields (`HH:mm`). Divisions can pin to AM or PM on the division editor.
+- Right-aligned **Save session settings** button (primary filled, `Save` icon) — calls `PUT /tournaments/{id}/session-settings`.
+- Switching from multiple waves to single session prompts for confirmation when any division is pinned to a wave (pins are cleared on save).
 
-If the user is on `/tournaments/new` and hasn't saved yet, replaces section C with `MudAlert Info`: "Save tournament details to manage waves."
+If the user is on `/tournaments/new` and hasn't saved yet, section C is omitted (same gate as venues — save details first).
 
 ## Interactions
 
@@ -114,31 +108,26 @@ If the user is on `/tournaments/new` and hasn't saved yet, replaces section C wi
 ### Tournament editor
 
 - **Save details:** validates name; on create calls `POST /tournaments` then navigates to `/tournaments/{newId}`. On edit calls `PUT /tournaments/{id}`.
-- **Add venue / Edit venue:** opens [`VenueDialog`](../ui/dialogs.md#venuedialog). On close (not canceled) reloads venues and courts.
+- **Add venue / Edit venue:** opens [`VenueDialog`](../ui/dialogs.md#venuedialog). On close (not canceled) reloads venues.
 - **Delete venue:** confirmation message box, then `DELETE /venues/{id}`.
-- **Add court:** validates non-empty name and case-insensitive uniqueness; calls `POST /courts`. Pressing Enter in the inline field also submits.
-- **Delete court:** confirmation message box, then `DELETE /courts/{id}`.
-- **Add wave / Edit wave:** opens [`WaveDialog`](../ui/dialogs.md#wavedialog). On close reloads waves.
-- **Delete wave:** confirmation message box, then `DELETE /waves/{id}`. Disabled when any division references it.
-- **Reorder waves:** drag handle → `PATCH /waves/{id}` with new `display_order`.
+- **Save session settings:** validates start time(s) for the selected mode; calls `PUT /tournaments/{id}/session-settings`. When switching to single session with division wave pins, shows a confirm dialog first.
 - **Publish to public:** confirmation modal → `POST /tournaments/{id}:publish` → snackbar "Tournament published". Status chip flips to `Published` and the public link preview appears.
 - **Archive tournament:** confirmation modal → `POST /tournaments/{id}:archive` → snackbar "Tournament archived". Status chip flips to `Archived`.
 - **Un-archive:** `POST /tournaments/{id}:unarchive` → snackbar "Tournament restored to published".
 - **Move to draft:** strong confirmation modal → `POST /tournaments/{id}:unpublish` → snackbar "Moved to draft. The tournament is no longer publicly visible."
-- After every venue / court / wave / status mutation the page reloads the relevant list to stay consistent.
+- After every venue / court / status mutation the page reloads the relevant list to stay consistent.
 - If `GET /tournaments/{id}` fails, shows inline `MudAlert Error` "Tournament not found."
 
 ## Dialogs
 
-- [`VenueDialog`](../ui/dialogs.md#venuedialog) — add/edit venue (with inline staged courts).
-- [`WaveDialog`](../ui/dialogs.md#wavedialog) — add/edit wave (code + optional default time window).
+- [`VenueDialog`](../ui/dialogs.md#venuedialog) — add/edit venue (name, address with Places Autocomplete, court count).
 - [`CloneTournamentDialog`](../ui/dialogs.md#clonetournamentdialog) — name + date pickers for the new tournament; previews what is and isn't copied.
-- Confirmation message boxes for delete tournament, delete venue, delete court, delete wave, **Publish to public**, **Archive tournament**, **Un-archive**, **Move to draft** — see [`../ui/dialogs.md`](../ui/dialogs.md#confirmation-message-boxes). The Move-to-draft modal uses strong destructive copy because shared `/events/{id}` links break when the tournament leaves `published`.
+- Confirmation message boxes for delete tournament, delete venue, **Publish to public**, **Archive tournament**, **Un-archive**, **Move to draft** — see [`../ui/dialogs.md`](../ui/dialogs.md#confirmation-message-boxes). The Move-to-draft modal uses strong destructive copy because shared `/events/{id}` links break when the tournament leaves `published`.
 
 ## References
 
 - Cross-cutting: [`../ui/design-system.md`](../ui/design-system.md), [`../ui/shell.md`](../ui/shell.md), [`../ui/dialogs.md`](../ui/dialogs.md).
-- Data: [`../data-model.md`](../data-model.md#2-tournament-creation) (Tournament aggregate, Venues, Courts, CourtAvailabilityWindow, Waves), [`../data-model.md`](../data-model.md#tournament-status-lifecycle) (Tournament status & public-visibility gate), [`../data-model.md`](../data-model.md#12-tournament-templates) (clone via template).
+- Data: [`../data-model.md`](../data-model.md#2-tournament-creation) (Tournament aggregate, Venues, Courts, Waves), [`../data-model.md`](../data-model.md#tournament-status-lifecycle) (Tournament status & public-visibility gate), [`../data-model.md`](../data-model.md#12-tournament-templates) (clone via template).
 - Public surface: [`public-landing.md`](public-landing.md), [`public-event.md`](public-event.md) (what `published` and `archived` tournaments look like to the public).
 - Architecture: [`../architectural-prd.md`](../architectural-prd.md) §4.1 (aggregate roots).
 - Glossary: [`../../CONTEXT.md`](../../CONTEXT.md) — **Tournament template**.

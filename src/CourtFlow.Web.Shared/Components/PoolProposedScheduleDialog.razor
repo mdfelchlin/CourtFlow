@@ -1,0 +1,75 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@PoolName · Proposed schedule</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_matches.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Available after Snake rankings into pools.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_matches" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>#</MudTh>
+                    <MudTh>Match</MudTh>
+                    <MudTh>Work team</MudTh>
+                    <MudTh>Source</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Order</MudTd>
+                    <MudTd>@MatchLabel(context)</MudTd>
+                    <MudTd>@(context.WorkTeamDisplay ?? context.WorkTeamName ?? "—")</MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.AssignmentSource</MudChip></MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid DivisionId { get; set; }
+    [Parameter] public Guid PoolId { get; set; }
+    [Parameter] public string PoolName { get; set; } = "";
+
+    private bool _loading = true;
+    private List<CourtFlow.ApiClient.PoolMatchWorkTeamDto> _matches = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var rotation = await Api.Divisions.GetWorkRotationAsync(DivisionId);
+            var pool = rotation.FirstOrDefault(p => p.PoolId == PoolId);
+            _matches = pool?.Matches.ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string MatchLabel(CourtFlow.ApiClient.PoolMatchWorkTeamDto m)
+    {
+        var home = m.HomeTeamDisplay ?? m.HomeTeamName;
+        var away = m.AwayTeamDisplay ?? m.AwayTeamName;
+        return $"{home} vs {away}";
+    }
+
+    private void Close() => Dialog.Close();
+}

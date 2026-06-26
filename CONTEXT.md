@@ -13,11 +13,11 @@ Public-facing synonym for **Tournament**. Used only on the public surface — th
 _Avoid_: Tournament (in the public context).
 
 **Organization**:
-The multi-tenant boundary in CourtFlow — every tenant-scoped row (`tournaments`, `clubs`, `teams`, `matches`, …) hangs off exactly one **Organization** via `organization_id`. Each authenticated user has at least one Organization through an **OrganizationMembership**; the user's chosen org id rides every request as the `org_id` claim and is the filter the EF tenant policy applies. An Organization comes in two shapes:
-- **Personal workspace** — auto-provisioned the first time a Clerk user signs in. `clerk_org_id` is `NULL`; the lone owner is recorded in `owner_external_user_id`. Personal workspaces consume **no** Clerk Organization slot, which is critical because Clerk's Free plan caps us at 100 orgs.
-- **Team workspace** — created when a personal workspace is upgraded (or when a user is invited into an existing team). `clerk_org_id` is set and the Clerk Organization is the source of truth for membership and role; CourtFlow's `organization_memberships` rows mirror Clerk membership webhooks. Multiple users belong; roles come from Clerk.
-The split is mechanical, not domain: a Tournament inside a personal workspace and a Tournament inside a team workspace are otherwise identical. See [`docs/adr/0008-personal-organizations-and-team-upgrade.md`](docs/adr/0008-personal-organizations-and-team-upgrade.md).
-_Avoid_: Tenant (CourtFlow's user-facing language is "workspace"), Account (Clerk's user account is a different concept), Club (an org-scoped affiliation that owns teams — many clubs can live inside one Organization).
+The multi-tenant boundary in CourtFlow — every tenant-scoped row (`tournaments`, `clubs`, `teams`, `matches`, …) hangs off exactly one **Organization** via `organization_id`. Each authenticated admin belongs to one or more Organizations through an **OrganizationMembership**; the active org id rides every request as the `org_id` claim and is the filter the EF tenant policy applies. Production onboarding is **invite-only** (see [`docs/adr/0008-personal-organizations-and-team-upgrade.md`](docs/adr/0008-personal-organizations-and-team-upgrade.md)):
+- **Customer organization** — created by a CourtFlow **operator** when provisioning a customer (Request access → review → provision). Each customer org has a **Clerk Organization** (`clerk_org_id` set at provision time). Membership and roles mirror Clerk org invitations and webhooks into `organization_memberships`.
+- **Personal workspace** *(deprecated in production)* — legacy auto-provision on first login; disabled in production. Retained only for **Development** local bootstrap if configured.
+Prospective customers use **Request access** on the login surface; they do not self-create accounts or orgs.
+_Avoid_: Tenant (CourtFlow's user-facing language is "workspace" or "organization"), Account (Clerk's user account is a different concept), Club (an org-scoped affiliation that owns teams — many clubs can live inside one Organization).
 
 **Club**:
 A long-lived org-scoped affiliation that owns one or more **Teams**. Lives in `clubs`. Reused across tournaments and seasons.
@@ -60,7 +60,7 @@ A column inside a single **Bracket** — Round 1, Round 2, Quarterfinals, Semifi
 _Avoid_: Round (without "Bracket" qualifier when ambiguity is possible).
 
 **Wave**:
-A scheduling block inside a **Tournament**, usually a session of the day — `AM`, `PM`, or numbered (`1`, `2`) for multi-session tournaments that run several waves on the same courts in one day. A division can be pinned to a wave so its matches stay inside that session. Lives in `waves`; referenced by `tournament_divisions.wave_id` and used by the scheduler for time-slot constraints.
+A scheduling block inside a **Tournament** — **`AM`** or **`PM`** for multi-wave tournaments that run two sessions on the same courts in one day. A division can be pinned to a wave so its matches stay in that session. Lives in `waves`; referenced by `tournament_divisions.wave_id`. V1 configures waves via the tournament editor **Match start times** section (start times only; no end times or notes).
 _Avoid_: Session, Slot (which means a single court × time-of-day cell), Block.
 
 **Match**:

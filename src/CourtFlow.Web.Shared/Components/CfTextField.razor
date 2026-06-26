@@ -1,0 +1,32 @@
+<MudTextField @bind-Value="Value"
+              Label="@Label"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Required="@Required"
+              Lines="@Lines"
+              FullWidth="@FullWidth"
+              Immediate="@Immediate"
+              Placeholder="@Placeholder"
+              Clearable="@Clearable"
+              Disabled="@Disabled"
+              HelperText="@HelperText"
+              InputType="@InputType"
+              Class="@Class"
+              Style="@Style" />
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public int Lines { get; set; } = 1;
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public bool Immediate { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Clearable { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public InputType InputType { get; set; } = InputType.Text;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

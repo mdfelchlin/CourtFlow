@@ -284,6 +284,8 @@ public sealed class GetPublicEventHandler : IRequestHandler<GetPublicEventQuery,
             t.EndDate,
             t.TimeZoneId,
             org?.Name ?? string.Empty,
+            t.WebsiteUrl,
+            t.ContactEmail,
             venues.Select(v => new PublicVenueDto(
                 v.Id, v.Name, v.Address,
                 courts.Where(c => c.VenueId == v.Id)

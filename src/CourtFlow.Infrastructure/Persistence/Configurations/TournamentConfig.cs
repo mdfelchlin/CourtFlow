@@ -13,7 +13,15 @@ public class TournamentConfig : IEntityTypeConfiguration<Tournament>
         b.HasKey(x => x.Id);
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
         b.Property(x => x.Description).HasMaxLength(2000);
+        b.Property(x => x.WebsiteUrl).HasMaxLength(500);
+        b.Property(x => x.ContactEmail).HasMaxLength(254);
         b.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+        b.Property(x => x.SessionMode)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired()
+            .HasDefaultValue(TournamentSessionMode.SingleSession);
+        b.Property(x => x.DefaultStartTime).HasMaxLength(10);
         b.Property(x => x.PublicationStatus)
             .HasConversion<string>()
             .HasMaxLength(32)

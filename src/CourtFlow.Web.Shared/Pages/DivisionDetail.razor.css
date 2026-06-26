@@ -1,11 +1,11 @@
-/* Rankings: stable columns so # / team / club align; numeric rank from SeedHint */
+/* Rankings: stable columns so # / team align; numeric rank from SeedHint */
 .cf-ranking-table {
     width: 100%;
 }
 
 .cf-ranking-head {
     display: grid;
-    grid-template-columns: 2rem 2.25rem minmax(0, 1fr) minmax(7rem, 1fr);
+    grid-template-columns: 2rem 2.25rem minmax(0, 1fr);
     gap: 0.5rem;
     align-items: center;
     padding: 0 0.5rem 0.35rem 0.5rem;
@@ -19,7 +19,7 @@
 
 .cf-ranking-row {
     display: grid;
-    grid-template-columns: 2rem 2.25rem minmax(0, 1fr) minmax(7rem, 1fr);
+    grid-template-columns: 2rem 2.25rem minmax(0, 1fr);
     gap: 0.5rem;
     align-items: center;
     padding: 0.25rem 0.5rem;
@@ -32,8 +32,7 @@
     font-weight: 600;
 }
 
-.cf-ranking-team,
-.cf-ranking-club {
+.cf-ranking-team {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

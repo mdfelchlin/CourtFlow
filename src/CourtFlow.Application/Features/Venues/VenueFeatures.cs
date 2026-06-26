@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Application.Features.Venues;
 
-public sealed record VenueDto(Guid Id, Guid TournamentId, string Name, string? Address);
+public sealed record VenueDto(Guid Id, Guid TournamentId, string Name, string? Address, int CourtCount);
 
 internal static class VenueMapping
 {
-    public static VenueDto ToDto(this Venue v) => new(v.Id, v.TournamentId, v.Name, v.Address);
+    public static VenueDto ToDto(this Venue v, int courtCount) => new(v.Id, v.TournamentId, v.Name, v.Address, courtCount);
 }
 
 public sealed record ListVenuesQuery(Guid? TournamentId) : IRequest<IReadOnlyList<VenueDto>>;
@@ -19,12 +19,23 @@ public sealed class ListVenuesHandler : IRequestHandler<ListVenuesQuery, IReadOn
 {
     private readonly IAppDbContext _db;
     public ListVenuesHandler(IAppDbContext db) => _db = db;
+
     public async Task<IReadOnlyList<VenueDto>> Handle(ListVenuesQuery request, CancellationToken ct)
     {
         var q = _db.Venues.AsQueryable();
         if (request.TournamentId is { } t) q = q.Where(v => v.TournamentId == t);
         var items = await q.OrderBy(v => v.Name).ToListAsync(ct);
-        return items.Select(VenueMapping.ToDto).ToList();
+        if (items.Count == 0)
+            return Array.Empty<VenueDto>();
+
+        var venueIds = items.Select(v => v.Id).ToList();
+        var counts = await _db.Courts
+            .Where(c => venueIds.Contains(c.VenueId))
+            .GroupBy(c => c.VenueId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+
+        return items.Select(v => v.ToDto(counts.GetValueOrDefault(v.Id))).ToList();
     }
 }
 
@@ -34,14 +45,18 @@ public sealed class GetVenueHandler : IRequestHandler<GetVenueQuery, VenueDto?>
 {
     private readonly IAppDbContext _db;
     public GetVenueHandler(IAppDbContext db) => _db = db;
+
     public async Task<VenueDto?> Handle(GetVenueQuery request, CancellationToken ct)
     {
         var v = await _db.Venues.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-        return v?.ToDto();
+        if (v is null) return null;
+
+        var count = await _db.Courts.CountAsync(c => c.VenueId == v.Id, ct);
+        return v.ToDto(count);
     }
 }
 
-public sealed record CreateVenueCommand(Guid TournamentId, string Name, string? Address) : IRequest<VenueDto>;
+public sealed record CreateVenueCommand(Guid TournamentId, string Name, string? Address, int CourtCount) : IRequest<VenueDto>;
 
 public sealed class CreateVenueValidator : AbstractValidator<CreateVenueCommand>
 {
@@ -49,6 +64,7 @@ public sealed class CreateVenueValidator : AbstractValidator<CreateVenueCommand>
     {
         RuleFor(x => x.TournamentId).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.CourtCount).InclusiveBetween(0, 99);
     }
 }
 
@@ -57,30 +73,50 @@ public sealed class CreateVenueHandler : IRequestHandler<CreateVenueCommand, Ven
     private readonly IAppDbContext _db;
     private readonly ITenantContext _tenant;
     public CreateVenueHandler(IAppDbContext db, ITenantContext tenant) { _db = db; _tenant = tenant; }
+
     public async Task<VenueDto> Handle(CreateVenueCommand request, CancellationToken ct)
     {
         var orgId = _tenant.RequireOrganizationId();
         var v = new Venue(orgId, request.TournamentId, request.Name, request.Address);
         _db.Venues.Add(v);
         await _db.SaveChangesAsync(ct);
-        return v.ToDto();
+
+        var courtCount = await VenueCourtSync.SyncAsync(_db, orgId, v.Id, request.CourtCount, ct);
+        await _db.SaveChangesAsync(ct);
+        return v.ToDto(courtCount);
     }
 }
 
-public sealed record UpdateVenueCommand(Guid Id, string Name, string? Address) : IRequest<VenueDto?>;
+public sealed record UpdateVenueCommand(Guid Id, string Name, string? Address, int CourtCount) : IRequest<VenueDto?>;
+
+public sealed class UpdateVenueValidator : AbstractValidator<UpdateVenueCommand>
+{
+    public UpdateVenueValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.CourtCount).InclusiveBetween(0, 99);
+    }
+}
 
 public sealed class UpdateVenueHandler : IRequestHandler<UpdateVenueCommand, VenueDto?>
 {
     private readonly IAppDbContext _db;
-    public UpdateVenueHandler(IAppDbContext db) => _db = db;
+    private readonly ITenantContext _tenant;
+    public UpdateVenueHandler(IAppDbContext db, ITenantContext tenant) { _db = db; _tenant = tenant; }
+
     public async Task<VenueDto?> Handle(UpdateVenueCommand request, CancellationToken ct)
     {
         var v = await _db.Venues.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
         if (v is null) return null;
+
         v.Rename(request.Name);
         v.SetAddress(request.Address);
+
+        var orgId = _tenant.RequireOrganizationId();
+        var courtCount = await VenueCourtSync.SyncAsync(_db, orgId, v.Id, request.CourtCount, ct);
         await _db.SaveChangesAsync(ct);
-        return v.ToDto();
+        return v.ToDto(courtCount);
     }
 }
 

@@ -11,9 +11,9 @@
                         var idx = i;
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                             <MudText Style="min-width:70px;">Set @(_sets[idx].SetNumber)</MudText>
-                            <MudNumericField Value="_sets[idx].HomeScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, v, _sets[idx].AwayScore))" />
+                            <CfNumericField T="int" Value="_sets[idx].HomeScore" Min="0" Max="50" Class="cf-field--sm" ValueChanged="@((int v) => UpdateSet(idx, v, _sets[idx].AwayScore))" />
                             <MudText>-</MudText>
-                            <MudNumericField Value="_sets[idx].AwayScore" Min="0" Max="50" ValueChanged="@((int v) => UpdateSet(idx, _sets[idx].HomeScore, v))" />
+                            <CfNumericField T="int" Value="_sets[idx].AwayScore" Min="0" Max="50" Class="cf-field--sm" ValueChanged="@((int v) => UpdateSet(idx, _sets[idx].HomeScore, v))" />
                         </MudStack>
                     }
                     <CfToolbarAddButton OnClick="AddSet" AriaLabel="Add set" />

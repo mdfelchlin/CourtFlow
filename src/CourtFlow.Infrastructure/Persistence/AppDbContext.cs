@@ -36,6 +36,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<AdvancementRule> AdvancementRules => Set<AdvancementRule>();
     public DbSet<BracketSeedSlot> BracketSeedSlots => Set<BracketSeedSlot>();
     public DbSet<PoolCourtAllocation> PoolCourtAllocations => Set<PoolCourtAllocation>();
+    public DbSet<PoolSettings> PoolSettings => Set<PoolSettings>();
     public DbSet<BracketSeedSlotOverride> BracketSeedSlotOverrides => Set<BracketSeedSlotOverride>();
     public DbSet<MatchAssignment> MatchAssignments => Set<MatchAssignment>();
     public DbSet<MatchOfficials> MatchOfficials => Set<MatchOfficials>();

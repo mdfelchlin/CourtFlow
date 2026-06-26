@@ -26,9 +26,9 @@
                 else if (_detectedMode == ImportMode.RankedTeams)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">Format: Ranked teams</MudChip>
-                    <MudSelect T="RankedSeedStrategyDto" @bind-Value="_strategy" Label="Strategy" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md">
+                    <CfSelect T="RankedSeedStrategyDto" @bind-Value="_strategy" Label="Strategy" Class="cf-select--md">
                         <MudSelectItem T="RankedSeedStrategyDto" Value="RankedSeedStrategyDto.Snake">Snake</MudSelectItem>
-                    </MudSelect>
+                    </CfSelect>
                 }
                 else
                 {

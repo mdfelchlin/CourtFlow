@@ -16,6 +16,11 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
 
     public IReadOnlyList<TournamentDto> Tournaments => _tournaments;
 
+    /// <summary>
+    /// Bumped when the tournament catalog or metadata changes so layout can remount scoped pages.
+    /// </summary>
+    public int CatalogVersion { get; private set; }
+
     public event Action? Changed;
 
     public async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
@@ -40,12 +45,7 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
         }
 
         var previousSelection = SelectedTournamentId;
-
-        if (SelectedTournamentId is not null && _tournaments.All(t => t.Id != SelectedTournamentId.Value))
-            SelectedTournamentId = null;
-
-        if (SelectedTournamentId is null)
-            SelectedTournamentId = GetLatestTournamentId();
+        NormalizeSelection();
 
         if (SelectedTournamentId != previousSelection)
         {
@@ -61,8 +61,36 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
 
         SelectedTournamentId = id;
         _ = PersistSelectedToStorageAsync(id);
+        CatalogVersion++;
         Changed?.Invoke();
         return Task.CompletedTask;
+    }
+
+    public async Task RefreshTournamentsAsync(Guid? selectId = null, CancellationToken cancellationToken = default)
+    {
+        _tournaments = await _api.Tournaments.ListAsync(cancellationToken);
+        _initialized = true;
+
+        var previousSelection = SelectedTournamentId;
+        if (selectId is not null)
+            SelectedTournamentId = selectId;
+        else
+            NormalizeSelection();
+
+        if (SelectedTournamentId != previousSelection)
+            _ = PersistSelectedToStorageAsync(SelectedTournamentId);
+
+        CatalogVersion++;
+        Changed?.Invoke();
+    }
+
+    private void NormalizeSelection()
+    {
+        if (SelectedTournamentId is not null && _tournaments.All(t => t.Id != SelectedTournamentId.Value))
+            SelectedTournamentId = null;
+
+        if (SelectedTournamentId is null)
+            SelectedTournamentId = GetLatestTournamentId();
     }
 
     private async Task<(bool LoadedFromStorage, Guid? SelectedId)> TryLoadSelectedFromStorageAsync()

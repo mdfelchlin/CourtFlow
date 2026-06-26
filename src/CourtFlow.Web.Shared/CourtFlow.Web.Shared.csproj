@@ -20,12 +20,12 @@
       CourtFlow.Web.Shared.dll on the client. The 2.3.x package ships a redistributable
       assembly that gets bundled into the WASM payload, which is what we need.
     -->
-    <PackageReference Include="MudBlazor" Version="9.4.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,12 +37,9 @@
     Building this project alone (common after editing shared Razor) does not otherwise refresh _framework,
     which causes 404/SRI errors for stale fingerprints. Only run when Shared is the build entry point.
   -->
-  <Target Name="TriggerClientWasmRebuild"
-          AfterTargets="Build"
-          Condition="'$(BuildingProject)' == 'true'">
+  <Target Name="TriggerClientWasmRebuild" AfterTargets="Build" Condition="'$(BuildingProject)' == 'true'">
     <!-- Exec (not MSBuild task) avoids a target-graph cycle: Client already references Shared. -->
-    <Exec Command="dotnet build &quot;$(MSBuildThisFileDirectory)..\CourtFlow.Web.Client\CourtFlow.Web.Client.csproj&quot; --no-restore -p:BuildProjectReferences=false -v:q"
-          EnvironmentVariables="DOTNET_CLI_UI_LANGUAGE=en" />
+    <Exec Command="dotnet build &quot;$(MSBuildThisFileDirectory)..\CourtFlow.Web.Client\CourtFlow.Web.Client.csproj&quot; --no-restore -p:BuildProjectReferences=false -v:q" EnvironmentVariables="DOTNET_CLI_UI_LANGUAGE=en" />
   </Target>
 
 </Project>

@@ -67,16 +67,27 @@ public class RoundRobinScheduleGenerator : IScheduleGenerator
             .Where(c => _db.Venues.Where(v => v.TournamentId == tournamentId).Select(v => v.Id).Contains(c.VenueId))
             .ToListAsync(ct);
 
+        var waveEntities = await _db.Waves
+            .Where(w => w.TournamentId == tournamentId)
+            .ToListAsync(ct);
+        var waveStartTimes = waveEntities.ToDictionary(w => w.Code, w => w.DefaultStartTime, StringComparer.OrdinalIgnoreCase);
+
         var amCourts = courts.Where(c => !c.Tags.Any(t => t.Equals("PM", StringComparison.OrdinalIgnoreCase))).ToList();
         var pmCourts = courts.Where(c => !c.Tags.Any(t => t.Equals("AM", StringComparison.OrdinalIgnoreCase))).ToList();
         if (amCourts.Count == 0) amCourts = courts;
         if (pmCourts.Count == 0) pmCourts = courts;
 
         var duration = tournament.DefaultMatchDurationMinutes;
-        var day = tournament.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var day = ScheduleStartTimeResolver.ResolveDayAnchor(tournament.StartDate);
         var placeholderStart = day;
-        var amStart = day.AddHours(8);
-        var pmStart = day.AddHours(13);
+
+        DateTime ResolveStartForWave(Wave wave)
+        {
+            if (tournament.SessionMode == TournamentSessionMode.SingleSession)
+                return ScheduleStartTimeResolver.ResolveStart(day, tournament.DefaultStartTime, 8);
+
+            return ScheduleStartTimeResolver.ResolveWaveStart(day, waveStartTimes, wave);
+        }
 
         var created = new List<Match>();
         var assignments = new List<MatchAssignment>();
@@ -88,9 +99,13 @@ public class RoundRobinScheduleGenerator : IScheduleGenerator
             if (poolTeams.Count < 2) continue;
 
             var firstTeam = poolTeams[0];
-            var wave = firstTeam.Wave;
-            var waveStart = wave == Wave.AM ? amStart : pmStart;
-            var waveCourts = wave == Wave.AM ? amCourts : pmCourts;
+            var wave = tournament.SessionMode == TournamentSessionMode.SingleSession
+                ? Wave.AM
+                : firstTeam.Wave;
+            var waveStart = ResolveStartForWave(wave);
+            var waveCourts = tournament.SessionMode == TournamentSessionMode.SingleSession
+                ? courts
+                : wave == Wave.AM ? amCourts : pmCourts;
             if (waveCourts.Count == 0) waveCourts = courts;
 
             var pairings = BuildRoundRobin(poolTeams.Select(t => t.Id).ToList());

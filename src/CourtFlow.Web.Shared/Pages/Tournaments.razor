@@ -65,6 +65,8 @@
 </MudDataGrid>
 
 @code {
+    [CascadingParameter] private SelectedTournamentStore TournamentStore { get; set; } = default!;
+
     private IReadOnlyList<TournamentDto> _items = Array.Empty<TournamentDto>();
     private bool _loading = true;
     private bool _creatingRandom;
@@ -98,6 +100,7 @@
             if (r is { Canceled: false } && r.Data is TournamentFromTemplateDto created)
             {
                 Snackbar.Add("Tournament created", Severity.Success);
+                await TournamentStore.RefreshTournamentsAsync(created.TournamentId);
                 Nav.NavigateTo($"/tournaments/{created.TournamentId}");
             }
         }
@@ -120,7 +123,7 @@
             var duration = durations[rnd.Next(durations.Length)];
 
             var created = await Api.Tournaments.CreateAsync(
-                new CreateTournamentDto(name, "Dev-only random seed for testing.", start, end, tz, duration));
+                new CreateTournamentDto(name, "Dev-only random seed for testing.", null, null, start, end, tz, duration));
 
             var venuePlans = new (string Name, string? Address, (string CourtName, string[] Tags)[] Courts)[]
             {
@@ -148,7 +151,7 @@
             var courtTotal = 0;
             foreach (var (vName, address, courts) in venuePlans)
             {
-                var venue = await Api.Venues.CreateAsync(new CreateVenueDto(created.Id, vName, address));
+                var venue = await Api.Venues.CreateAsync(new CreateVenueDto(created.Id, vName, address, 0));
                 foreach (var (courtName, tags) in courts)
                 {
                     await Api.Courts.CreateAsync(new CreateCourtDto(venue.Id, courtName, tags));
@@ -181,6 +184,7 @@
             }
 
             Snackbar.Add($"Random test tournament: {venuePlans.Length} venues, {courtTotal} courts, {divisions.Length} divisions, {teamTotal} teams.", Severity.Success);
+            await TournamentStore.RefreshTournamentsAsync(created.Id);
             Nav.NavigateTo($"/tournaments/{created.Id}");
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
@@ -220,6 +224,7 @@
         if (r is { Canceled: false } && r.Data is TournamentDto created)
         {
             Snackbar.Add("Tournament cloned", Severity.Success);
+            await TournamentStore.RefreshTournamentsAsync(created.Id);
             Nav.NavigateTo($"/tournaments/{created.Id}");
         }
     }
@@ -228,7 +233,7 @@
     {
         var ok = await DialogService.ShowMessageBoxAsync("Delete tournament", $"Delete '{t.Name}'?", yesText: "Delete", cancelText: "Cancel");
         if (ok != true) return;
-        try { await Api.Tournaments.DeleteAsync(t.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); }
+        try { await Api.Tournaments.DeleteAsync(t.Id); Snackbar.Add("Deleted", Severity.Success); await ReloadAsync(); await TournamentStore.RefreshTournamentsAsync(); }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 }

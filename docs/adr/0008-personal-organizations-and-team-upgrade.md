@@ -1,23 +1,73 @@
-# Personal workspaces are CourtFlow-internal; Clerk Organizations are opt-in
+# Invite-only tenants; Clerk Organizations provisioned by operator
 
-Every authenticated CourtFlow user is auto-provisioned a **personal workspace** — an `organizations` row with `clerk_org_id = NULL` and `owner_external_user_id = <Clerk sub>` — the first time their JWT lands at the API. CourtFlow's multi-tenant model continues to require an Organization for every tenant-scoped row, but a Clerk Organization is **not** required to have one. A user can later **upgrade** their personal workspace to a team workspace, at which point we mint a Clerk Organization, set `clerk_org_id`, and reconcile membership through Clerk's webhook stream. This buys us "every user can use the product the second they sign up" without consuming a Clerk Organization slot per signup — which matters because the Clerk Free plan caps us at 100 organizations, and we want quota spent on paying teams, not on every prospect who clicks "sign up".
+CourtFlow is **invite-only** in production. There is no open sign-up and no auto-provisioned personal workspace. A **CourtFlow operator** creates each customer **Organization**, mints a matching **Clerk Organization** at that moment (reserving a Clerk org slot deliberately), and sends the **first org invitation** to the owner. The owner signs in and lands in that org; they **invite colleagues** from in-app team settings (Clerk org invitations mirrored into `organization_memberships`).
+
+Prospective customers who do not yet have an account use a **Request access** flow (CourtFlow form, not Clerk Waitlist). Operators review requests and **provision** org + first invite when qualified.
+
+Clerk **sign-up is disabled** (Restricted / invitation-only mode). The public login surface shows **Sign in** and **Request access** side by side.
 
 ## Status
 
-Accepted — implemented in the `AddPersonalOrganizationSupport` migration, `ClerkClaimsTransformation`, and the `Organization` aggregate (`CreatePersonal`, `UpgradeToTeamWorkspace`). The upgrade UI is **not yet wired**; today every workspace is personal.
+**Accepted (partial)** — model locked (2026-06-17 review). Legacy **personal workspace auto-provision** still runs in code today; production must disable it. Request access, admin provision UI, in-app staff invites, and Clerk webhook membership sync are backlog work.
+
+**Supersedes** the personal-workspace-first narrative in the original ADR-0008 draft; `Organization.CreatePersonal` and `UpgradeToTeamWorkspace` remain in the domain for **Development** bootstrap only unless removed later.
+
+## Decisions (2026-06-17)
+
+1. **Production onboarding:** Invite-only. No auto personal workspace. Unauthenticated users cannot create a tenant.
+2. **Operator flow (Option A):** Admin creates `organizations` row + Clerk Organization + first owner invitation. Owner accepts → membership exists → `ClerkClaimsTransformation` resolves existing membership (no provision).
+3. **Clerk org timing:** Mint Clerk Organization **when the operator provisions the customer org**, not on waitlist/request submit.
+4. **Request access (Option W2):** CourtFlow **`/request-access`** page (form: org/club name, contact name, email, optional note) → persists **`access_requests`** (or equivalent) → operator reviews in **CourtFlow admin** → **Provision** action creates org + Clerk org + first invite. **Not** Clerk Waitlist for V1.
+5. **Login UX:** `/login` shows **Sign in** (Clerk, invited users only) and **Request access** (link/button). Operator disables public account creation in Clerk Dashboard.
+6. **Staff invites:** Org **Admin** invites additional users from in-app **Team** settings → Clerk org invitation API → webhook mirrors to `organization_memberships`.
+7. **Development exception:** When `ASPNETCORE_ENVIRONMENT=Development` (or explicit `Dev:AllowPersonalWorkspace=true`), legacy auto-provision **may** remain for local work without admin tooling. Production **never** auto-provisions.
+
+## Operator journey
+
+```mermaid
+flowchart LR
+  lead[Prospect submits Request access]
+  review[Operator reviews queue]
+  provision[Provision org + Clerk org + owner invite]
+  owner[Owner accepts invite and signs in]
+  team[Owner invites staff from Team settings]
+
+  lead --> review --> provision --> owner --> team
+```
+
+## Request access form (V1 fields)
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| Organization / club name | Yes | Becomes default org display name on provision |
+| Contact email | Yes | First invite target |
+| Contact name | No | Operator reference |
+| Message | No | Free text — event volume, timeline, etc. |
+
+On submit: confirmation copy only (no account created). Operator notified (email or admin queue — implementation choice).
 
 ## Considered alternatives
 
-- **Require every CourtFlow user to be inside a Clerk Organization on day one.** Cleanest model — Clerk is the single source of truth for org id and role, our `ClerkClaimsTransformation` is a thin pass-through, no auto-provisioning code path. **Rejected** because Clerk's 100-org Free cap is a hard ceiling and most users in the funnel will never need a team workspace; bleeding the budget on personal accounts would force a paid plan migration we're not ready for, or force a "wait, you can't sign in until you create a Clerk org" speed bump that contradicts the V1 "log in and start" UX.
-- **Drop the `organization_id` column entirely and key tenant-scoped rows off the Clerk `sub` directly.** Smallest schema change. **Rejected** because every read query, tenant query filter, and outbox/scheduler/seeding seam in CourtFlow already pivots on `OrganizationId`; ripping the column out would touch every aggregate, every config in `Persistence/Configurations/*`, and `HttpTenantContext.OrganizationId`. The conceptual benefit (one less indirection) doesn't justify the diff.
-- **Synthesize a deterministic `Organization.Id` from the Clerk `sub` (e.g. namespaced GUID), no DB row.** Skips the auto-provisioning insert. **Rejected** because we still need an `organizations` row for FK targets (tournaments, clubs, memberships, …) and for the future "upgrade to team workspace" rename — synthesizing the id only postpones the insert until the first write, with worse failure modes.
-- **Lazy-provision the personal workspace on the first write, not on the first request.** The transformation just returns the principal unchanged; controllers create-on-demand inside their first write. **Rejected** because authorization (`RequireOrg`) and the EF tenant filter both demand a valid `org_id` claim on every authenticated request, including reads — pages that just list "your tournaments" would 401 before the user ever wrote anything. Eagerly provisioning in the claims transformation keeps every request shape uniform.
+- **Auto personal workspace on first login.** Rejected for production — consumes uncontrolled tenants; conflicts with invite-only and Clerk org seat planning.
+- **Clerk Waitlist only.** Rejected as sole funnel — app-level waitlist does not create CourtFlow orgs or tie leads to tenant provisioning.
+- **Upgrade personal → team.** Rejected — all production orgs are team orgs from provision; no upgrade path needed.
+- **Mint Clerk org on first invite accept.** Rejected — operator cannot reserve seats at provision time; org would sit without Clerk backing.
 
 ## Consequences
 
-- `ClerkClaimsTransformation` is now a **scoped service with a DB dependency** — every authenticated request reads `OrganizationMembership` by `sub`. The path is one indexed lookup (`ix_organization_memberships_organization_id_external_user_id` covers the `(org, sub)` pair, and `OrganizationMembership.ExternalUserId` is selective enough that the planner uses it). First-request provisioning takes the insert path once per user; subsequent requests hit the read-only branch.
-- A unique index on `organizations.owner_external_user_id` guarantees a user can have at most **one** personal workspace. The transformation handles the concurrent-first-request race by catching `DbUpdateException` and re-reading. SQLite treats `NULL` values in unique indexes as distinct, so team workspaces (`owner_external_user_id = NULL`) coexist without collision.
-- The Clerk JWT's literal `{{organization.id}}` and `{{organization.role}}` claims — emitted when a user is **not** signed into a Clerk Organization — are **overwritten** by the transformation. The `org_id` claim seen by `HttpTenantContext` and the `RequireOrg` policy is always a real CourtFlow `Organization.Id` Guid; the `org_role` claim is always the membership's role (today, always `Admin` for personal workspaces). This unblocks the persistent 401 on `Tournaments` and any other `RequireOrg`-gated route.
-- The seeded demo tournament still uses the `courtflow-demo` org (slug `courtflow-demo`), but the seeded admin membership is now driven by `Dev:ClerkUserId` from user-secrets, not a hardcoded fake `user_demo_seed`. Set `Dev:ClerkUserId` to your Clerk `sub` to attach the demo data to your real login; leave it unset and the demo data exists but no real user can see it. See [`local-development.md`](../local-development.md).
-- The Domain aggregate exposes the upgrade verb (`Organization.UpgradeToTeamWorkspace(string clerkOrgId)`) so the future "Convert to team" UI is a single domain call: mint the Clerk Organization, persist the `clerk_org_id`, and start mirroring Clerk membership webhooks into `organization_memberships`. The personal-workspace row keeps its identity, so every tournament, schedule, and bracket inside it survives the upgrade unchanged.
-- We are still subject to Clerk's quota for **team** workspaces. The 100-org cap now caps only paying / collaborating tenants, which is the population we care about.
+- **`ClerkClaimsTransformation`:** Production path resolves **existing** `organization_memberships` only; return **401 / no org** if user signed in without invite. Remove or gate `Organization.CreatePersonal` behind Development.
+- **New aggregates/tables:** `AccessRequest` (pending / approved / denied / provisioned); admin provision command orchestrates CourtFlow org + Clerk API + first invitation.
+- **New admin surface:** Access request queue + **Provision organization** (pre-fill from request).
+- **New org member surface:** Team / invite settings for org Admins (depends on Clerk org invitations + webhooks).
+- **CONTEXT.md** and [`features/auth.md`](../features/auth.md) describe login + request access; [`local-development.md`](../local-development.md) documents dev bootstrap (`Dev:ClerkUserId`, demo org).
+- **Clerk Dashboard:** Restrict sign-up; enable Organizations; configure invitation emails.
+- Planned **ADR-0017** (Clerk auth topology) should reference this ADR for onboarding.
+
+## Implementation phases
+
+| Phase | Scope | Backlog |
+| --- | --- | --- |
+| **8a** | `/request-access` page + API; `access_requests` persistence; login page Sign in + Request access | AUTH-01 |
+| **8b** | Admin queue + **Provision org** (CourtFlow org + Clerk org + owner invite) | AUTH-02 |
+| **8c** | Disable personal auto-provision in non-Development; membership-only claims resolution | AUTH-03 |
+| **8d** | In-app **Invite team member** + Clerk webhook membership mirror | AUTH-04 |

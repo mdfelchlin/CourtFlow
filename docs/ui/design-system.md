@@ -68,7 +68,7 @@ This gives us one source of truth for the brand palette (the C# theme) and one p
 | `--cf-tint-success-solid` | `color-mix(in srgb, var(--mud-palette-success) 70%, transparent)` | `final` cells (slightly de-emphasized via opacity 90%) |
 | `--cf-wave-band-am` | `color-mix(in srgb, var(--mud-palette-info) 4%, transparent)` | AM wave row background in Grid view |
 | `--cf-wave-band-pm` | `color-mix(in srgb, var(--mud-palette-secondary) 4%, transparent)` | PM wave row background |
-| `--cf-wave-band-numeric` | `color-mix(in srgb, currentColor 3%, transparent)` | Waves `1` / `2` row background |
+| `--cf-wave-band-numeric` | `color-mix(in srgb, currentColor 3%, transparent)` | Reserved; unused in V1 (AM/PM only) |
 | `--cf-stripe-outage` | `repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--mud-palette-text-disabled) 25%, transparent) 6px 12px)` | Court outage cell pattern |
 | `--cf-stripe-canceled` | `repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--mud-palette-error) 20%, transparent) 6px 12px)` | Canceled / forfeited cell pattern |
 | `--cf-division-1` … `--cf-division-8` | Fixed hex (see [Division color derivation](#division-color-derivation) below) | Division chips and accents — selected by `divisionColor(divisionId)` helper |
@@ -224,10 +224,22 @@ Destructive actions (delete tournament, delete venue, delete court, delete divis
 
 ### 7.5 Forms
 
-- Standard density: `Margin.Dense`, `Variant.Outlined`.
+CourtFlow form fields use thin **Cf\*** wrapper components in `CourtFlow.Web.Shared/Components/` that enforce the standard MudBlazor density and variant. Do **not** use raw `MudTextField`, `MudNumericField`, `MudSelect`, or `MudAutocomplete` in pages and dialogs — only inside these wrappers (or the existing date/time pickers below).
+
+| Wrapper | MudBlazor primitive | Defaults |
+| --- | --- | --- |
+| `CfTextField` | `MudTextField` | `Margin.Dense`, `Variant.Outlined` |
+| `CfNumericField<T>` | `MudNumericField<T>` | same |
+| `CfSelect<T>` | `MudSelect<T>` | `Dense="true"`, `Margin.Dense`, `Variant.Outlined` |
+| `CfAutocomplete<T>` | `MudAutocomplete<T>` | same as select |
+| `CfDateField` | `MudDatePicker` | same (dialog picker) |
+| `CfTimeField` | `MudTimePicker` | same (dialog picker) |
+| `CfDateTimeRow` | `CfDateField` + `CfTimeField` | paired row with `cf-field-wrap` |
+
 - Required fields are marked via `Required="true"` (MudBlazor surfaces a leading asterisk).
 - Numeric fields use `Min` / `Max` to constrain server-acceptable ranges.
-- Selects with constrained sizing use the project utility classes `cf-select--sm`, `cf-select--md`, `cf-select--lg`.
+- Selects and pickers with constrained sizing use the project utility classes `cf-select--sm`, `cf-select--md`, `cf-select--lg`, or wrap fields in `cf-field-wrap` with `cf-field--sm/md/lg`.
+- Multi-field detail forms (tournament editor, create-from-template dialog) use the global layout classes `cf-form-details`, `cf-form-details__grid`, and `cf-form-details__times` defined in `wwwroot/app.css`.
 
 ### 7.6 Tables and grids
 

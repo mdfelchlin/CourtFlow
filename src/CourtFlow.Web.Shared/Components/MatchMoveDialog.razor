@@ -4,15 +4,14 @@
 <MudDialog>
     <DialogContent>
         <MudStack>
-            <MudDatePicker @bind-Date="_date" Label="Date" />
-            <MudTimePicker @bind-Time="_time" Label="Time" />
-            <MudNumericField @bind-Value="_duration" Label="Duration (min)" Min="15" Max="240" />
-            <MudSelect T="Guid?" @bind-Value="_courtId" Label="Court" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="cf-select--md" ToStringFunc="_courtName">
+            <CfDateTimeRow @bind-Date="_date" @bind-Time="_time" Class="cf-field--sm" />
+            <CfNumericField T="int" @bind-Value="_duration" Label="Duration (min)" Min="15" Max="240" />
+            <CfSelect T="Guid?" @bind-Value="_courtId" Label="Court" Class="cf-select--md" ToStringFunc="_courtName">
                 @foreach (var c in Courts)
                 {
                     <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">@c.Name</MudSelectItem>
                 }
-            </MudSelect>
+            </CfSelect>
         </MudStack>
     </DialogContent>
     <DialogActions>

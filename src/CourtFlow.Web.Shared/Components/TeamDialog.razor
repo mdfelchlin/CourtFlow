@@ -4,34 +4,26 @@
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="2" Class="mud-width-full">
-            <MudSelect T="Guid"
+            <CfSelect T="Guid"
                        @bind-Value="_divisionId"
                        Label="Division"
-                       Dense="true"
-                       Margin="Margin.Dense"
-                       Variant="Variant.Outlined"
                        Class="mud-width-full"
                        Required="true">
                 @foreach (var d in Divisions)
                 {
                     <MudSelectItem Value="d.Id">@d.Name</MudSelectItem>
                 }
-            </MudSelect>
-            <MudTextField @bind-Value="_name"
+            </CfSelect>
+            <CfTextField @bind-Value="_name"
                           Label="Team name"
                           Required="true"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
                           FullWidth="true"
                           InputType="InputType.Text"
                           Lines="1" />
             <MudStack Spacing="0">
-                <MudAutocomplete T="string"
+                <CfAutocomplete T="string"
                                  @bind-Value="_clubText"
                                  Label="Club"
-                                 Dense="true"
-                                 Margin="Margin.Dense"
-                                 Variant="Variant.Outlined"
                                  Class="mud-width-full"
                                  Clearable="true"
                                  Strict="false"

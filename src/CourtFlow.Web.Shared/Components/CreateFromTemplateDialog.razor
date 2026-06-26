@@ -4,18 +4,27 @@
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="2">
+        <MudStack Spacing="2" Class="cf-form-details">
             <MudText Typo="Typo.subtitle1">Create from template: @TemplateName</MudText>
-            <MudTextField @bind-Value="_name" Label="Tournament name" Required="true" />
-            <MudDatePicker @bind-Date="_start" Label="Start date" />
-            <MudDatePicker @bind-Date="_end" Label="End date" />
-            <MudSelect T="string" @bind-Value="_timeZoneId" Label="Time zone" Dense="true">
-                @foreach (var tz in TimeZoneOptions.All)
-                {
-                    <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
-                }
-            </MudSelect>
-            <MudNumericField T="int" @bind-Value="_duration" Label="Default match duration (min)" Min="15" Max="180" />
+            <CfTextField @bind-Value="_name" Label="Tournament name" Required="true" />
+            <div class="cf-form-details__grid">
+                <div class="cf-field-wrap">
+                    <CfDateField @bind-Date="_start" Label="Start date" />
+                </div>
+                <div class="cf-field-wrap">
+                    <CfDateField @bind-Date="_end" Label="End date" />
+                </div>
+                <div class="cf-field-wrap">
+                    <CfSelect T="string" @bind-Value="_timeZoneId" Label="Time zone"
+                              ToStringFunc="@(id => TimeZoneOptions.Label(id))">
+                        @foreach (var tz in TimeZoneOptions.All)
+                        {
+                            <MudSelectItem T="string" Value="@tz.Id">@tz.Label</MudSelectItem>
+                        }
+                    </CfSelect>
+                </div>
+            </div>
+            <CfNumericField T="int" @bind-Value="_duration" Label="Default match duration (min)" Min="15" Max="240" />
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -33,7 +42,7 @@
     private DateTime? _start = DateTime.Today;
     private DateTime? _end = DateTime.Today.AddDays(2);
     private string _timeZoneId = TimeZoneOptions.All[0].Id;
-    private int _duration = 60;
+    private int _duration = TournamentDefaults.DefaultMatchDurationMinutes;
     private bool _busy;
 
     protected override void OnInitialized() => _name = $"From {TemplateName}";

@@ -92,7 +92,7 @@ A **court × time** matrix designed to be read in one glance. Same data as Cards
 
 - **Columns:** one column per court in the selected tournament, in venue → court-name order. Header row is sticky on vertical scroll and shows: court name (`subtitle2`), venue caption, and the same status chip used on the Cards view header (Idle / On Time / Slightly Behind / Behind / Significantly Behind / Out / Ahead). The chip on the header reflects the court's worst current delta — the eye anchor for "which courts are hot right now".
 - **Rows:** one row per distinct scheduled start time on the loaded `ScheduleVersion`, in ascending order. The leftmost **Time** column is sticky on horizontal scroll. Time format: `h:mm tt` in the tournament's time zone; for multi-day tournaments rows are grouped under a sticky day header (`ddd MMM d`).
-- **Wave bands:** row backgrounds are tokenized — AM waves use `--cf-wave-band-am` (info-derived cool tint), PM waves use `--cf-wave-band-pm` (secondary-derived warm tint), numbered waves (`1`, `2`) use `--cf-wave-band-numeric` (text-color neutral). All three resolve to ~3–5% opacity so they don't fight the per-cell color encoding. See [`../ui/design-system.md` §2 → Semantic surface tints](../ui/design-system.md#semantic-surface-tints).
+- **Wave bands:** row backgrounds are tokenized — AM waves use `--cf-wave-band-am` (info-derived cool tint), PM waves use `--cf-wave-band-pm` (secondary-derived warm tint). Both resolve to ~3–5% opacity so they don't fight the per-cell color encoding. See [`../ui/design-system.md` §2 → Semantic surface tints](../ui/design-system.md#semantic-surface-tints).
 
 ### Cell content
 
@@ -122,7 +122,7 @@ The cell's background is the **single highest-leverage signal** in this layout. 
 | Canceled / forfeited | `--cf-stripe-canceled` (diagonal repeating gradient) | Muted text |
 | Court outage covers this row (active `court_outages`) | `--cf-stripe-outage` (diagonal gray gradient) on every cell in that court column for the outage window | "Out" caption inside the striped band |
 
-Wave-band row backgrounds use `--cf-wave-band-am`, `--cf-wave-band-pm`, and `--cf-wave-band-numeric` from the same token catalog. Division and pool/bracket chips on the cell read their color from the `divisionColor(divisionId)` helper, which selects from `--cf-division-1` … `--cf-division-8` per [Division color derivation](../ui/design-system.md#division-color-derivation).
+Wave-band row backgrounds use `--cf-wave-band-am` and `--cf-wave-band-pm` from the same token catalog. Division and pool/bracket chips on the cell read their color from the `divisionColor(divisionId)` helper, which selects from `--cf-division-1` … `--cf-division-8` per [Division color derivation](../ui/design-system.md#division-color-derivation).
 
 The status chip on the court column header reflects the **worst** non-final delta in the column. The chip on the row header (when shown) reflects the worst delta across all courts at that time slot.
 

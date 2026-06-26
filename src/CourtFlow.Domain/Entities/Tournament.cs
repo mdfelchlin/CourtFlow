@@ -9,10 +9,14 @@ public class Tournament : Entity, ITenantScoped
     public Guid OrganizationId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public string? WebsiteUrl { get; private set; }
+    public string? ContactEmail { get; private set; }
     public DateOnly StartDate { get; private set; }
     public DateOnly EndDate { get; private set; }
     public string TimeZoneId { get; private set; } = "America/Los_Angeles";
-    public int DefaultMatchDurationMinutes { get; private set; } = 60;
+    public int DefaultMatchDurationMinutes { get; private set; } = TournamentDefaults.DefaultMatchDurationMinutes;
+    public TournamentSessionMode SessionMode { get; private set; } = TournamentSessionMode.SingleSession;
+    public string? DefaultStartTime { get; private set; }
     public Guid? TournamentPartnerId { get; private set; }
 
     /// <summary>Whether this tournament appears on the public landing and public event APIs.</summary>
@@ -28,7 +32,7 @@ public class Tournament : Entity, ITenantScoped
 
     private Tournament() { }
 
-    public Tournament(Guid organizationId, string name, DateOnly start, DateOnly end, string timeZoneId, int defaultMatchDurationMinutes = 60)
+    public Tournament(Guid organizationId, string name, DateOnly start, DateOnly end, string timeZoneId, int defaultMatchDurationMinutes = TournamentDefaults.DefaultMatchDurationMinutes)
     {
         OrganizationId = organizationId;
         Rename(name);
@@ -49,6 +53,14 @@ public class Tournament : Entity, ITenantScoped
     {
         EnsureNotArchived();
         Description = description;
+        Touch();
+    }
+
+    public void SetContactInfo(string? websiteUrl, string? contactEmail)
+    {
+        EnsureNotArchived();
+        WebsiteUrl = string.IsNullOrWhiteSpace(websiteUrl) ? null : websiteUrl.Trim();
+        ContactEmail = string.IsNullOrWhiteSpace(contactEmail) ? null : contactEmail.Trim();
         Touch();
     }
 
@@ -74,6 +86,20 @@ public class Tournament : Entity, ITenantScoped
         EnsureNotArchived();
         if (minutes <= 0) throw new ArgumentException("Match duration must be > 0", nameof(minutes));
         DefaultMatchDurationMinutes = minutes;
+        Touch();
+    }
+
+    public void SetSessionMode(TournamentSessionMode mode)
+    {
+        EnsureNotArchived();
+        SessionMode = mode;
+        Touch();
+    }
+
+    public void SetDefaultStartTime(string? startTime)
+    {
+        EnsureNotArchived();
+        DefaultStartTime = string.IsNullOrWhiteSpace(startTime) ? null : startTime.Trim();
         Touch();
     }
 

@@ -20,7 +20,7 @@ This is the canonical home for everything about CourtFlow that isn't code. The g
 | --- | --- |
 | [`architecture.md`](architecture.md) | Quick layered solution + patterns reference (Clean Architecture, DDD, CQRS, multi-tenancy). |
 | [`architectural-prd.md`](architectural-prd.md) | Long-form architectural PRD: technology stack, DDD conventions, runtime behaviors, deployment summary. |
-| [`adr/`](adr/) | Architecture Decision Records — one short page per non-obvious, hard-to-reverse decision. Current: [`0001 Match identity vs assignment`](adr/0001-match-identity-vs-assignment.md), [`0002 Styling strategy (no SASS)`](adr/0002-styling-strategy.md), [`0003 Status lifecycle per aggregate`](adr/0003-status-lifecycle-per-aggregate.md), [`0004 Reflow preview contract`](adr/0004-reflow-preview-contract.md), [`0005 Stage materialization and bracket resolution`](adr/0005-stage-materialization-and-bracket-resolution.md), [`0006 Read models: tiebreaker, delay, public & division readiness`](adr/0006-read-models-tiebreaker-delay-public-division-readiness.md), [`0007 Engine seams and testing`](adr/0007-engine-seams-and-testing.md). |
+| [`adr/`](adr/) | Architecture Decision Records — one short page per non-obvious, hard-to-reverse decision. Index: [`adr/README.md`](adr/README.md). Current: 0001–0008 (0009+ planned in [`implementation-backlog.md` § Phase 10](implementation-backlog.md#phase-10--adr-coverage--doc-hygiene)). |
 
 ## Data
 

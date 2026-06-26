@@ -1,0 +1,14 @@
+.cf-bracket-preview__body {
+    width: 100%;
+    max-height: min(70vh, 720px);
+    overflow: auto;
+}
+
+.cf-bracket-preview__body--fullscreen {
+    max-height: calc(100vh - 10rem);
+    min-height: calc(100vh - 10rem);
+}
+
+.cf-bracket-preview__body--fullscreen ::deep .cf-bracket-flow {
+    min-height: 100%;
+}
