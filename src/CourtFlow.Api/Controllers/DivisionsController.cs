@@ -1,5 +1,6 @@
 using CourtFlow.Api.Infrastructure;
 using CourtFlow.Application.Features.Brackets;
+using CourtFlow.Application.Features.MatchGraph;
 using CourtFlow.Application.Features.Divisions;
 using CourtFlow.Application.Features.Imports;
 using CourtFlow.Application.Features.Teams;
@@ -107,6 +108,13 @@ public class DivisionsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/seed-bracket")]
+    public async Task<IActionResult> SeedBracketFromRankings(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new SeedBracketFromRankingsCommand(id), ct);
+        return NoContent();
+    }
+
     [HttpGet("{id:guid}/wizard")]
     public async Task<IActionResult> WizardState(Guid id, CancellationToken ct)
     {
@@ -140,6 +148,27 @@ public class DivisionsController : ControllerBase
     {
         var r = await _mediator.Send(new SaveDivisionAdvancementRulesCommand(id, body.Rules), ct);
         return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpGet("{id:guid}/validation")]
+    public async Task<IActionResult> Validation(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new GetDivisionValidationQuery(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpGet("{id:guid}/match-graph")]
+    public async Task<IActionResult> MatchGraph(Guid id, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new GetDivisionMatchGraphQuery(id), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
+    [HttpPost("{id:guid}/resolve-match-sources")]
+    public async Task<IActionResult> ResolveMatchSources(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ResolveDivisionMatchSourcesCommand(id), ct);
+        return NoContent();
     }
 
     [HttpGet("{id:guid}/work-rotation")]

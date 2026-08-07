@@ -37,6 +37,7 @@ public interface IAppDbContext
     DbSet<ImportRow> ImportRows { get; }
     DbSet<TournamentTemplate> TournamentTemplates { get; }
     DbSet<WaveEntity> Waves { get; }
+    DbSet<MatchSlotSource> MatchSlotSources { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

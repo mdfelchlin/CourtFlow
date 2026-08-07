@@ -52,6 +52,6 @@ public sealed class CreateTournamentHandler : IRequestHandler<CreateTournamentCo
 
         _db.Tournaments.Add(tournament);
         await _db.SaveChangesAsync(ct);
-        return tournament.ToDto();
+        return tournament.ToDto(null);
     }
 }

@@ -6,4 +6,5 @@ public interface IStageMaterialization
     Task SnakeIntoPoolsAsync(Guid divisionId, CancellationToken cancellationToken = default);
     Task GenerateBracketsAsync(Guid divisionId, CancellationToken cancellationToken = default);
     Task ResolveBracketSlotsAsync(Guid divisionId, CancellationToken cancellationToken = default);
+    Task SeedBracketFromRankingsAsync(Guid divisionId, CancellationToken cancellationToken = default);
 }

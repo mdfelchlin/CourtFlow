@@ -68,8 +68,12 @@ public static class EntityGraphDeletes
             db.MatchAssignments.Where(a => a.ScheduleVersionId == scheduleVersionId && matchIds.Contains(a.MatchId)),
             ct);
 
+        await BulkDeleteAsync(db, db.MatchSlotSources.Where(s => matchIds.Contains(s.MatchId)), ct);
         await BulkDeleteAsync(db, db.Matches.Where(m => matchIds.Contains(m.Id)), ct);
     }
+
+    public static Task<int> ClearMatchSlotSourcesAsync(IAppDbContext db, Guid matchId, CancellationToken ct) =>
+        BulkDeleteAsync(db, db.MatchSlotSources.Where(s => s.MatchId == matchId), ct);
 
     public static Task<int> ClearBracketSeedSlotsAsync(IAppDbContext db, Guid bracketId, CancellationToken ct) =>
         BulkDeleteAsync(db, db.BracketSeedSlots.Where(s => s.BracketId == bracketId), ct);

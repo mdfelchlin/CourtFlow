@@ -37,6 +37,9 @@ public interface ICourtFlowTournamentsApi
 
     [Put("/api/v1/tournaments/{id}/session-settings")]
     Task<TournamentDto> UpsertSessionSettingsAsync(Guid id, [Body] UpsertTournamentSessionSettingsDto dto, CancellationToken cancellationToken = default);
+
+    [Put("/api/v1/tournaments/{id}/play-format")]
+    Task<TournamentDto> SetPlayFormatAsync(Guid id, [Body] SetTournamentPlayFormatDto dto, CancellationToken cancellationToken = default);
 }
 
 public interface ICourtFlowVenuesApi
@@ -110,6 +113,9 @@ public interface ICourtFlowDivisionsApi
     [Post("/api/v1/divisions/{divisionId}/resolve-bracket-slots")]
     Task<HttpResponseMessage> ResolveBracketSlotsAsync(Guid divisionId, CancellationToken cancellationToken);
 
+    [Post("/api/v1/divisions/{divisionId}/seed-bracket")]
+    Task<HttpResponseMessage> SeedBracketFromRankingsAsync(Guid divisionId, CancellationToken cancellationToken);
+
     [Get("/api/v1/divisions/{divisionId}/wizard")]
     Task<DivisionWizardStateDto?> GetWizardStateAsync(Guid divisionId, CancellationToken cancellationToken);
 
@@ -127,6 +133,15 @@ public interface ICourtFlowDivisionsApi
 
     [Get("/api/v1/divisions/{divisionId}/work-rotation")]
     Task<List<DivisionPoolWorkRotationDto>> GetWorkRotationAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Get("/api/v1/divisions/{divisionId}/validation")]
+    Task<DivisionValidationResultDto?> GetValidationAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Get("/api/v1/divisions/{divisionId}/match-graph")]
+    Task<DivisionMatchGraphDto?> GetMatchGraphAsync(Guid divisionId, CancellationToken cancellationToken);
+
+    [Post("/api/v1/divisions/{divisionId}/resolve-match-sources")]
+    Task<HttpResponseMessage> ResolveMatchSourcesAsync(Guid divisionId, CancellationToken cancellationToken);
 
     [Post("/api/v1/divisions/bracket-seed-slots/{slotId}/override")]
     Task<BracketSeedSlotDto> SetBracketSlotOverrideAsync(Guid slotId, [Body] BracketSlotOverrideDto dto, CancellationToken cancellationToken);
@@ -211,6 +226,15 @@ public interface ICourtFlowMatchesApi
 
     [Post("/api/v1/matches/{id}/referee")]
     Task<MatchDto> ChangeRefereeAsync(Guid id, [Body] ChangeRefereeDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/matches")]
+    Task<MatchDto> CreateAsync([Body] CreateDivisionMatchDto dto, CancellationToken cancellationToken);
+
+    [Delete("/api/v1/matches/{id}")]
+    Task<HttpResponseMessage> DeleteAsync(Guid id, CancellationToken cancellationToken);
+
+    [Put("/api/v1/matches/{id}/slot-source")]
+    Task<MatchSlotSourceDto> SetSlotSourceAsync(Guid id, [Body] SetMatchSlotSourceDto dto, CancellationToken cancellationToken);
 }
 
 public interface ICourtFlowBracketsApi

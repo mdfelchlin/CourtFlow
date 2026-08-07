@@ -169,6 +169,19 @@ else
 
                 <MudDivider Class="my-1" />
                 <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2">Play format</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Applies to all divisions in this tournament — round robin, bracket only, or pool play then bracket.
+                    </MudText>
+                    <CfSelect T="DivisionFormatDto" @bind-Value="_playFormat" Label="Play format" Class="cf-select--md" ToStringFunc="@PlayFormatLabel">
+                        <MudSelectItem T="DivisionFormatDto" Value="@DivisionFormatDto.PoolOnly">Round robin</MudSelectItem>
+                        <MudSelectItem T="DivisionFormatDto" Value="@DivisionFormatDto.BracketOnly">Bracket only</MudSelectItem>
+                        <MudSelectItem T="DivisionFormatDto" Value="@DivisionFormatDto.PoolPlusBracket">Pool + bracket</MudSelectItem>
+                    </CfSelect>
+                </MudStack>
+
+                <MudDivider Class="my-1" />
+                <MudStack Spacing="2">
                     <MudText Typo="Typo.subtitle2">Match duration</MudText>
                     <div class="cf-form-details__times">
                         <div class="cf-field-wrap">
@@ -278,6 +291,7 @@ else
     private DateTime? _endDate = DateTime.Today.AddDays(1);
     private string _tz = TimeZoneOptions.DefaultId;
     private int _duration = TournamentDefaults.DefaultMatchDurationMinutes;
+    private DivisionFormatDto _playFormat = DivisionFormatDto.PoolPlusBracket;
 
     private List<VenueDto> _venues = new();
 
@@ -317,6 +331,7 @@ else
         _endDate = DateTime.Today.AddDays(1);
         _tz = TimeZoneOptions.DefaultId;
         _duration = TournamentDefaults.DefaultMatchDurationMinutes;
+        _playFormat = DivisionFormatDto.PoolPlusBracket;
         _venues = new();
     }
 
@@ -341,6 +356,7 @@ else
             _duration = t.DefaultMatchDurationMinutes > 0
                 ? t.DefaultMatchDurationMinutes
                 : TournamentDefaults.DefaultMatchDurationMinutes;
+            _playFormat = t.PlayFormat ?? TournamentStore.DefaultPlayFormat;
             _sessionMode = t.SessionMode;
             _singleStartTime = t.DefaultStartTime ?? LocalTimeFormat.DefaultMorningStart;
             BindWaveStartTimes();
@@ -375,6 +391,7 @@ else
                     new CreateTournamentDto(_name.Trim(), _description, _websiteUrl, _contactEmail, start, end, _tz, _duration));
                 _current = created;
                 _lastLoadedId = created.Id;
+                TournamentStore.SetDefaultPlayFormat(_playFormat);
                 Snackbar.Add("Tournament created", Severity.Success);
                 await TournamentStore.RefreshTournamentsAsync(created.Id);
                 await ReloadVenuesAsync();
@@ -383,6 +400,7 @@ else
             }
             else
             {
+                var previousPlayFormat = _current.PlayFormat;
                 var updated = await Api.Tournaments.UpdateAsync(
                     new UpdateTournamentDto(_current.Id, _name.Trim(), _description, _websiteUrl, _contactEmail, start, end, _tz, _duration, _current.TournamentPartnerId));
                 _current = updated;
@@ -397,6 +415,14 @@ else
                 _current = updated;
                 _sessionMode = updated.SessionMode;
                 _singleStartTime = updated.DefaultStartTime ?? LocalTimeFormat.DefaultMorningStart;
+
+                if (previousPlayFormat != _playFormat)
+                {
+                    _current = await Api.Tournaments.SetPlayFormatAsync(
+                        _current.Id, new SetTournamentPlayFormatDto(_playFormat));
+                }
+
+                TournamentStore.SetDefaultPlayFormat(_playFormat);
                 await TournamentStore.RefreshTournamentsAsync();
                 await ReloadWavesAsync();
                 Snackbar.Add("Saved", Severity.Success);
@@ -693,4 +719,11 @@ else
         }
     }
 
+    private static string PlayFormatLabel(DivisionFormatDto format) => format switch
+    {
+        DivisionFormatDto.PoolOnly => "Round robin",
+        DivisionFormatDto.BracketOnly => "Bracket only",
+        DivisionFormatDto.PoolPlusBracket => "Pool + bracket",
+        _ => format.ToString(),
+    };
 }

@@ -122,6 +122,7 @@
         var parms = new DialogParameters
         {
             ["TournamentId"] = TournamentStore.SelectedTournamentId.Value,
+            ["PlayFormat"] = TournamentStore.DefaultPlayFormat,
             ["SessionMode"] = SelectedSessionMode()
         };
         var dialog = await DialogService.ShowAsync<DivisionDialog>("New division", parms);
@@ -134,6 +135,7 @@
         {
             ["Existing"] = d,
             ["TournamentId"] = d.TournamentId,
+            ["PlayFormat"] = d.Format,
             ["SessionMode"] = SelectedSessionMode()
         };
         var dialog = await DialogService.ShowAsync<DivisionDialog>("Edit division", parms);

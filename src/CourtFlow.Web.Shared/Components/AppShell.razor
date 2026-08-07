@@ -62,10 +62,11 @@
 @code {
     private bool _drawerOpen = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Theme.OnChanged += OnThemeChanged;
         TournamentStore.Changed += OnTournamentStoreChanged;
+        await TournamentStore.EnsureInitializedAsync();
     }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;

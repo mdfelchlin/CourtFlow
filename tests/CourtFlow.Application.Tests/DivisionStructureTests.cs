@@ -116,6 +116,30 @@ public sealed class DivisionStructureTests
         Assert.Equal(11, await db.PoolEntries.CountAsync());
     }
 
+    [Fact]
+    public async Task EnsureMissingStagesForFormat_BracketAtOne_AddsPoolAtTwoForPoolPlusBracket()
+    {
+        await using var db = ImportFeaturesTests.BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T", new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.BracketOnly, 16);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        await DefaultDivisionStages.EnsureProvisionedAsync(db, division);
+        await db.SaveChangesAsync();
+
+        division.SetFormat(DivisionFormat.PoolPlusBracket);
+        await DefaultDivisionStages.EnsureMissingStagesForFormatAsync(db, division);
+        await db.SaveChangesAsync();
+
+        var stages = await db.Stages.Where(s => s.DivisionId == division.Id).OrderBy(s => s.StageNumber).ToListAsync();
+        Assert.Equal(2, stages.Count);
+        Assert.Equal(StageType.Bracket, stages[0].StageType);
+        Assert.Equal(1, stages[0].StageNumber);
+        Assert.Equal(StageType.Pool, stages[1].StageType);
+        Assert.Equal(2, stages[1].StageNumber);
+    }
+
     private sealed class FakeTenant(Guid orgId) : ITenantContext
     {
         public Guid? OrganizationId => orgId;

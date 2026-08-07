@@ -85,7 +85,7 @@ public sealed class UpsertTournamentSessionSettingsHandler
         }
 
         await _db.SaveChangesAsync(ct);
-        return tournament.ToDto();
+        return await tournament.ToDtoAsync(_db, ct);
     }
 
     private async Task EnsureWaveAsync(

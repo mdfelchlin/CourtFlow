@@ -1,5 +1,5 @@
 using CourtFlow.Application.Abstractions;
-using CourtFlow.Application.Brackets;
+using CourtFlow.Application.Matches;
 using CourtFlow.Application.Features.ScheduleVersions;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
@@ -129,9 +129,9 @@ public sealed class ScoreMatchValidator : AbstractValidator<ScoreMatchCommand>
 public sealed class ScoreMatchHandler : IRequestHandler<ScoreMatchCommand, MatchDto?>
 {
     private readonly IAppDbContext _db;
-    private readonly IBracketProgressionService _progression;
+    private readonly IMatchProgressionService _progression;
 
-    public ScoreMatchHandler(IAppDbContext db, IBracketProgressionService progression)
+    public ScoreMatchHandler(IAppDbContext db, IMatchProgressionService progression)
     {
         _db = db;
         _progression = progression;
@@ -155,10 +155,8 @@ public sealed class ScoreMatchHandler : IRequestHandler<ScoreMatchCommand, Match
 
         await _db.SaveChangesAsync(ct);
 
-        if (request.Finalize && m.BracketNodeId is not null)
-        {
-            await _progression.AdvanceAsync(m.Id, ct);
-        }
+        if (request.Finalize)
+            await _progression.OnMatchFinalizedAsync(m.Id, ct);
 
         return m.ToDto();
     }
@@ -188,9 +186,9 @@ public sealed class ForfeitMatchValidator : AbstractValidator<ForfeitMatchComman
 public sealed class ForfeitMatchHandler : IRequestHandler<ForfeitMatchCommand, MatchDto?>
 {
     private readonly IAppDbContext _db;
-    private readonly IBracketProgressionService _progression;
+    private readonly IMatchProgressionService _progression;
 
-    public ForfeitMatchHandler(IAppDbContext db, IBracketProgressionService progression)
+    public ForfeitMatchHandler(IAppDbContext db, IMatchProgressionService progression)
     {
         _db = db;
         _progression = progression;
@@ -204,8 +202,7 @@ public sealed class ForfeitMatchHandler : IRequestHandler<ForfeitMatchCommand, M
         m.ForfeitTo(request.WinningTeamId);
         await _db.SaveChangesAsync(ct);
 
-        if (m.BracketNodeId is not null)
-            await _progression.AdvanceAsync(m.Id, ct);
+        await _progression.OnMatchFinalizedAsync(m.Id, ct);
 
         return m.ToDto();
     }

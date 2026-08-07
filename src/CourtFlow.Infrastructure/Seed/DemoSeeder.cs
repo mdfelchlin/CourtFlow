@@ -74,8 +74,17 @@ public static class DemoSeeder
         {
             var start = DateOnly.FromDateTime(DateTime.UtcNow.Date);
             tournament = new Tournament(org.Id, "Spring Classic", start, start, "America/Los_Angeles", 60);
+            tournament.SetDescription("Demo tournament seeded on startup.");
+            tournament.SetContactInfo("https://courtflow.example/demo", "demo@courtflow.example");
+            tournament.SetSessionMode(TournamentSessionMode.MultiWave);
             db.Tournaments.Add(tournament);
             db.ScheduleVersions.Add(new ScheduleVersion(org.Id, tournament.Id));
+
+            var amWave = new WaveEntity(org.Id, tournament.Id, "AM", 0);
+            amWave.SetTimeWindow("08:00", null);
+            var pmWave = new WaveEntity(org.Id, tournament.Id, "PM", 1);
+            pmWave.SetTimeWindow("15:00", null);
+            db.Waves.AddRange(amWave, pmWave);
 
             var venue = new Venue(org.Id, tournament.Id, "Main Gym");
             db.Venues.Add(venue);

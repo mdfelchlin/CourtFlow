@@ -18,6 +18,8 @@ public sealed class ListTournamentsHandler : IRequestHandler<ListTournamentsQuer
     public async Task<IReadOnlyList<TournamentDto>> Handle(ListTournamentsQuery request, CancellationToken ct)
     {
         var items = await _db.Tournaments.OrderByDescending(t => t.StartDate).ToListAsync(ct);
-        return items.Select(TournamentMapping.ToDto).ToList();
+        var playFormats = await TournamentQueryHelper.ResolvePlayFormatsAsync(
+            _db, items.Select(t => t.Id).ToList(), ct);
+        return items.Select(t => t.ToDto(playFormats.GetValueOrDefault(t.Id))).ToList();
     }
 }

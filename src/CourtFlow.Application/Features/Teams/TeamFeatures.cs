@@ -194,13 +194,32 @@ public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolComman
         var team = await _db.Teams.FirstOrDefaultAsync(t => t.Id == request.TeamId, ct);
         if (team is null) return null;
 
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == team.DivisionId, ct);
+        if (division is null) return null;
+
+        Pool? pool = null;
         if (request.PoolId is { } pid)
         {
-            var pool = await _db.Pools.FirstOrDefaultAsync(p => p.Id == pid, ct);
+            pool = await _db.Pools.FirstOrDefaultAsync(p => p.Id == pid, ct);
             if (pool is null || pool.DivisionId != team.DivisionId) return null;
         }
 
         team.AssignPool(request.PoolId);
+
+        var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+
+        var oldEntries = await _db.PoolEntries
+            .Where(e => e.TournamentTeamId == tt.Id)
+            .ToListAsync(ct);
+        foreach (var entry in oldEntries)
+            _db.PoolEntries.Remove(entry);
+
+        if (pool is not null)
+        {
+            var seedInPool = await _db.PoolEntries.CountAsync(e => e.PoolId == pool.Id, ct) + 1;
+            _db.PoolEntries.Add(new PoolEntry(division.OrganizationId, pool.Id, tt.Id, seedInPool));
+        }
+
         await _db.SaveChangesAsync(ct);
         return team.ToDto();
     }

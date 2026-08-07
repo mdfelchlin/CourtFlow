@@ -43,7 +43,7 @@ public sealed class PublishTournamentHandler : IRequestHandler<PublishTournament
         if (t is null) return null;
         t.Publish();
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        return await t.ToDtoAsync(_db, ct);
     }
 }
 
@@ -59,7 +59,7 @@ public sealed class UnpublishTournamentHandler : IRequestHandler<UnpublishTourna
         if (t is null) return null;
         t.Unpublish();
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        return await t.ToDtoAsync(_db, ct);
     }
 }
 
@@ -75,7 +75,7 @@ public sealed class ArchiveTournamentHandler : IRequestHandler<ArchiveTournament
         if (t is null) return null;
         t.Archive();
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        return await t.ToDtoAsync(_db, ct);
     }
 }
 
@@ -91,6 +91,6 @@ public sealed class RestoreArchivedTournamentHandler : IRequestHandler<RestoreAr
         if (t is null) return null;
         t.RestoreFromArchive();
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        return await t.ToDtoAsync(_db, ct);
     }
 }

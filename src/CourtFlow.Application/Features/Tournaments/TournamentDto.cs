@@ -18,4 +18,5 @@ public sealed record TournamentDto(
     Guid? TournamentPartnerId,
     TournamentPublicationStatus PublicationStatus,
     DateTime? PublishedAtUtc,
-    DateTime? ArchivedAtUtc);
+    DateTime? ArchivedAtUtc,
+    DivisionFormat? PlayFormat);

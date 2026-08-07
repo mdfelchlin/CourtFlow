@@ -26,6 +26,17 @@ internal static class BracketMaterializationHelper
         return (poolStage, bracketStage);
     }
 
+    public static async Task<Stage> RequireBracketStageAsync(IAppDbContext db, Guid divisionId, CancellationToken ct)
+    {
+        var bracketStage = await db.Stages
+            .Where(s => s.DivisionId == divisionId && s.StageType == StageType.Bracket)
+            .OrderBy(s => s.StageNumber)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new InvalidOperationException("Bracket stage not found.");
+
+        return bracketStage;
+    }
+
     public static async Task<Dictionary<Guid, Guid>> TeamIdByTournamentTeamIdAsync(
         IAppDbContext db, Guid divisionId, CancellationToken ct)
     {

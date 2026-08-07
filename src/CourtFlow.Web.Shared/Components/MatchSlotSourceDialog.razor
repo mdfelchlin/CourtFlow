@@ -1,0 +1,127 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Game @Match.DisplayNumber</MudText>
+        @foreach (var slot in _slots)
+        {
+            <MudPaper Class="pa-2 mb-2" Outlined="true" Elevation="0">
+                <MudText Typo="Typo.caption" Class="mb-1">@slot.Label</MudText>
+                <CfSelect T="MatchSlotSourceKindDto" @bind-Value="slot.SourceKind" Label="Source type" Class="mb-2">
+                    <MudSelectItem T="MatchSlotSourceKindDto" Value="MatchSlotSourceKindDto.FixedTeam">Fixed team</MudSelectItem>
+                    <MudSelectItem T="MatchSlotSourceKindDto" Value="MatchSlotSourceKindDto.MatchWinner">Winner of game</MudSelectItem>
+                    <MudSelectItem T="MatchSlotSourceKindDto" Value="MatchSlotSourceKindDto.MatchLoser">Loser of game</MudSelectItem>
+                    <MudSelectItem T="MatchSlotSourceKindDto" Value="MatchSlotSourceKindDto.PoolFinish">Pool finish position</MudSelectItem>
+                    <MudSelectItem T="MatchSlotSourceKindDto" Value="MatchSlotSourceKindDto.Ranking">Seed rank</MudSelectItem>
+                </CfSelect>
+                @if (slot.SourceKind == MatchSlotSourceKindDto.FixedTeam)
+                {
+                    <CfSelect T="Guid?" @bind-Value="slot.FixedTournamentTeamId" Label="Team" Clearable="true">
+                        @foreach (var t in Teams.Where(t => t.TournamentTeamId is not null))
+                        {
+                            <MudSelectItem T="Guid?" Value="@t.TournamentTeamId">@TeamDisplay.Label(t.Club, t.Name)</MudSelectItem>
+                        }
+                    </CfSelect>
+                }
+                else if (slot.SourceKind is MatchSlotSourceKindDto.MatchWinner or MatchSlotSourceKindDto.MatchLoser)
+                {
+                    <CfSelect T="Guid?" @bind-Value="slot.SourceMatchId" Label="Source game">
+                        @foreach (var m in AllMatches.Where(m => m.Match.Id != Match.Match.Id))
+                        {
+                            <MudSelectItem T="Guid?" Value="@m.Match.Id">Game @m.DisplayNumber</MudSelectItem>
+                        }
+                    </CfSelect>
+                }
+                else if (slot.SourceKind == MatchSlotSourceKindDto.PoolFinish)
+                {
+                    <CfSelect T="Guid?" @bind-Value="slot.SourcePoolId" Label="Pool">
+                        @foreach (var p in Pools)
+                        {
+                            <MudSelectItem T="Guid?" Value="@p.Id">@p.Name</MudSelectItem>
+                        }
+                    </CfSelect>
+                    <CfNumericField T="int?" @bind-Value="slot.SourcePosition" Label="Finish position" Min="1" />
+                }
+                else if (slot.SourceKind == MatchSlotSourceKindDto.Ranking)
+                {
+                    <CfNumericField T="int?" @bind-Value="slot.SourcePosition" Label="Seed rank" Min="1" />
+                }
+            </MudPaper>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_busy">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public DivisionMatchGraphMatchDto Match { get; set; } = default!;
+    [Parameter] public IReadOnlyList<DivisionMatchGraphMatchDto> AllMatches { get; set; } = Array.Empty<DivisionMatchGraphMatchDto>();
+    [Parameter] public IReadOnlyList<TeamDto> Teams { get; set; } = Array.Empty<TeamDto>();
+    [Parameter] public IReadOnlyList<DivisionMatchGraphPanel.EditablePoolOption> Pools { get; set; } = Array.Empty<DivisionMatchGraphPanel.EditablePoolOption>();
+
+    private bool _busy;
+    private List<SlotDraft> _slots = new();
+
+    protected override void OnInitialized()
+    {
+        _slots =
+        [
+            BuildDraft(MatchSlotKindDto.Home, "Home"),
+            BuildDraft(MatchSlotKindDto.Away, "Away")
+        ];
+    }
+
+    private SlotDraft BuildDraft(MatchSlotKindDto kind, string label)
+    {
+        var existing = Match.SlotSources.FirstOrDefault(s => s.Slot == kind);
+        return new SlotDraft
+        {
+            Label = label,
+            Slot = kind,
+            SourceKind = existing?.SourceKind ?? MatchSlotSourceKindDto.FixedTeam,
+            FixedTournamentTeamId = existing?.FixedTournamentTeamId,
+            SourceMatchId = existing?.SourceMatchId,
+            SourcePoolId = existing?.SourcePoolId,
+            SourcePosition = existing?.SourcePosition
+        };
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        try
+        {
+            foreach (var slot in _slots)
+            {
+                await Api.Matches.SetSlotSourceAsync(Match.Match.Id, new SetMatchSlotSourceDto(
+                    slot.Slot,
+                    slot.SourceKind,
+                    slot.FixedTournamentTeamId,
+                    slot.SourceMatchId,
+                    slot.SourcePoolId,
+                    slot.SourcePosition));
+            }
+            Snackbar.Add("Connections saved", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _busy = false; }
+    }
+
+    private sealed class SlotDraft
+    {
+        public string Label { get; set; } = "";
+        public MatchSlotKindDto Slot { get; set; }
+        public MatchSlotSourceKindDto SourceKind { get; set; }
+        public Guid? FixedTournamentTeamId { get; set; }
+        public Guid? SourceMatchId { get; set; }
+        public Guid? SourcePoolId { get; set; }
+        public int? SourcePosition { get; set; }
+    }
+}

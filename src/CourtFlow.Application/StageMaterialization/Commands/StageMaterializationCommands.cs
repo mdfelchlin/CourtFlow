@@ -28,3 +28,12 @@ public sealed class ResolveBracketSlotsHandler(IStageMaterialization materializa
     public Task Handle(ResolveBracketSlotsCommand request, CancellationToken cancellationToken) =>
         materialization.ResolveBracketSlotsAsync(request.DivisionId, cancellationToken);
 }
+
+public sealed record SeedBracketFromRankingsCommand(Guid DivisionId) : IRequest;
+
+public sealed class SeedBracketFromRankingsHandler(IStageMaterialization materialization)
+    : IRequestHandler<SeedBracketFromRankingsCommand>
+{
+    public Task Handle(SeedBracketFromRankingsCommand request, CancellationToken cancellationToken) =>
+        materialization.SeedBracketFromRankingsAsync(request.DivisionId, cancellationToken);
+}

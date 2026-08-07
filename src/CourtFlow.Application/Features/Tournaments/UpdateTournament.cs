@@ -58,6 +58,7 @@ public sealed class UpdateTournamentHandler : IRequestHandler<UpdateTournamentCo
         t.SetPartner(request.TournamentPartnerId);
 
         await _db.SaveChangesAsync(ct);
-        return t.ToDto();
+        var playFormat = await TournamentQueryHelper.ResolvePlayFormatAsync(_db, t.Id, ct);
+        return t.ToDto(playFormat);
     }
 }

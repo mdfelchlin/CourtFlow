@@ -49,6 +49,9 @@ public sealed class TournamentEndpoints(ICourtFlowTournamentsApi api)
 
     public Task<TournamentDto> UpsertSessionSettingsAsync(Guid id, UpsertTournamentSessionSettingsDto dto, CancellationToken ct = default)
         => _api.UpsertSessionSettingsAsync(id, dto, ct);
+
+    public Task<TournamentDto> SetPlayFormatAsync(Guid id, SetTournamentPlayFormatDto dto, CancellationToken ct = default)
+        => _api.SetPlayFormatAsync(id, dto, ct);
 }
 
 public sealed class VenueEndpoints(ICourtFlowVenuesApi api)
@@ -149,6 +152,12 @@ public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
         res.EnsureSuccessStatusCode();
     }
 
+    public async Task SeedBracketFromRankingsAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.SeedBracketFromRankingsAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
     public Task<DivisionWizardStateDto?> GetWizardStateAsync(Guid divisionId, CancellationToken ct = default)
         => _api.GetWizardStateAsync(divisionId, ct);
 
@@ -166,6 +175,18 @@ public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
 
     public Task<IReadOnlyList<DivisionPoolWorkRotationDto>> GetWorkRotationAsync(Guid divisionId, CancellationToken ct = default)
         => ReadOnlyAdapt.From(_api.GetWorkRotationAsync(divisionId, ct));
+
+    public Task<DivisionValidationResultDto?> GetValidationAsync(Guid divisionId, CancellationToken ct = default)
+        => _api.GetValidationAsync(divisionId, ct);
+
+    public Task<DivisionMatchGraphDto?> GetMatchGraphAsync(Guid divisionId, CancellationToken ct = default)
+        => _api.GetMatchGraphAsync(divisionId, ct);
+
+    public async Task ResolveMatchSourcesAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.ResolveMatchSourcesAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
 
     public Task<BracketSeedSlotDto> SetBracketSlotOverrideAsync(Guid slotId, BracketSlotOverrideDto dto, CancellationToken ct = default)
         => _api.SetBracketSlotOverrideAsync(slotId, dto, ct);
@@ -286,6 +307,18 @@ public sealed class MatchEndpoints(ICourtFlowMatchesApi api)
 
     public Task<MatchDto> ChangeRefereeAsync(Guid id, ChangeRefereeDto dto, CancellationToken ct = default)
         => _api.ChangeRefereeAsync(id, dto, ct);
+
+    public Task<MatchDto> CreateAsync(CreateDivisionMatchDto dto, CancellationToken ct = default)
+        => _api.CreateAsync(dto, ct);
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var res = await _api.DeleteAsync(id, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
+    public Task<MatchSlotSourceDto> SetSlotSourceAsync(Guid matchId, SetMatchSlotSourceDto dto, CancellationToken ct = default)
+        => _api.SetSlotSourceAsync(matchId, dto, ct);
 }
 
 public sealed class BracketEndpoints(ICourtFlowBracketsApi api)

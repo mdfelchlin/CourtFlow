@@ -122,8 +122,30 @@
             var durations = new[] { 15, 30, 45, 60, 90 };
             var duration = durations[rnd.Next(durations.Length)];
 
+            var websiteUrl = "https://example.com/dev-test";
+            var contactEmail = $"dev-test-{rnd.Next(1000, 9999)}@example.com";
+
             var created = await Api.Tournaments.CreateAsync(
-                new CreateTournamentDto(name, "Dev-only random seed for testing.", null, null, start, end, tz, duration));
+                new CreateTournamentDto(name, "Dev-only random seed for testing.", websiteUrl, contactEmail, start, end, tz, duration));
+
+            var useMultiWave = rnd.Next(2) == 0;
+            created = await Api.Tournaments.UpsertSessionSettingsAsync(
+                created.Id,
+                useMultiWave
+                    ? new UpsertTournamentSessionSettingsDto(
+                        TournamentSessionModeDto.MultiWave,
+                        null,
+                        LocalTimeFormat.DefaultMorningStart,
+                        LocalTimeFormat.DefaultAfternoonStart)
+                    : new UpsertTournamentSessionSettingsDto(
+                        TournamentSessionModeDto.SingleSession,
+                        LocalTimeFormat.DefaultMorningStart,
+                        null,
+                        null));
+
+            IReadOnlyList<TournamentWaveDto> waves = useMultiWave
+                ? await Api.Waves.ListAsync(created.Id)
+                : Array.Empty<TournamentWaveDto>();
 
             var venuePlans = new (string Name, string? Address, (string CourtName, string[] Tags)[] Courts)[]
             {
@@ -161,17 +183,21 @@
 
             var divisions = new[]
             {
-                ("Dev · Pool play (small)", DivisionFormatDto.PoolOnly, MaxTeams: 16, TeamCount: 4),
-                ("Dev · Pool + bracket (medium)", DivisionFormatDto.PoolPlusBracket, MaxTeams: 24, TeamCount: 11),
-                ("Dev · Bracket (large)", DivisionFormatDto.BracketOnly, MaxTeams: 32, TeamCount: 17),
+                ("Dev · Pool play (small)", DivisionFormatDto.PoolOnly, MaxTeams: 16, TeamCount: 4, WaveIndex: 0),
+                ("Dev · Pool + bracket (medium)", DivisionFormatDto.PoolPlusBracket, MaxTeams: 24, TeamCount: 11, WaveIndex: 1),
+                ("Dev · Bracket (large)", DivisionFormatDto.BracketOnly, MaxTeams: 32, TeamCount: 17, WaveIndex: 0),
             };
 
             var teamTotal = 0;
+            var poolsSeeded = 0;
             for (var d = 0; d < divisions.Length; d++)
             {
-                var (divName, format, maxTeams, teamCount) = divisions[d];
+                var (divName, format, maxTeams, teamCount, waveIndex) = divisions[d];
+                Guid? waveId = useMultiWave && waves.Count > 0
+                    ? waves[waveIndex % waves.Count].Id
+                    : null;
                 var division = await Api.Divisions.CreateAsync(
-                    new CreateDivisionDto(created.Id, divName, format, maxTeams));
+                    new CreateDivisionDto(created.Id, divName, format, maxTeams, waveId));
                 var prefix = (char)('A' + d);
                 for (var i = 1; i <= teamCount; i++)
                 {
@@ -181,9 +207,18 @@
                         i % 4 == 0 ? null : $"Test club {(char)('A' + (i % 5))}"));
                     teamTotal++;
                 }
+
+                if (format is DivisionFormatDto.PoolOnly or DivisionFormatDto.PoolPlusBracket && teamCount >= 3)
+                {
+                    await Api.Divisions.SnakeIntoPoolsAsync(division.Id);
+                    poolsSeeded++;
+                }
             }
 
-            Snackbar.Add($"Random test tournament: {venuePlans.Length} venues, {courtTotal} courts, {divisions.Length} divisions, {teamTotal} teams.", Severity.Success);
+            var sessionLabel = useMultiWave ? "AM/PM waves" : "single session";
+            Snackbar.Add(
+                $"Random test tournament: {sessionLabel}, {venuePlans.Length} venues, {courtTotal} courts, {divisions.Length} divisions, {teamTotal} teams, {poolsSeeded} pool layouts.",
+                Severity.Success);
             await TournamentStore.RefreshTournamentsAsync(created.Id);
             Nav.NavigateTo($"/tournaments/{created.Id}");
         }

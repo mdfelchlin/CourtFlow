@@ -7,12 +7,15 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
 {
     private readonly CourtFlowApiClient _api = api;
     private readonly IJSRuntime _js = js;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
     private const string SelectedTournamentStorageKey = "courtflow.selectedTournamentId";
     private bool _initialized;
     private bool _loadedFromStorage;
     private IReadOnlyList<TournamentDto> _tournaments = Array.Empty<TournamentDto>();
 
     public Guid? SelectedTournamentId { get; private set; }
+
+    public DivisionFormatDto DefaultPlayFormat { get; private set; } = DivisionFormatDto.PoolPlusBracket;
 
     public IReadOnlyList<TournamentDto> Tournaments => _tournaments;
 
@@ -28,29 +31,40 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
         if (_initialized && _loadedFromStorage)
             return;
 
-        if (!_initialized)
+        await _initLock.WaitAsync(cancellationToken);
+        try
         {
-            _initialized = true;
-            _tournaments = await _api.Tournaments.ListAsync(cancellationToken);
-        }
+            if (_initialized && _loadedFromStorage)
+                return;
 
-        if (!_loadedFromStorage)
-        {
-            var (loadedFromStorage, selectedFromStorage) = await TryLoadSelectedFromStorageAsync();
-            if (loadedFromStorage)
+            if (!_initialized)
             {
-                _loadedFromStorage = true;
-                SelectedTournamentId = selectedFromStorage;
+                _tournaments = await _api.Tournaments.ListAsync(cancellationToken);
+                _initialized = true;
+            }
+
+            if (!_loadedFromStorage)
+            {
+                var (loadedFromStorage, selectedFromStorage) = await TryLoadSelectedFromStorageAsync();
+                if (loadedFromStorage)
+                {
+                    _loadedFromStorage = true;
+                    SelectedTournamentId = selectedFromStorage;
+                }
+            }
+
+            var previousSelection = SelectedTournamentId;
+            NormalizeSelection();
+
+            if (SelectedTournamentId != previousSelection)
+            {
+                _ = PersistSelectedToStorageAsync(SelectedTournamentId);
+                Changed?.Invoke();
             }
         }
-
-        var previousSelection = SelectedTournamentId;
-        NormalizeSelection();
-
-        if (SelectedTournamentId != previousSelection)
+        finally
         {
-            _ = PersistSelectedToStorageAsync(SelectedTournamentId);
-            Changed?.Invoke();
+            _initLock.Release();
         }
     }
 
@@ -60,32 +74,55 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
             return Task.CompletedTask;
 
         SelectedTournamentId = id;
+        SyncDefaultPlayFormatFromSelection();
         _ = PersistSelectedToStorageAsync(id);
         CatalogVersion++;
         Changed?.Invoke();
         return Task.CompletedTask;
     }
 
+    public void SetDefaultPlayFormat(DivisionFormatDto format)
+    {
+        if (DefaultPlayFormat == format)
+            return;
+
+        DefaultPlayFormat = format;
+        Changed?.Invoke();
+    }
+
     public async Task RefreshTournamentsAsync(Guid? selectId = null, CancellationToken cancellationToken = default)
     {
-        _tournaments = await _api.Tournaments.ListAsync(cancellationToken);
-        _initialized = true;
+        await _initLock.WaitAsync(cancellationToken);
+        try
+        {
+            _tournaments = await _api.Tournaments.ListAsync(cancellationToken);
+            _initialized = true;
 
-        var previousSelection = SelectedTournamentId;
-        if (selectId is not null)
-            SelectedTournamentId = selectId;
-        else
-            NormalizeSelection();
+            var previousSelection = SelectedTournamentId;
+            if (selectId is not null)
+                SelectedTournamentId = selectId;
+            else
+                NormalizeSelection();
 
-        if (SelectedTournamentId != previousSelection)
-            _ = PersistSelectedToStorageAsync(SelectedTournamentId);
+            SyncDefaultPlayFormatFromSelection();
 
-        CatalogVersion++;
-        Changed?.Invoke();
+            if (SelectedTournamentId != previousSelection)
+                _ = PersistSelectedToStorageAsync(SelectedTournamentId);
+
+            CatalogVersion++;
+            Changed?.Invoke();
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     private void NormalizeSelection()
     {
+        if (_tournaments.Count == 0)
+            return;
+
         if (SelectedTournamentId is not null && _tournaments.All(t => t.Id != SelectedTournamentId.Value))
             SelectedTournamentId = null;
 
@@ -141,4 +178,14 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
             .ThenByDescending(t => t.Name)
             .Select(t => (Guid?)t.Id)
             .FirstOrDefault();
+
+    private void SyncDefaultPlayFormatFromSelection()
+    {
+        if (SelectedTournamentId is not { } id)
+            return;
+
+        var tournament = _tournaments.FirstOrDefault(t => t.Id == id);
+        if (tournament?.PlayFormat is { } format)
+            DefaultPlayFormat = format;
+    }
 }

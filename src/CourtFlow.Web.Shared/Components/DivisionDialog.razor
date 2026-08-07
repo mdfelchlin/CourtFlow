@@ -5,14 +5,12 @@
     <DialogContent>
         <MudStack>
             <CfTextField @bind-Value="_name" Label="Name" Required="true" />
-            <CfSelect T="DivisionFormatDto" @bind-Value="_format" Label="Format" Class="cf-select--md">
-                <MudSelectItem Value="DivisionFormatDto.PoolOnly">Pool only</MudSelectItem>
-                <MudSelectItem Value="DivisionFormatDto.PoolPlusBracket">Pool + bracket</MudSelectItem>
-                <MudSelectItem Value="DivisionFormatDto.BracketOnly">Bracket only</MudSelectItem>
-            </CfSelect>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Play format: @FormatLabel(_playFormat) (set at tournament level)
+            </MudText>
             @if (SessionMode == TournamentSessionModeDto.MultiWave)
             {
-                <CfSelect T="Guid?" @bind-Value="_waveId" Label="Wave" Clearable="true" Class="cf-select--md">
+                <CfSelect T="Guid?" @bind-Value="_waveId" Label="Wave" Clearable="true" Class="cf-select--md" ToStringFunc="@WaveLabel">
                     @foreach (var wave in _waves)
                     {
                         <MudSelectItem T="Guid?" Value="@wave.Id">@wave.Code</MudSelectItem>
@@ -32,20 +30,23 @@
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
     [Parameter] public DivisionDto? Existing { get; set; }
     [Parameter] public Guid TournamentId { get; set; }
+    [Parameter] public DivisionFormatDto PlayFormat { get; set; } = DivisionFormatDto.PoolPlusBracket;
     [Parameter] public TournamentSessionModeDto SessionMode { get; set; } = TournamentSessionModeDto.SingleSession;
 
     private string _name = "";
-    private DivisionFormatDto _format = DivisionFormatDto.PoolPlusBracket;
+    private DivisionFormatDto _playFormat = DivisionFormatDto.PoolPlusBracket;
     private int _maxTeams = 16;
     private Guid? _waveId;
     private List<TournamentWaveDto> _waves = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _playFormat = PlayFormat;
+
         if (Existing is not null)
         {
             _name = Existing.Name;
-            _format = Existing.Format;
+            _playFormat = Existing.Format;
             _maxTeams = Existing.MaxTeams;
             _waveId = Existing.WaveId;
         }
@@ -63,6 +64,17 @@
         }
     }
 
+    private static string FormatLabel(DivisionFormatDto format) => format switch
+    {
+        DivisionFormatDto.PoolOnly => "Round robin",
+        DivisionFormatDto.PoolPlusBracket => "Pool + bracket",
+        DivisionFormatDto.BracketOnly => "Bracket only",
+        _ => format.ToString(),
+    };
+
+    private string WaveLabel(Guid? waveId) =>
+        waveId is null ? "" : _waves.FirstOrDefault(w => w.Id == waveId)?.Code ?? "";
+
     private void Cancel() => Dialog.Cancel();
 
     private async Task Save()
@@ -72,11 +84,11 @@
         {
             if (Existing is null)
             {
-                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name.Trim(), _format, _maxTeams, _waveId));
+                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name.Trim(), _playFormat, _maxTeams, _waveId));
             }
             else
             {
-                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name.Trim(), _format, _maxTeams, _waveId));
+                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name.Trim(), Existing.Format, _maxTeams, _waveId));
             }
             Snackbar.Add("Saved", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));

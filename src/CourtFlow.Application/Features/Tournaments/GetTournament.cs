@@ -18,6 +18,8 @@ public sealed class GetTournamentHandler : IRequestHandler<GetTournamentQuery, T
     public async Task<TournamentDto?> Handle(GetTournamentQuery request, CancellationToken ct)
     {
         var t = await _db.Tournaments.FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-        return t?.ToDto();
+        if (t is null) return null;
+        var playFormat = await TournamentQueryHelper.ResolvePlayFormatAsync(_db, t.Id, ct);
+        return t.ToDto(playFormat);
     }
 }

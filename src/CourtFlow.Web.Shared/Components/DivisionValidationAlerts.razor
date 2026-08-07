@@ -1,0 +1,72 @@
+@inject CourtFlow.ApiClient.CourtFlowApiClient Api
+
+@if (_visibleIssues.Any())
+{
+    <MudStack Spacing="1" Class="mb-3">
+        @foreach (var issue in _visibleIssues)
+        {
+            <MudAlert Severity="@ToSeverity(issue.Severity)"
+                      Dense="true"
+                      Variant="Variant.Outlined"
+                      CloseIcon="@Icons.Material.Filled.Close"
+                      CloseIconClicked="@(() => Dismiss(issue))">
+                <MudStack Spacing="0">
+                    @if (!string.IsNullOrWhiteSpace(issue.Location))
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@issue.Location</MudText>
+                    }
+                    <MudText Typo="Typo.body2">@issue.Message</MudText>
+                </MudStack>
+            </MudAlert>
+        }
+        @if (DismissedCount > 0)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="ShowAllAsync">Show all warnings</MudButton>
+        }
+    </MudStack>
+}
+
+@code {
+    [Parameter] public Guid DivisionId { get; set; }
+
+    private List<DivisionValidationIssueDto> _issues = new();
+    private HashSet<string> _dismissed = new();
+    private int DismissedCount => _dismissed.Count;
+
+    private IEnumerable<DivisionValidationIssueDto> _visibleIssues =>
+        _issues.Where(i => !_dismissed.Contains(IssueKey(i)));
+
+    protected override async Task OnParametersSetAsync() => await RefreshAsync();
+
+    public async Task RefreshAsync()
+    {
+        if (DivisionId == Guid.Empty) return;
+        try
+        {
+            var result = await Api.Divisions.GetValidationAsync(DivisionId);
+            _issues = result?.Issues.ToList() ?? new();
+            _dismissed.RemoveWhere(k => _issues.All(i => IssueKey(i) != k));
+        }
+        catch
+        {
+            _issues = new();
+        }
+    }
+
+    private void Dismiss(DivisionValidationIssueDto issue)
+    {
+        _dismissed.Add(IssueKey(issue));
+    }
+
+    private async Task ShowAllAsync()
+    {
+        _dismissed.Clear();
+        await RefreshAsync();
+    }
+
+    private static string IssueKey(DivisionValidationIssueDto issue) =>
+        $"{issue.Location}|{issue.Message}";
+
+    private static Severity ToSeverity(DivisionValidationSeverityDto severity) =>
+        severity == DivisionValidationSeverityDto.Warning ? Severity.Warning : Severity.Info;
+}

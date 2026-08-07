@@ -1,10 +1,11 @@
 using CourtFlow.Domain.Entities;
+using CourtFlow.Domain.Enums;
 
 namespace CourtFlow.Application.Features.Tournaments;
 
 internal static class TournamentMapping
 {
-    public static TournamentDto ToDto(this Tournament t) => new(
+    public static TournamentDto ToDto(this Tournament t, DivisionFormat? playFormat) => new(
         t.Id,
         t.OrganizationId,
         t.Name,
@@ -20,5 +21,6 @@ internal static class TournamentMapping
         t.TournamentPartnerId,
         t.PublicationStatus,
         t.PublishedAtUtc,
-        t.ArchivedAtUtc);
+        t.ArchivedAtUtc,
+        playFormat);
 }

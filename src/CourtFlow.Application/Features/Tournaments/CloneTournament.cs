@@ -132,7 +132,7 @@ public sealed class CloneTournamentHandler : IRequestHandler<CloneTournamentComm
 
         await _db.SaveChangesAsync(ct);
 
-        return copy.ToDto();
+        return await copy.ToDtoAsync(_db, ct);
     }
 
     private static string TrimCopyName(string name) =>

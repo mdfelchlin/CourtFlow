@@ -9,6 +9,9 @@ public enum CourtStatusKindDto { Idle = 0, OnTime = 1, SlightlyBehind = 2, Behin
 public enum RankedSeedStrategyDto { Snake = 1 }
 public enum StageTypeDto { Pool = 1, Bracket = 2 }
 public enum StageStatusDto { Draft = 1, Configured = 2, Seeded = 3, InProgress = 4, Completed = 5 }
+public enum MatchSlotKindDto { Home = 1, Away = 2, Ref = 3 }
+public enum MatchSlotSourceKindDto { FixedTeam = 1, MatchWinner = 2, MatchLoser = 3, PoolFinish = 4, Ranking = 5 }
+public enum DivisionValidationSeverityDto { Info = 0, Warning = 1 }
 
 public enum TournamentPublicationStatusDto { Draft, Published, Archived }
 
@@ -30,7 +33,8 @@ public sealed record TournamentDto(
     Guid? TournamentPartnerId,
     TournamentPublicationStatusDto PublicationStatus,
     DateTime? PublishedAtUtc,
-    DateTime? ArchivedAtUtc);
+    DateTime? ArchivedAtUtc,
+    DivisionFormatDto? PlayFormat);
 
 public sealed record CreateTournamentDto(string Name, string? Description, string? WebsiteUrl, string? ContactEmail, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes);
 public sealed record UpdateTournamentDto(Guid Id, string Name, string? Description, string? WebsiteUrl, string? ContactEmail, DateOnly StartDate, DateOnly EndDate, string TimeZoneId, int DefaultMatchDurationMinutes, Guid? TournamentPartnerId);
@@ -40,6 +44,8 @@ public sealed record UpsertTournamentSessionSettingsDto(
     string? DefaultStartTime,
     string? AmStartTime,
     string? PmStartTime);
+
+public sealed record SetTournamentPlayFormatDto(DivisionFormatDto Format);
 
 public sealed record VenueDto(Guid Id, Guid TournamentId, string Name, string? Address, int CourtCount);
 public sealed record CreateVenueDto(Guid TournamentId, string Name, string? Address, int CourtCount);
@@ -230,6 +236,52 @@ public sealed record MoveMatchDto(Guid? CourtId, DateTime ScheduledStartUtc, int
 public sealed record ScoreMatchDto(IReadOnlyList<MatchSetDto> Sets, bool Finalize, Guid? WinnerTeamId);
 public sealed record ForfeitMatchDto(Guid WinningTeamId);
 public sealed record ChangeRefereeDto(Guid? RefTeamId);
+
+public sealed record DivisionValidationIssueDto(
+    DivisionValidationSeverityDto Severity,
+    string Message,
+    string? Location);
+
+public sealed record DivisionValidationResultDto(IReadOnlyList<DivisionValidationIssueDto> Issues);
+
+public sealed record MatchSlotSourceDto(
+    Guid Id,
+    Guid MatchId,
+    MatchSlotKindDto Slot,
+    MatchSlotSourceKindDto SourceKind,
+    Guid? FixedTournamentTeamId,
+    Guid? SourceMatchId,
+    Guid? SourcePoolId,
+    int? SourcePosition,
+    Guid? ResolvedTournamentTeamId);
+
+public sealed record DivisionMatchGraphMatchDto(
+    MatchDto Match,
+    IReadOnlyList<MatchSlotSourceDto> SlotSources,
+    int DisplayNumber);
+
+public sealed record DivisionMatchGraphDto(
+    Guid DivisionId,
+    IReadOnlyList<DivisionMatchGraphMatchDto> Matches);
+
+public sealed record CreateDivisionMatchDto(
+    Guid DivisionId,
+    Guid? StageId,
+    Guid? PoolId,
+    Guid? CourtId,
+    DateTime ScheduledStartUtc,
+    int DurationMinutes,
+    Guid? HomeTeamId,
+    Guid? AwayTeamId,
+    Guid? RefTeamId);
+
+public sealed record SetMatchSlotSourceDto(
+    MatchSlotKindDto Slot,
+    MatchSlotSourceKindDto SourceKind,
+    Guid? FixedTournamentTeamId,
+    Guid? SourceMatchId,
+    Guid? SourcePoolId,
+    int? SourcePosition);
 
 public sealed record BracketDto(Guid Id, Guid TournamentId, Guid DivisionId, BracketTypeDto Type, bool IfNecessaryFinal, int TeamCapacity, string? DisplayName, bool ThirdPlaceMatch = false);
 public sealed record BracketNodeDto(Guid Id, Guid BracketId, BracketBranchDto Branch, int Round, int Slot, Guid? MatchId, Guid? HomeTeamId, Guid? AwayTeamId, int? HomeSeed, int? AwaySeed, Guid? WinsToNodeId, Guid? LosesToNodeId);

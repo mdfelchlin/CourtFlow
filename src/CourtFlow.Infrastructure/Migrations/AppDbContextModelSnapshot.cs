@@ -938,6 +938,74 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.ToTable("match_sets", (string)null);
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Entities.MatchSlotSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("FixedTournamentTeamId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fixed_tournament_team_id");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("match_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("ResolvedTournamentTeamId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resolved_tournament_team_id");
+
+                    b.Property<string>("Slot")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("slot");
+
+                    b.Property<string>("SourceKind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_kind");
+
+                    b.Property<Guid?>("SourceMatchId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_match_id");
+
+                    b.Property<Guid?>("SourcePoolId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_pool_id");
+
+                    b.Property<int?>("SourcePosition")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("source_position");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_match_slot_sources");
+
+                    b.HasIndex("SourceMatchId")
+                        .HasDatabaseName("ix_match_slot_sources_source_match_id");
+
+                    b.HasIndex("MatchId", "Slot")
+                        .IsUnique()
+                        .HasDatabaseName("ix_match_slot_sources_match_id_slot");
+
+                    b.ToTable("match_slot_sources", (string)null);
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Entities.Organization", b =>
                 {
                     b.Property<Guid>("Id")

@@ -104,6 +104,15 @@ public class TournamentsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    [HttpPut("{id:guid}/play-format")]
+    [ProducesResponseType(typeof(TournamentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPlayFormat(Guid id, [FromBody] SetPlayFormatBody body, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetTournamentPlayFormatCommand(id, body.Format), ct);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,3 +125,5 @@ public sealed record UpsertSessionSettingsBody(
     string? DefaultStartTime,
     string? AmStartTime,
     string? PmStartTime);
+
+public sealed record SetPlayFormatBody(DivisionFormat Format);

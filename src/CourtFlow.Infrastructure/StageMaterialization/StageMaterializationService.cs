@@ -3,6 +3,7 @@ using CourtFlow.Application.Persistence;
 using CourtFlow.Application.Features.ScheduleVersions;
 using CourtFlow.Application.Features.Stages;
 using CourtFlow.Application.Features.Teams;
+using CourtFlow.Application.Matches;
 using CourtFlow.Application.Seeding;
 using CourtFlow.Application.Standings;
 using CourtFlow.Application.StageMaterialization;
@@ -148,6 +149,8 @@ public sealed class StageMaterializationService : IStageMaterialization
                 await EnsureBracketNodesAsync(division.OrganizationId, bracket, cancellationToken);
 
             await EnsureAllBracketNodeMatchesAsync(division, bracketStage, bracket, cancellationToken);
+            await MatchSlotSourceSync.SyncBracketAdvancementSlotsAsync(
+                _db, division.OrganizationId, bracket.Id, cancellationToken);
         }
 
         if (bracketStage.Status == StageStatus.Draft)
@@ -193,8 +196,110 @@ public sealed class StageMaterializationService : IStageMaterialization
             }
 
             await ApplyResolvedTeamsToRoundOneAsync(bracket, slots, teamIdByTournamentTeamId, cancellationToken);
+            await MatchSlotSourceSync.SyncBracketAdvancementSlotsAsync(
+                _db, division.OrganizationId, bracket.Id, cancellationToken);
             await EnsureBracketAdvancementMatchesAndByesAsync(division, bracketStage, bracket, cancellationToken);
         }
+
+        if (bracketStage.Status == StageStatus.Configured)
+            bracketStage.TransitionTo(StageStatus.Seeded);
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SeedBracketFromRankingsAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == divisionId, cancellationToken)
+            ?? throw new InvalidOperationException("Division not found.");
+
+        var bracketStage = await BracketMaterializationHelper.RequireBracketStageAsync(_db, divisionId, cancellationToken);
+
+        if (bracketStage.Status is StageStatus.InProgress or StageStatus.Completed)
+            throw new InvalidOperationException("Bracket stage is in progress or completed — use Repairs to change structure.");
+
+        var teams = await _db.Teams.Where(t => t.DivisionId == divisionId).ToListAsync(cancellationToken);
+        if (teams.Count < 2)
+            throw new InvalidOperationException("At least 2 teams are required in rankings.");
+
+        await BackfillDivisionRankingsAsync(division, teams, cancellationToken);
+
+        var rankByTeam = new Dictionary<Guid, int>(
+            await DivisionEntryRankingService.GetRankByTeamIdAsync(_db, division.Id, cancellationToken));
+        var orderedTeams = teams
+            .OrderBy(t => rankByTeam.TryGetValue(t.Id, out var rk) ? rk : int.MaxValue)
+            .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var orderedTournamentTeamIds = new List<Guid>();
+        foreach (var team in orderedTeams)
+        {
+            var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(
+                _db, division, team, cancellationToken);
+            orderedTournamentTeamIds.Add(tt.Id);
+        }
+
+        var brackets = await _db.Brackets.Where(b => b.DivisionId == divisionId).OrderBy(b => b.DisplayName).ToListAsync(cancellationToken);
+        if (brackets.Count == 0)
+            throw new InvalidOperationException("Define and save bracket structure first.");
+
+        var teamIdByTournamentTeamId = await BracketMaterializationHelper.TeamIdByTournamentTeamIdAsync(
+            _db, divisionId, cancellationToken);
+
+        foreach (var bracket in brackets)
+        {
+            var capacity = Math.Max(bracket.TeamCapacity, orderedTournamentTeamIds.Count);
+            var bracketSize = BracketSeedOrder.NextPowerOfTwo(capacity);
+            if (bracketSize != bracket.TeamCapacity)
+            {
+                bracket.Configure(
+                    bracket.Type,
+                    bracketSize,
+                    bracket.IfNecessaryFinal,
+                    bracket.DisplayName,
+                    bracket.ThirdPlaceMatch);
+            }
+
+            await EntityGraphDeletes.ClearBracketSeedSlotsAsync(_db, bracket.Id, cancellationToken);
+
+            var slotSeeds = BracketSeedOrder.BuildSlotSeedNumbers(bracketSize);
+
+            for (var pos = 1; pos <= bracketSize; pos++)
+            {
+                var seedNumber = slotSeeds[pos - 1];
+                Guid? tournamentTeamId = seedNumber <= orderedTournamentTeamIds.Count
+                    ? orderedTournamentTeamIds[seedNumber - 1]
+                    : null;
+
+                var label = $"{bracket.DisplayName ?? "Bracket"}-{pos}";
+                var slot = new BracketSeedSlot(
+                    division.OrganizationId,
+                    bracket.Id,
+                    pos,
+                    tournamentTeamId is null ? "bye" : "manual",
+                    label);
+                if (tournamentTeamId is { } ttId)
+                    slot.SetManualOverride(ttId);
+                slot.Resolve(tournamentTeamId);
+                _db.BracketSeedSlots.Add(slot);
+            }
+
+            var hasNodes = await _db.BracketNodes.AnyAsync(n => n.BracketId == bracket.Id, cancellationToken);
+            if (!hasNodes)
+                await EnsureBracketNodesAsync(division.OrganizationId, bracket, cancellationToken);
+
+            await EnsureAllBracketNodeMatchesAsync(division, bracketStage, bracket, cancellationToken);
+            var slots = await _db.BracketSeedSlots
+                .Where(s => s.BracketId == bracket.Id)
+                .OrderBy(s => s.SeedPosition)
+                .ToListAsync(cancellationToken);
+            await ApplyResolvedTeamsToRoundOneAsync(bracket, slots, teamIdByTournamentTeamId, cancellationToken);
+            await MatchSlotSourceSync.SyncBracketAdvancementSlotsAsync(
+                _db, division.OrganizationId, bracket.Id, cancellationToken);
+            await EnsureBracketAdvancementMatchesAndByesAsync(division, bracketStage, bracket, cancellationToken);
+        }
+
+        if (bracketStage.Status == StageStatus.Draft)
+            bracketStage.TransitionTo(StageStatus.Configured);
 
         if (bracketStage.Status == StageStatus.Configured)
             bracketStage.TransitionTo(StageStatus.Seeded);
@@ -335,6 +440,7 @@ public sealed class StageMaterializationService : IStageMaterialization
 
         var idx = 0;
         var seed = 1;
+        var ttByTeamId = teamIdByTournamentTeamId.ToDictionary(kv => kv.Value, kv => kv.Key);
         foreach (var node in nodes)
         {
             Guid? home = idx < resolvedTeams.Count ? resolvedTeams[idx] : null;
@@ -349,6 +455,13 @@ public sealed class StageMaterializationService : IStageMaterialization
             {
                 var match = await _db.Matches.FirstOrDefaultAsync(m => m.Id == matchId, ct);
                 match?.AssignTeams(home, away);
+
+                Guid? homeTt = home is { } h ? ttByTeamId.GetValueOrDefault(h) : null;
+                Guid? awayTt = away is { } a ? ttByTeamId.GetValueOrDefault(a) : null;
+                await MatchSlotSourceSync.EnsureFixedTeamSlotAsync(
+                    _db, bracket.OrganizationId, matchId, MatchSlotKind.Home, homeTt, ct);
+                await MatchSlotSourceSync.EnsureFixedTeamSlotAsync(
+                    _db, bracket.OrganizationId, matchId, MatchSlotKind.Away, awayTt, ct);
             }
         }
     }
@@ -538,9 +651,17 @@ public sealed class StageMaterializationService : IStageMaterialization
                     stageId: poolStage.Id);
                 _db.Matches.Add(match);
 
+                if (tournamentTeamByTeamId.TryGetValue(homeId, out var homeTt))
+                    await MatchSlotSourceSync.EnsureFixedTeamSlotAsync(
+                        _db, division.OrganizationId, match.Id, MatchSlotKind.Home, homeTt, ct);
+                if (tournamentTeamByTeamId.TryGetValue(awayId, out var awayTt))
+                    await MatchSlotSourceSync.EnsureFixedTeamSlotAsync(
+                        _db, division.OrganizationId, match.Id, MatchSlotKind.Away, awayTt, ct);
                 if (workTeamId is not null
                     && tournamentTeamByTeamId.TryGetValue(workTeamId.Value, out var workTournamentTeamId))
                 {
+                    await MatchSlotSourceSync.EnsureFixedTeamSlotAsync(
+                        _db, division.OrganizationId, match.Id, MatchSlotKind.Ref, workTournamentTeamId, ct);
                     _db.MatchOfficials.Add(new MatchOfficials(
                         division.OrganizationId,
                         match.Id,

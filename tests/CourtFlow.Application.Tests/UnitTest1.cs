@@ -514,6 +514,7 @@ internal sealed class TestAppDbContext : DbContext, IAppDbContext
     public DbSet<ImportRow> ImportRows => Set<ImportRow>();
     public DbSet<TournamentTemplate> TournamentTemplates => Set<TournamentTemplate>();
     public DbSet<WaveEntity> Waves => Set<WaveEntity>();
+    public DbSet<MatchSlotSource> MatchSlotSources => Set<MatchSlotSource>();
 
     Task<int> IAppDbContext.SaveChangesAsync(CancellationToken cancellationToken) => SaveChangesAsync(cancellationToken);
 }

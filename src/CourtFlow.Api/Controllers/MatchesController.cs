@@ -1,5 +1,7 @@
 using CourtFlow.Api.Infrastructure;
+using CourtFlow.Application.Features.MatchGraph;
 using CourtFlow.Application.Features.Matches;
+using CourtFlow.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -61,7 +63,35 @@ public class MatchesController : ControllerBase
         var r = await _mediator.Send(new ChangeMatchRefereeCommand(id, body.RefTeamId), ct);
         return r is null ? NotFound() : Ok(r);
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateDivisionMatchCommand cmd, CancellationToken ct)
+    {
+        var r = await _mediator.Send(cmd, ct);
+        return r is null ? NotFound() : CreatedAtAction(nameof(Get), new { id = r.Id }, r);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
+        await _mediator.Send(new DeleteDivisionMatchCommand(id), ct) ? NoContent() : NotFound();
+
+    [HttpPut("{id:guid}/slot-source")]
+    public async Task<IActionResult> SetSlotSource(Guid id, [FromBody] SetMatchSlotSourceBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SetMatchSlotSourceCommand(
+            id, body.Slot, body.SourceKind, body.FixedTournamentTeamId,
+            body.SourceMatchId, body.SourcePoolId, body.SourcePosition), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
 }
+
+public sealed record SetMatchSlotSourceBody(
+    MatchSlotKind Slot,
+    MatchSlotSourceKind SourceKind,
+    Guid? FixedTournamentTeamId,
+    Guid? SourceMatchId,
+    Guid? SourcePoolId,
+    int? SourcePosition);
 
 public sealed record ForfeitMatchRequest(Guid WinningTeamId);
 public sealed record ChangeRefereeRequest(Guid? RefTeamId);

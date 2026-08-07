@@ -47,6 +47,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ImportRow> ImportRows => Set<ImportRow>();
     public DbSet<TournamentTemplate> TournamentTemplates => Set<TournamentTemplate>();
     public DbSet<WaveEntity> Waves => Set<WaveEntity>();
+    public DbSet<MatchSlotSource> MatchSlotSources => Set<MatchSlotSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
