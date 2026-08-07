@@ -70,12 +70,6 @@ public sealed class UpsertTournamentSessionSettingsHandler
         if (request.SessionMode == TournamentSessionMode.SingleSession)
         {
             tournament.SetDefaultStartTime(request.DefaultStartTime);
-
-            var divisions = await _db.Divisions
-                .Where(d => d.TournamentId == request.TournamentId && d.WaveId != null)
-                .ToListAsync(ct);
-            foreach (var division in divisions)
-                division.SetWave(null);
         }
         else
         {

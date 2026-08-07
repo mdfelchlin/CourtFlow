@@ -40,6 +40,7 @@
   <Target Name="TriggerClientWasmRebuild" AfterTargets="Build" Condition="'$(BuildingProject)' == 'true'">
     <!-- Exec (not MSBuild task) avoids a target-graph cycle: Client already references Shared. -->
     <Exec Command="dotnet build &quot;$(MSBuildThisFileDirectory)..\CourtFlow.Web.Client\CourtFlow.Web.Client.csproj&quot; --no-restore -p:BuildProjectReferences=false -v:q" EnvironmentVariables="DOTNET_CLI_UI_LANGUAGE=en" />
+    <Exec Command="dotnet build &quot;$(MSBuildThisFileDirectory)..\CourtFlow.Web\CourtFlow.Web.csproj&quot; --no-restore -p:BuildProjectReferences=false -v:q" EnvironmentVariables="DOTNET_CLI_UI_LANGUAGE=en" />
   </Target>
 
 </Project>

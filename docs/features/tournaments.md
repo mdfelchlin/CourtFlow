@@ -89,10 +89,9 @@ If the user is on `/tournaments/new` and hasn't saved yet, replaces section B wi
 - Section title "Start times" (`h6`).
 - Caption: "When do matches start?"
 - **`MudRadioGroup`** with two options:
-  - **Single session** — one start time (`HH:mm`) for the whole tournament. Divisions are not pinned to a wave.
-  - **Multiple waves** — inline **AM start** and **PM start** fields (`HH:mm`). Divisions can pin to AM or PM on the division editor.
+  - **Single session** — one start time (`HH:mm`) for the whole tournament.
+  - **Multiple waves** — inline **AM start** and **PM start** fields (`HH:mm`). Wave assignment happens per team or match, not on the division.
 - Right-aligned **Save session settings** button (primary filled, `Save` icon) — calls `PUT /tournaments/{id}/session-settings`.
-- Switching from multiple waves to single session prompts for confirmation when any division is pinned to a wave (pins are cleared on save).
 
 If the user is on `/tournaments/new` and hasn't saved yet, section C is omitted (same gate as venues — save details first).
 
@@ -110,7 +109,7 @@ If the user is on `/tournaments/new` and hasn't saved yet, section C is omitted 
 - **Save details:** validates name; on create calls `POST /tournaments` then navigates to `/tournaments/{newId}`. On edit calls `PUT /tournaments/{id}`.
 - **Add venue / Edit venue:** opens [`VenueDialog`](../ui/dialogs.md#venuedialog). On close (not canceled) reloads venues.
 - **Delete venue:** confirmation message box, then `DELETE /venues/{id}`.
-- **Save session settings:** validates start time(s) for the selected mode; calls `PUT /tournaments/{id}/session-settings`. When switching to single session with division wave pins, shows a confirm dialog first.
+- **Save session settings:** validates start time(s) for the selected mode; calls `PUT /tournaments/{id}/session-settings`.
 - **Publish to public:** confirmation modal → `POST /tournaments/{id}:publish` → snackbar "Tournament published". Status chip flips to `Published` and the public link preview appears.
 - **Archive tournament:** confirmation modal → `POST /tournaments/{id}:archive` → snackbar "Tournament archived". Status chip flips to `Archived`.
 - **Un-archive:** `POST /tournaments/{id}:unarchive` → snackbar "Tournament restored to published".

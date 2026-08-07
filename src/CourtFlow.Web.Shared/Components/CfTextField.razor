@@ -1,4 +1,5 @@
-<MudTextField @bind-Value="Value"
+<MudTextField Value="Value"
+              ValueChanged="ValueChanged"
               Label="@Label"
               Variant="Variant.Outlined"
               Margin="Margin.Dense"
@@ -12,7 +13,8 @@
               HelperText="@HelperText"
               InputType="@InputType"
               Class="@Class"
-              Style="@Style" />
+              Style="@Style"
+              OnKeyDown="@OnKeyDown" />
 
 @code {
     [Parameter] public string? Value { get; set; }
@@ -29,4 +31,5 @@
     [Parameter] public InputType InputType { get; set; } = InputType.Text;
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
 }

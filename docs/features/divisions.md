@@ -45,7 +45,7 @@ Give admins a single, fast list of every division in the currently selected tour
 
 ## Dialogs
 
-- [`DivisionDialog`](../ui/dialogs.md#divisiondialog) — new and edit, with identity, format, scheduling, and tiebreaker sections.
+- [`DivisionDialog`](../ui/dialogs.md#divisiondialog) — create: name only; edit: name + max teams.
 - Confirmation message box for delete — see [`../ui/dialogs.md`](../ui/dialogs.md#confirmation-message-boxes).
 
 ## References

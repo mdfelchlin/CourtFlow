@@ -41,21 +41,6 @@
                 }
             </CellTemplate>
         </TemplateColumn>
-        @if (_showWaveColumn)
-        {
-            <TemplateColumn Title="Wave">
-                <CellTemplate>
-                    @if (string.IsNullOrWhiteSpace(context.Item.WaveCode))
-                    {
-                        <span class="mud-text-secondary">—</span>
-                    }
-                    else
-                    {
-                        @context.Item.WaveCode
-                    }
-                </CellTemplate>
-            </TemplateColumn>
-        }
         <PropertyColumn Property="x => x.MaxTeams" Title="Max teams" />
         <TemplateColumn Title="Actions">
             <CellTemplate>
@@ -74,7 +59,6 @@
 
     private IReadOnlyList<DivisionDto> _items = Array.Empty<DivisionDto>();
     private bool _loading = true;
-    private bool _showWaveColumn = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -100,20 +84,9 @@
         try
         {
             _items = tid is null ? Array.Empty<DivisionDto>() : await Api.Divisions.ListAsync(tid);
-            _showWaveColumn = tid is null
-                || TournamentStore.Tournaments.FirstOrDefault(t => t.Id == tid)?.SessionMode
-                    == TournamentSessionModeDto.MultiWave;
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         _loading = false;
-    }
-
-    private TournamentSessionModeDto SelectedSessionMode()
-    {
-        if (TournamentStore.SelectedTournamentId is not { } tid)
-            return TournamentSessionModeDto.SingleSession;
-        return TournamentStore.Tournaments.FirstOrDefault(t => t.Id == tid)?.SessionMode
-               ?? TournamentSessionModeDto.SingleSession;
     }
 
     private async Task NewAsync()
@@ -122,8 +95,7 @@
         var parms = new DialogParameters
         {
             ["TournamentId"] = TournamentStore.SelectedTournamentId.Value,
-            ["PlayFormat"] = TournamentStore.DefaultPlayFormat,
-            ["SessionMode"] = SelectedSessionMode()
+            ["PlayFormat"] = TournamentStore.DefaultPlayFormat
         };
         var dialog = await DialogService.ShowAsync<DivisionDialog>("New division", parms);
         if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();
@@ -135,8 +107,7 @@
         {
             ["Existing"] = d,
             ["TournamentId"] = d.TournamentId,
-            ["PlayFormat"] = d.Format,
-            ["SessionMode"] = SelectedSessionMode()
+            ["PlayFormat"] = d.Format
         };
         var dialog = await DialogService.ShowAsync<DivisionDialog>("Edit division", parms);
         if ((await dialog.Result) is { Canceled: false }) await ReloadAsync();

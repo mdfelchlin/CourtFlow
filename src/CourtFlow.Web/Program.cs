@@ -67,6 +67,25 @@ public class Program
 
         app.MapCourtFlowHealthChecks();
         app.UseSerilogRequestLogging();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/_framework"))
+                {
+                    context.Response.OnStarting(() =>
+                    {
+                        context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+                        context.Response.Headers.Pragma = "no-cache";
+                        return Task.CompletedTask;
+                    });
+                }
+
+                await next();
+            });
+        }
+
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
         app.UseHttpsRedirection();
         app.UseAntiforgery();

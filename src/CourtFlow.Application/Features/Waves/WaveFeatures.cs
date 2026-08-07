@@ -152,10 +152,6 @@ public sealed class DeleteWaveHandler : IRequestHandler<DeleteWaveCommand, bool>
         var wave = await _db.Waves.FirstOrDefaultAsync(w => w.Id == request.Id, ct);
         if (wave is null) return false;
 
-        var inUse = await _db.Divisions.AnyAsync(d => d.WaveId == wave.Id, ct);
-        if (inUse)
-            throw new InvalidOperationException("Cannot delete a wave that is assigned to one or more divisions.");
-
         _db.Waves.Remove(wave);
         await _db.SaveChangesAsync(ct);
         return true;

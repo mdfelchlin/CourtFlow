@@ -13,8 +13,6 @@ public class DivisionConfig : IEntityTypeConfiguration<Division>
         b.Property(x => x.Name).HasMaxLength(100).IsRequired();
         b.Property(x => x.Format).HasConversion<int>();
         b.Property(x => x.TiebreakerPreset).HasConversion<int>();
-        b.Property(x => x.WaveId);
-        b.HasIndex(x => x.WaveId);
         b.HasMany(x => x.Pools).WithOne().HasForeignKey(p => p.DivisionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Teams).WithOne().HasForeignKey(t => t.DivisionId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => x.TournamentId);

@@ -68,7 +68,6 @@ public sealed class CloneTournamentHandler : IRequestHandler<CloneTournamentComm
                 var newWave = new WaveEntity(source.OrganizationId, copy.Id, oldWave.Code, oldWave.DisplayOrder);
                 newWave.SetTimeWindow(oldWave.DefaultStartTime, oldWave.DefaultEndTime);
                 _db.Waves.Add(newWave);
-                waveOldToNew[oldWave.Id] = newWave.Id;
             }
         }
 
@@ -86,10 +85,6 @@ public sealed class CloneTournamentHandler : IRequestHandler<CloneTournamentComm
             {
                 var div = new Division(source.OrganizationId, copy.Id, oldDiv.Name, oldDiv.Format, oldDiv.MaxTeams);
                 div.SetTiebreakerPreset(oldDiv.TiebreakerPreset);
-                Guid? waveId = oldDiv.WaveId is { } oldWaveId && waveOldToNew.TryGetValue(oldWaveId, out var newWaveId)
-                    ? newWaveId
-                    : null;
-                div.SetWave(waveId);
                 _db.Divisions.Add(div);
                 await DefaultDivisionStages.EnsureProvisionedAsync(_db, div, ct);
 

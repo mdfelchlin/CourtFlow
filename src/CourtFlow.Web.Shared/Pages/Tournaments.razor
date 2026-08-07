@@ -183,21 +183,18 @@
 
             var divisions = new[]
             {
-                ("Dev · Pool play (small)", DivisionFormatDto.PoolOnly, MaxTeams: 16, TeamCount: 4, WaveIndex: 0),
-                ("Dev · Pool + bracket (medium)", DivisionFormatDto.PoolPlusBracket, MaxTeams: 24, TeamCount: 11, WaveIndex: 1),
-                ("Dev · Bracket (large)", DivisionFormatDto.BracketOnly, MaxTeams: 32, TeamCount: 17, WaveIndex: 0),
+                ("Dev · Pool play (small)", DivisionFormatDto.PoolOnly, MaxTeams: 16, TeamCount: 4),
+                ("Dev · Pool + bracket (medium)", DivisionFormatDto.PoolPlusBracket, MaxTeams: 24, TeamCount: 11),
+                ("Dev · Bracket (large)", DivisionFormatDto.BracketOnly, MaxTeams: 32, TeamCount: 17),
             };
 
             var teamTotal = 0;
             var poolsSeeded = 0;
             for (var d = 0; d < divisions.Length; d++)
             {
-                var (divName, format, maxTeams, teamCount, waveIndex) = divisions[d];
-                Guid? waveId = useMultiWave && waves.Count > 0
-                    ? waves[waveIndex % waves.Count].Id
-                    : null;
-                var division = await Api.Divisions.CreateAsync(
-                    new CreateDivisionDto(created.Id, divName, format, maxTeams, waveId));
+                var (divName, format, maxTeams, teamCount) = divisions[d];
+                var division = await Api.Divisions.CreateAsync(new CreateDivisionDto(created.Id, divName));
+                division = await Api.Divisions.UpdateAsync(new UpdateDivisionDto(division.Id, divName, format, maxTeams));
                 var prefix = (char)('A' + d);
                 for (var i = 1; i <= teamCount; i++)
                 {

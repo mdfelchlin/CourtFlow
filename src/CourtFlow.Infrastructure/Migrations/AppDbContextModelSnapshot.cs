@@ -468,18 +468,11 @@ namespace CourtFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at_utc");
 
-                    b.Property<Guid?>("WaveId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("wave_id");
-
                     b.HasKey("Id")
                         .HasName("pk_divisions");
 
                     b.HasIndex("TournamentId")
                         .HasDatabaseName("ix_divisions_tournament_id");
-
-                    b.HasIndex("WaveId")
-                        .HasDatabaseName("ix_divisions_wave_id");
 
                     b.ToTable("divisions", (string)null);
                 });

@@ -82,17 +82,14 @@ public sealed record DivisionDto(
     string Name,
     DivisionFormatDto Format,
     int MaxTeams,
-    Guid? WaveId,
-    string? WaveCode,
     DivisionTiebreakerPresetDto TiebreakerPreset,
     IReadOnlyList<DivisionStageHintDto> StageHints);
-public sealed record CreateDivisionDto(Guid TournamentId, string Name, DivisionFormatDto Format, int MaxTeams, Guid? WaveId = null);
+public sealed record CreateDivisionDto(Guid TournamentId, string Name);
 public sealed record UpdateDivisionDto(
     Guid Id,
     string Name,
     DivisionFormatDto Format,
     int MaxTeams,
-    Guid? WaveId = null,
     DivisionTiebreakerPresetDto? TiebreakerPreset = null);
 
 public sealed record StageDto(

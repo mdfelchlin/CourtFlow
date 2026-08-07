@@ -4,25 +4,28 @@
 <MudDialog>
     <DialogContent>
         <MudStack>
-            <CfTextField @bind-Value="_name" Label="Name" Required="true" />
-            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                Play format: @FormatLabel(_playFormat) (set at tournament level)
-            </MudText>
-            @if (SessionMode == TournamentSessionModeDto.MultiWave)
-            {
-                <CfSelect T="Guid?" @bind-Value="_waveId" Label="Wave" Clearable="true" Class="cf-select--md" ToStringFunc="@WaveLabel">
-                    @foreach (var wave in _waves)
-                    {
-                        <MudSelectItem T="Guid?" Value="@wave.Id">@wave.Code</MudSelectItem>
-                    }
-                </CfSelect>
-            }
-            <CfNumericField T="int" @bind-Value="_maxTeams" Label="Max teams" Min="2" Max="128" />
-        </MudStack>
+                <CfTextField @bind-Value="_name"
+                             Label="Name"
+                             Required="true"
+                             Immediate="true"
+                             OnKeyDown="HandleKeyDown" />
+                @if (Existing is not null)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Play format: @FormatLabel(_playFormat) (set at tournament level)
+                    </MudText>
+                    <CfNumericField T="int" @bind-Value="_maxTeams" Label="Max teams" Min="2" Max="128" Immediate="true" />
+                }
+            </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Save"
+                   Disabled="_saving">
+            Save
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -31,15 +34,13 @@
     [Parameter] public DivisionDto? Existing { get; set; }
     [Parameter] public Guid TournamentId { get; set; }
     [Parameter] public DivisionFormatDto PlayFormat { get; set; } = DivisionFormatDto.PoolPlusBracket;
-    [Parameter] public TournamentSessionModeDto SessionMode { get; set; } = TournamentSessionModeDto.SingleSession;
 
     private string _name = "";
     private DivisionFormatDto _playFormat = DivisionFormatDto.PoolPlusBracket;
     private int _maxTeams = 16;
-    private Guid? _waveId;
-    private List<TournamentWaveDto> _waves = new();
+    private bool _saving;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         _playFormat = PlayFormat;
 
@@ -48,19 +49,6 @@
             _name = Existing.Name;
             _playFormat = Existing.Format;
             _maxTeams = Existing.MaxTeams;
-            _waveId = Existing.WaveId;
-        }
-
-        if (SessionMode == TournamentSessionModeDto.MultiWave)
-        {
-            try
-            {
-                _waves = (await Api.Waves.ListAsync(TournamentId)).ToList();
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add(ex.Message, Severity.Error);
-            }
         }
     }
 
@@ -72,27 +60,49 @@
         _ => format.ToString(),
     };
 
-    private string WaveLabel(Guid? waveId) =>
-        waveId is null ? "" : _waves.FirstOrDefault(w => w.Id == waveId)?.Code ?? "";
-
     private void Cancel() => Dialog.Cancel();
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter")
+            await Save();
+    }
 
     private async Task Save()
     {
-        if (string.IsNullOrWhiteSpace(_name)) return;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Name is required.", Severity.Warning);
+            return;
+        }
+
+        if (TournamentId == Guid.Empty)
+        {
+            Snackbar.Add("No tournament selected.", Severity.Error);
+            return;
+        }
+
+        _saving = true;
         try
         {
             if (Existing is null)
             {
-                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name.Trim(), _playFormat, _maxTeams, _waveId));
+                await Api.Divisions.CreateAsync(new CreateDivisionDto(TournamentId, _name.Trim()));
             }
             else
             {
-                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name.Trim(), Existing.Format, _maxTeams, _waveId));
+                await Api.Divisions.UpdateAsync(new UpdateDivisionDto(Existing.Id, _name.Trim(), Existing.Format, _maxTeams));
             }
             Snackbar.Add("Saved", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 }

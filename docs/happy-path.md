@@ -62,7 +62,7 @@ Writes: `tournaments`, `tournament_venues`, `venues`, `courts`.
 
 ## 2. Set match start times (single session or AM / PM)
 
-In the tournament editor **Match start times** section, the admin chooses **Single session** (one start time for the whole tournament) or **Multiple waves** (AM and PM start times). The editor auto-maintains `AM` and `PM` `waves` rows — no separate Waves panel, end times, or notes. Pinning a division to a wave keeps its matches in that session.
+In the tournament editor **Match start times** section, the admin chooses **Single session** (one start time for the whole tournament) or **Multiple waves** (AM and PM start times). The editor auto-maintains `AM` and `PM` `waves` rows — no separate Waves panel, end times, or notes. Teams and matches within a division carry their own wave for scheduling.
 
 Writes: `waves` (when `session_mode = MultiWave`), `tournaments.session_mode`, session start-time fields.
 
@@ -72,7 +72,7 @@ Writes: `waves` (when `session_mode = MultiWave`), `tournaments.session_mode`, s
 
 ## 3. Create Divisions
 
-The admin opens **Divisions** and adds each competitive grouping (e.g. *Girls 14U Open*, *Boys 18U Club*). For each division they set format flags, scheduling defaults, **`tiebreaker_preset`**, and the **wave** it belongs to. They do **not** need to define pools or brackets yet — those live in the structure-first wizard.
+The admin opens **Divisions** and adds each competitive grouping by **name** only (e.g. *Girls 14U Open*, *Boys 18U Club*). Format defaults from the tournament; max teams and tiebreakers can be adjusted on edit. They do **not** need to define pools or brackets yet — those live in the structure-first wizard.
 
 Writes: `tournament_divisions`.
 

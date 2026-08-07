@@ -469,29 +469,6 @@ else
             }
         }
 
-        if (_current!.SessionMode == TournamentSessionModeDto.MultiWave
-            && _sessionMode == TournamentSessionModeDto.SingleSession)
-        {
-            try
-            {
-                var divisions = await Api.Divisions.ListAsync(_current.Id);
-                if (divisions.Any(d => d.WaveId is not null))
-                {
-                    var ok = await DialogService.ShowMessageBoxAsync(
-                        "Switch to single session",
-                        "Divisions will no longer be pinned to a wave. Continue?",
-                        yesText: "Continue",
-                        cancelText: "Cancel");
-                    if (ok != true) return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add(ex.Message, Severity.Error);
-                return false;
-            }
-        }
-
         return true;
     }
 

@@ -42,19 +42,13 @@ public class TournamentSessionSettingsTests
     }
 
     [Fact]
-    public async Task Upsert_SingleSession_ClearsDivisionWavePins()
+    public async Task Upsert_SingleSession_SetsDefaultStartTime()
     {
         await using var db = ImportFeaturesTests.BuildDb();
         var orgId = Guid.NewGuid();
         var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 2), "America/Los_Angeles");
         tournament.SetSessionMode(TournamentSessionMode.MultiWave);
-        var wave = new WaveEntity(orgId, tournament.Id, "AM", 0);
-        wave.SetTimeWindow("08:00", null);
-        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 16);
-        division.SetWave(wave.Id);
         db.Tournaments.Add(tournament);
-        db.Waves.Add(wave);
-        db.Divisions.Add(division);
         await db.SaveChangesAsync();
 
         var handler = new UpsertTournamentSessionSettingsHandler(db, new FakeTenant(orgId));
@@ -66,9 +60,6 @@ public class TournamentSessionSettingsTests
                 null,
                 null),
             CancellationToken.None);
-
-        var savedDivision = await db.Divisions.FirstAsync(d => d.Id == division.Id);
-        Assert.Null(savedDivision.WaveId);
 
         var savedTournament = await db.Tournaments.FirstAsync(t => t.Id == tournament.Id);
         Assert.Equal(TournamentSessionMode.SingleSession, savedTournament.SessionMode);

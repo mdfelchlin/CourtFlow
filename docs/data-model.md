@@ -63,7 +63,7 @@ Tournament creation defines the event shell and facility context before competit
 Required records and fields:
 - `tournaments`: `id`, `organization_id`, `league_id nullable`, `name`, `slug`, `status`, `start_date`, `end_date`, `timezone`, `session_mode`, `default_start_time nullable`, `notes`, `published_at nullable`, `archived_at nullable`.
   - `status` controls **public visibility** (see [Tournament status lifecycle](#tournament-status-lifecycle) below). All other tournament fields are independent of the publish gate.
-  - **`session_mode`**: `SingleSession` (one start time for the whole tournament; divisions are not pinned to waves) or `MultiWave` (separate AM/PM start times; divisions may pin to a wave). New tournaments default to `SingleSession`.
+  - **`session_mode`**: `SingleSession` (one start time for the whole tournament) or `MultiWave` (separate AM/PM start times). New tournaments default to `SingleSession`.
   - **`default_start_time`**: local `HH:mm` used when `session_mode = SingleSession`. Ignored in multi-wave mode.
 - `tournament_venues`: `tournament_id`, `venue_id`, `display_order`.
 - `venues`: `id`, `organization_id`, `name`, address fields.
@@ -72,7 +72,7 @@ Required records and fields:
   - Used when `tournaments.session_mode = MultiWave`. The tournament editor auto-maintains **`AM`** and **`PM`** rows with start times; organizers do not add, delete, or rename waves manually in V1 UI.
   - **`code`** is `AM` or `PM` — the short label on the schedule grid and in CSV import. Unique per tournament.
   - **`default_start_time`** is the local `HH:mm` start for that wave's matches. Combined with `tournaments.timezone` and the tournament's calendar dates when scheduling. V1 does not model wave end times; the scheduler assumes courts are available for the rest of the day after the wave start.
-  - Divisions pin to a wave via `tournament_divisions.wave_id` (see [§3](#3-division-creation)) when `session_mode = MultiWave`. Ignored in single-session mode.
+  - Teams and matches carry a `Wave` (`AM` / `PM`) for scheduling within a division; divisions themselves do not pin to a wave.
   - CSV import `Wave` values must be `AM` or `PM`; missing waves are auto-created during import and the import-result panel notes any auto-created wave so the organizer can set start times in the tournament editor **Match start times** section. See [`features/imports.md`](features/imports.md).
 
 Deferred (not required for V1):
@@ -116,10 +116,10 @@ Recommended additions:
 
 ### 3. Division creation
 
-A division is the organizer-defined competitive unit inside a tournament. It captures event-specific rules rather than relying on hard-coded assumptions in the scheduler.
+A division is the organizer-defined competitive unit inside a tournament. **Create** requires only a **name**; format and max teams use server defaults (tournament play format when set, otherwise pool + bracket; max teams 32). Edit can adjust max teams. AM/PM scheduling is assigned per team or match later, not at division create.
 
 Required records and fields:
-- `tournament_divisions`: `id`, `tournament_id`, `name`, `code`, `gender`, `age_group`, `skill_level`, `wave_id nullable`, `status`.
+- `tournament_divisions`: `id`, `tournament_id`, `name`, `format`, `max_teams`, `tiebreaker_preset`, `status`.
 - Division format settings: `best_of_sets`, `guaranteed_matches`, `pool_play_enabled`, `bracket_play_enabled`, `match_duration_minutes`, `break_duration_minutes`.
 - Division scheduling settings: `target_court_count`, `preferred_start_time`, `latest_end_time`, `priority`, `allow_cross_venue`.
 - Division seeding settings: `ranking_mode`, `seeding_method`, `manual_override_allowed`.

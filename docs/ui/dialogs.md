@@ -35,44 +35,20 @@ All dialogs are MudBlazor `MudDialog`s with a `DialogContent` body and a `Dialog
 
 ## Waves (tournament editor — not a dialog)
 
-V1 does **not** use a separate wave dialog or Waves panel. When `session_mode = MultiWave`, the tournament editor **Match start times** section auto-maintains `AM` and `PM` `waves` rows with **start times only** (no end times, no notes). Wave assignment of a division happens on the division editor (`Wave` select), not here.
+V1 does **not** use a separate wave dialog or Waves panel. When `session_mode = MultiWave`, the tournament editor **Match start times** section auto-maintains `AM` and `PM` `waves` rows with **start times only** (no end times, no notes). Wave assignment for teams and matches happens via imports and scheduling, not on the division editor.
 
 See [`features/tournaments.md`](../features/tournaments.md) · Match start times.
 
 ## DivisionDialog
 
-Opens from the [Divisions table](../features/divisions.md) **Add** toolbar button and per-row **Edit** action. Single dialog with two modes (new / edit) and identical field set. Authoring of pools / brackets / advancement rules happens on the [Division detail](../features/division-detail.md) workspace — this dialog only owns the **Division-level configuration**: identity, format flags, scheduling settings, and tiebreakers.
+Opens from the [Divisions table](../features/divisions.md) **Add** toolbar button and per-row **Edit** action. **Create** mode collects **Name** only. **Edit** mode adds max teams and shows the tournament play-format caption. Authoring of pools / brackets / advancement rules happens on the [Division detail](../features/division-detail.md) workspace.
 
-- **Layout:** three labeled sections in a `MudGrid`, separated by `MudDivider`s. All numeric fields are dense + outlined.
-- **Section "Identity":**
+- **Create fields:**
   - **Name** text field (required; unique within the parent tournament, case-insensitive).
-  - **Code** text field (optional, short; used by imports and printed artifacts).
-  - **Gender** select: `Boys`, `Girls`, `Coed`, `Men`, `Women`.
-  - **Age group** text field (free-form: `12U`, `14U`, `Open`, `Adult`, etc.).
-  - **Skill level** select: `Club`, `Power`, `Regional`, `National`, `Open` (no enforcement — labels only).
-  - **Wave** select (clearable) — populated from the parent tournament's `waves`. Empty = "unpinned (scheduler chooses)".
-- **Section "Format":**
-  - **Pool play** switch (default on) — drives whether the wizard will offer a pool-type Stage.
-  - **Bracket play** switch (default on) — drives whether the wizard will offer a bracket-type Stage.
-  - **Best of sets** numeric (1, 2, 3, 5; default 2).
-  - **Guaranteed matches** numeric (≥ 0; advisory; used by the scheduler as a target for pool generation).
-  - **Match duration (minutes)** numeric (10–180; default 60).
-  - **Break duration (minutes)** numeric (0–60; default 5).
-- **Section "Scheduling":**
-  - **Target court count** numeric (≥ 1; the scheduler's preferred-courts hint when no pool-level `pool_court_allocations` exist).
-  - **Preferred start time** time picker (optional).
-  - **Latest end time** time picker (optional; validated `> preferred_start_time` when both set).
-  - **Priority** select: `Low`, `Normal`, `High` — used by the scheduler to break court / time contention between divisions.
-  - **Allow cross-venue** switch — when off, all of this division's pool matches must share a venue.
-- **Section "Tiebreaker":**
-  - **Tiebreaker preset** select (required, default `set_ratio_then_point_ratio`) — the four V1 presets from [`../data-model.md` §10](../data-model.md#10-score-reporting-and-winner-resolution).
-  - A small read-only chain preview ("Wins → Set ratio → Point ratio → Head-to-head → Stable order") updates as the preset changes so the organizer sees the resolution order before saving.
-- **Validation:**
-  - At least one of **Pool play** or **Bracket play** must be on.
-  - `Latest end time > Preferred start time` when both set.
-  - `Match duration ≥ 10`.
-- **Edit-mode constraints:** When the Division status is past `teams_loaded`, the **Pool play** and **Bracket play** switches and **Tiebreaker preset** become read-only with a tooltip "Locked once any stage is seeded — restructure via Division detail / Repair Jobs." Identity and Scheduling sections remain editable; their changes do not invalidate already-generated matches.
-- **Save behavior:** `POST /divisions` (new) or `PUT /divisions/{id}` (edit). On success the dialog closes, the table reloads, and a snackbar surfaces "{Name} {created|updated}." Errors surface inline beneath the offending field plus a snackbar.
+- **Edit fields (in addition to Name):**
+  - Read-only caption: play format (set at tournament level).
+  - **Max teams** numeric (2–128).
+- **Save behavior:** `POST /divisions` with `{ tournamentId, name }` (new) or `PUT /divisions/{id}` (edit). On success the dialog closes, the table reloads, and a snackbar surfaces "Saved." Errors surface via snackbar.
 
 ## TeamDialog
 
@@ -179,7 +155,7 @@ Target. Opens from the Tournaments table **Clone** action. See [`../features/tou
   - **Time zone** select bound to `TimeZoneOptions.All`. Defaults to the source tournament's time zone.
   - **Description** text field (multi-line, 2 rows, optional). Pre-fills from source.
 - **What gets copied panel** — outlined `MudPaper`, padding 2, with two columns:
-  - **Copied:** divisions (with format flags, tiebreaker preset, wave pin), stages (with seeding source), pools (with target size, court allocations cleared), brackets (with type, team count, advancement-rule wiring), waves (codes only), default match duration.
+  - **Copied:** divisions (with format flags, tiebreaker preset), stages (with seeding source), pools (with target size, court allocations cleared), brackets (with type, team count, advancement-rule wiring), waves (codes only), default match duration.
   - **Not copied:** teams, rankings, schedule, match assignments, scores, venues + courts (organizer relinks at the new tournament), publish status (new tournament always starts `draft`).
 - **Save button label:** **Clone**.
 - **Save behavior:** calls `POST /tournaments:clone` with `{ sourceTournamentId, name, startDate, endDate, timeZone, description }`. The server captures the source to a `tournament_templates` row, instantiates a new `tournaments` row in `status = 'draft'`, walks the template's children to write the structural subset described in [`../data-model.md` §12](../data-model.md#12-tournament-templates), increments the template's `usage_count`, and returns the new tournament id. The dialog closes and the page navigates to `/tournaments/{newId}`.
