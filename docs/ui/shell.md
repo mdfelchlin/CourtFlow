@@ -99,7 +99,7 @@ Planned (post-V1): **Repairs** — `Handyman` — `/repairs`; **Court Status** �
 - Compact `MudSelect` rendered in the app bar with leading "Tournament" label.
 - Bound to `SelectedTournamentStore.SelectedTournamentId`.
 - Lists all tournaments returned by the API. Sorted as the API returns them; the default selection is the most recent tournament by `StartDate, EndDate, Name`.
-- Persists the selection to `localStorage` under `courtflow.selectedTournamentId`. The store rehydrates the selection on first interactive render.
+- Persists the selection to `localStorage` under `courtflow.selectedTournamentId`. The store rehydrates the selection on first interactive render and re-applies the default on every `EnsureInitializedAsync()` call when no valid selection is set.
 - Hidden on tournament list/edit routes to avoid redundancy with the page's own tournament context.
 - Changing the selection raises `Changed` on the store, which causes `MainLayout` to remount the routed content and forces a reload of any tournament-scoped data.
 
@@ -110,7 +110,7 @@ Planned (post-V1): **Repairs** — `Handyman` — `/repairs`; **Court Status** �
 - `SelectedTournamentStore` is a scoped service shared by every admin page that needs a tournament context.
 - Pages call `await TournamentStore.EnsureInitializedAsync()` in `OnInitializedAsync`, then load tournament-scoped data using `TournamentStore.SelectedTournamentId`.
 - The admin shell remounts the routed content on tournament change so each page can run its own load logic without bespoke change subscriptions.
-- Persistence: the selection lives in `localStorage` under `courtflow.selectedTournamentId`; on reload the most recent tournament is selected if no value is stored or the stored value is no longer valid.
+- Persistence: the selection lives in `localStorage` under `courtflow.selectedTournamentId`; on reload or tab navigation the most recent tournament is selected if no value is stored, the stored value is no longer valid, or the selection was cleared.
 
 ---
 

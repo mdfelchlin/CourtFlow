@@ -29,13 +29,19 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
     public async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized && _loadedFromStorage)
+        {
+            RepairSelectionIfNeeded(bumpCatalogOnChange: true);
             return;
+        }
 
         await _initLock.WaitAsync(cancellationToken);
         try
         {
             if (_initialized && _loadedFromStorage)
+            {
+                RepairSelectionIfNeeded(bumpCatalogOnChange: true);
                 return;
+            }
 
             if (!_initialized)
             {
@@ -53,14 +59,7 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
                 }
             }
 
-            var previousSelection = SelectedTournamentId;
-            NormalizeSelection();
-
-            if (SelectedTournamentId != previousSelection)
-            {
-                _ = PersistSelectedToStorageAsync(SelectedTournamentId);
-                Changed?.Invoke();
-            }
+            RepairSelectionIfNeeded(bumpCatalogOnChange: false);
         }
         finally
         {
@@ -70,6 +69,9 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
 
     public Task SetSelectedAsync(Guid? id)
     {
+        if (id is null && _tournaments.Count > 0)
+            id = GetLatestTournamentId();
+
         if (SelectedTournamentId == id)
             return Task.CompletedTask;
 
@@ -116,6 +118,21 @@ public sealed class SelectedTournamentStore(CourtFlowApiClient api, IJSRuntime j
         {
             _initLock.Release();
         }
+    }
+
+    private void RepairSelectionIfNeeded(bool bumpCatalogOnChange)
+    {
+        var previousSelection = SelectedTournamentId;
+        NormalizeSelection();
+        SyncDefaultPlayFormatFromSelection();
+
+        if (SelectedTournamentId == previousSelection)
+            return;
+
+        _ = PersistSelectedToStorageAsync(SelectedTournamentId);
+        if (bumpCatalogOnChange)
+            CatalogVersion++;
+        Changed?.Invoke();
     }
 
     private void NormalizeSelection()

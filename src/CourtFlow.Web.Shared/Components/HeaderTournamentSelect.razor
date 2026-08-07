@@ -53,7 +53,13 @@
         return path == "tournaments" || path.StartsWith("tournaments/", StringComparison.Ordinal);
     }
 
-    private async Task OnValueChanged(Guid? value) => await Store.SetSelectedAsync(value);
+    private async Task OnValueChanged(Guid? value)
+    {
+        if (value is null && Store.Tournaments.Count > 0)
+            return;
+
+        await Store.SetSelectedAsync(value);
+    }
 
     public void Dispose()
     {
