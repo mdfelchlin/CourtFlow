@@ -13,6 +13,7 @@ Directors and organizers are the only writers. Coaches, players, and spectators 
 - Google OR-Tools for scheduling
 - WorkOS for auth
 - Entity Framework Core and Postgres for data
+- Domain-driven design throughout. The domain model holds the rules. An application layer holds the use cases. The API, the Blazor app, and persistence stay outside that model.
 
 Supabase is the hosted Postgres when deployment is in scope. Until then, the app uses local Postgres.
 
