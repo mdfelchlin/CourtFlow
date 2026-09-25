@@ -12,7 +12,9 @@ Directors and organizers are the only writers. Coaches, players, and spectators 
 - Blazor WebAssembly with MudBlazor
 - Google OR-Tools for scheduling
 - WorkOS for auth
-- Supabase (Postgres) for data
+- Entity Framework Core and Postgres for data
+
+Supabase is the hosted Postgres when deployment is in scope. Until then, the app uses local Postgres.
 
 ## Pillars
 - Repairs (withdrawals, outages, reassignments, reflow) are recorded. History is not silently overwritten.
