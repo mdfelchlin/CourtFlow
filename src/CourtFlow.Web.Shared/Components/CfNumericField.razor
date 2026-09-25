@@ -1,18 +1,25 @@
 @typeparam T
 
-<MudNumericField T="T"
-                 Value="Value"
-                 ValueChanged="ValueChanged"
-                 Label="@Label"
-                 Variant="Variant.Outlined"
-                 Margin="Margin.Dense"
-                 Min="@Min"
-                 Max="@Max"
-                 Immediate="@Immediate"
-                 FullWidth="@FullWidth"
-                 Disabled="@Disabled"
-                 Class="@Class"
-                 Style="@Style" />
+<div class="@RootClass" style="@Style">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="cf-field__label">@Label</label>
+    }
+    <MudNumericField T="T"
+                     Value="Value"
+                     ValueChanged="ValueChanged"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     Min="@Min"
+                     Max="@Max"
+                     Immediate="@Immediate"
+                     FullWidth="@FullWidth"
+                     Disabled="@Disabled"
+                     Adornment="@EffectiveAdornment"
+                     AdornmentIcon="@AdornmentIcon"
+                     Class="cf-field__control"
+                     UserAttributes="@AriaAttributes" />
+</div>
 
 @code {
     [Parameter] public T? Value { get; set; }
@@ -23,6 +30,18 @@
     [Parameter] public bool Immediate { get; set; }
     [Parameter] public bool FullWidth { get; set; }
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? AdornmentIcon { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
+
+    private Adornment EffectiveAdornment =>
+        string.IsNullOrWhiteSpace(AdornmentIcon) ? Adornment.None : Adornment.Start;
+
+    private string RootClass =>
+        string.IsNullOrWhiteSpace(Class) ? "cf-field" : $"cf-field {Class}";
+
+    private Dictionary<string, object>? AriaAttributes =>
+        string.IsNullOrWhiteSpace(Label)
+            ? null
+            : new Dictionary<string, object> { ["aria-label"] = Label };
 }

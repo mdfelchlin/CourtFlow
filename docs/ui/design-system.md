@@ -61,7 +61,8 @@ This gives us one source of truth for the brand palette (the C# theme) and one p
 | `--cf-surface-0` | `var(--mud-palette-background-grey)` | Court Status Grid em-dash cells; empty-state surfaces |
 | `--cf-surface-1` | `var(--mud-palette-surface)` | Court Status Grid future-on-schedule cells |
 | `--cf-tint-success-pale` | `color-mix(in srgb, var(--mud-palette-success) 12%, transparent)` | "Live · on time" cell background |
-| `--cf-tint-info-pale` | `color-mix(in srgb, var(--mud-palette-info) 14%, transparent)` | "Live · ahead" cell background |
+| `--cf-tint-info-pale` | `color-mix(in srgb, var(--mud-palette-info) 14%, transparent)` | "Live · ahead" cell background; Cf* leading adornment chips |
+| `--cf-shadow-card` | Soft dual-layer black mix | Pool cards and other surface cards that need lift off white |
 | `--cf-tint-warning-pale` | `color-mix(in srgb, var(--mud-palette-warning) 14%, transparent)` | "Future · likely to slip" / "Live · 2–10 min behind" |
 | `--cf-tint-warning-solid` | `color-mix(in srgb, var(--mud-palette-warning) 55%, transparent)` | "Live · 11–20 min behind" |
 | `--cf-tint-error-solid` | `color-mix(in srgb, var(--mud-palette-error) 65%, transparent)` | "Live · > 20 min behind" |
@@ -147,7 +148,7 @@ This rule is the canonical answer to "what color is this division?" everywhere i
 ## 4. Layout properties
 
 - Default border radius: `10px` (cards, dialogs, paper, buttons).
-- Standard density: **dense** for tables, selects, and numeric fields. Forms use `Margin.Dense` and `Variant.Outlined`.
+- Standard density: **dense** for tables, selects, and numeric fields. Forms use `Margin.Dense` and `Variant.Outlined` with **labels above** the field (not Mud floating/notched labels).
 - App container max-width on admin screens: `MaxWidth.ExtraExtraLarge` with `py-4` vertical padding.
 - App container max-width on public screens: `MaxWidth.Large` with `py-6` vertical padding.
 
@@ -224,19 +225,21 @@ Destructive actions (delete tournament, delete venue, delete court, delete divis
 
 ### 7.5 Forms
 
-CourtFlow form fields use thin **Cf\*** wrapper components in `CourtFlow.Web.Shared/Components/` that enforce the standard MudBlazor density and variant. Do **not** use raw `MudTextField`, `MudNumericField`, `MudSelect`, or `MudAutocomplete` in pages and dialogs — only inside these wrappers (or the existing date/time pickers below).
+CourtFlow form fields use thin **Cf\*** wrapper components in `CourtFlow.Web.Shared/Components/` that enforce the standard MudBlazor density, variant, and label placement. Do **not** use raw `MudTextField`, `MudNumericField`, `MudSelect`, or `MudAutocomplete` in pages and dialogs — only inside these wrappers (or the existing date/time pickers below).
 
 | Wrapper | MudBlazor primitive | Defaults |
 | --- | --- | --- |
-| `CfTextField` | `MudTextField` | `Margin.Dense`, `Variant.Outlined` |
+| `CfTextField` | `MudTextField` | Label above, `Margin.Dense`, `Variant.Outlined` |
 | `CfNumericField<T>` | `MudNumericField<T>` | same |
-| `CfSelect<T>` | `MudSelect<T>` | `Dense="true"`, `Margin.Dense`, `Variant.Outlined` |
+| `CfSelect<T>` | `MudSelect<T>` | same + `Dense="true"` |
 | `CfAutocomplete<T>` | `MudAutocomplete<T>` | same as select |
-| `CfDateField` | `MudDatePicker` | same (dialog picker) |
-| `CfTimeField` | `MudTimePicker` | same (dialog picker) |
+| `CfDateField` | `MudDatePicker` | same (dialog picker; calendar start adornment) |
+| `CfTimeField` | `MudTimePicker` | same (dialog picker; clock start adornment) |
 | `CfDateTimeRow` | `CfDateField` + `CfTimeField` | paired row with `cf-field-wrap` |
 
-- Required fields are marked via `Required="true"` (MudBlazor surfaces a leading asterisk).
+- Labels render **above** the outlined control (`.cf-field__label`), not as Mud floating/notched border labels.
+- Optional leading icons via `AdornmentIcon` (tinted chip styling in `app.css`). Date/time fields default to calendar/clock icons.
+- Required fields are marked via `Required="true"` (asterisk on the external label).
 - Numeric fields use `Min` / `Max` to constrain server-acceptable ranges.
 - Selects and pickers with constrained sizing use the project utility classes `cf-select--sm`, `cf-select--md`, `cf-select--lg`, or wrap fields in `cf-field-wrap` with `cf-field--sm/md/lg`.
 - Multi-field detail forms (tournament editor, create-from-template dialog) use the global layout classes `cf-form-details`, `cf-form-details__grid`, and `cf-form-details__times` defined in `wwwroot/app.css`.

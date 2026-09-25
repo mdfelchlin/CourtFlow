@@ -94,6 +94,13 @@ public class DivisionsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/generate-pool-matches")]
+    public async Task<IActionResult> GeneratePoolMatches(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new GeneratePoolMatchesCommand(id), ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/generate-brackets")]
     public async Task<IActionResult> GenerateBrackets(Guid id, CancellationToken ct)
     {

@@ -107,6 +107,9 @@ public interface ICourtFlowDivisionsApi
     [Post("/api/v1/divisions/{divisionId}/snake-into-pools")]
     Task<HttpResponseMessage> SnakeIntoPoolsAsync(Guid divisionId, CancellationToken cancellationToken);
 
+    [Post("/api/v1/divisions/{divisionId}/generate-pool-matches")]
+    Task<HttpResponseMessage> GeneratePoolMatchesAsync(Guid divisionId, CancellationToken cancellationToken);
+
     [Post("/api/v1/divisions/{divisionId}/generate-brackets")]
     Task<HttpResponseMessage> GenerateBracketsAsync(Guid divisionId, CancellationToken cancellationToken);
 
@@ -189,7 +192,10 @@ public interface ICourtFlowTeamsApi
     Task<TeamDto> MoveDivisionAsync(Guid teamId, [Body] MoveTeamDto dto, CancellationToken cancellationToken);
 
     [Put("/api/v1/teams/{teamId}/pool")]
-    Task<TeamDto> AssignPoolAsync(Guid teamId, [Body] AssignTeamPoolDto dto, CancellationToken cancellationToken);
+    Task<AssignTeamPoolResultDto> AssignPoolAsync(Guid teamId, [Body] AssignTeamPoolDto dto, CancellationToken cancellationToken);
+
+    [Post("/api/v1/teams/{teamId}/swap-pool")]
+    Task<SwapTeamPoolsResultDto> SwapPoolAsync(Guid teamId, [Body] SwapTeamPoolDto dto, CancellationToken cancellationToken);
 
     [Delete("/api/v1/teams/{id}")]
     Task<HttpResponseMessage> DeleteAsync(Guid id, CancellationToken cancellationToken);

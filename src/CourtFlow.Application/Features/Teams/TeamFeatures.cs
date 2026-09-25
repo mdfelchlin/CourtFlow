@@ -1,4 +1,6 @@
 using CourtFlow.Application.Abstractions;
+using CourtFlow.Application.Features.ScheduleVersions;
+using CourtFlow.Application.Persistence;
 using CourtFlow.Domain.Entities;
 using CourtFlow.Domain.Enums;
 using FluentValidation;
@@ -15,12 +17,18 @@ public sealed record TeamDto(
     string Name,
     string? Club,
     Wave Wave,
-    int? SeedHint);
+    int? SeedHint,
+    int? SeedInPool);
 
 internal static class TeamMapping
 {
-    public static TeamDto ToDto(this Team team, int? displayRank = null, Guid? tournamentTeamId = null) =>
-        new(team.Id, tournamentTeamId, team.DivisionId, team.PoolId, team.Name, team.Club, team.Wave, displayRank ?? team.SeedHint);
+    public static TeamDto ToDto(
+        this Team team,
+        int? displayRank = null,
+        Guid? tournamentTeamId = null,
+        int? seedInPool = null,
+        Guid? poolId = null) =>
+        new(team.Id, tournamentTeamId, team.DivisionId, poolId ?? team.PoolId, team.Name, team.Club, team.Wave, displayRank ?? team.SeedHint, seedInPool);
 }
 
 public sealed record ListTeamsQuery(Guid? TournamentId, Guid? DivisionId, Guid? PoolId) : IRequest<IReadOnlyList<TeamDto>>;
@@ -45,15 +53,6 @@ public sealed class ListTeamsHandler : IRequestHandler<ListTeamsQuery, IReadOnly
         if (request.DivisionId is { } divisionId)
             ranksByTeamId = await DivisionEntryRankingService.GetRankByTeamIdAsync(_db, divisionId, ct);
 
-        int RankKey(Team t) => ranksByTeamId?.GetValueOrDefault(t.Id) ?? t.SeedHint ?? int.MaxValue;
-
-        if (request.PoolId is not null)
-            items = items.OrderBy(RankKey).ThenBy(t => t.Name).ToList();
-        else if (request.DivisionId is not null)
-            items = items.OrderBy(RankKey).ThenBy(t => t.Id).ToList();
-        else
-            items = items.OrderBy(t => t.Name).ToList();
-
         Guid? tidForLookup = request.TournamentId;
         if (tidForLookup is null && request.DivisionId is { } divisionIdForTournament)
         {
@@ -71,11 +70,51 @@ public sealed class ListTeamsHandler : IRequestHandler<ListTeamsQuery, IReadOnly
                 .ToDictionaryAsync(tt => tt.TeamId, tt => tt.Id, ct);
         }
 
+        IReadOnlyDictionary<Guid, int> seedInPoolByTeamId = new Dictionary<Guid, int>();
+        IReadOnlyDictionary<Guid, Guid> poolIdByTeamId = new Dictionary<Guid, Guid>();
+        if (request.DivisionId is { } divIdForPools && tournamentTeamByTeamId.Count > 0)
+        {
+            var poolIds = request.PoolId is { } filterPoolId
+                ? new List<Guid> { filterPoolId }
+                : await _db.Pools.AsNoTracking()
+                    .Where(p => p.DivisionId == divIdForPools)
+                    .Select(p => p.Id)
+                    .ToListAsync(ct);
+
+            if (poolIds.Count > 0)
+            {
+                var teamIdByTournamentTeamId = tournamentTeamByTeamId.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
+                var entries = await _db.PoolEntries.AsNoTracking()
+                    .Where(e => poolIds.Contains(e.PoolId))
+                    .Select(e => new { e.PoolId, e.TournamentTeamId, e.SeedInPool })
+                    .ToListAsync(ct);
+
+                seedInPoolByTeamId = entries
+                    .Where(e => teamIdByTournamentTeamId.ContainsKey(e.TournamentTeamId))
+                    .ToDictionary(e => teamIdByTournamentTeamId[e.TournamentTeamId], e => e.SeedInPool);
+                poolIdByTeamId = entries
+                    .Where(e => teamIdByTournamentTeamId.ContainsKey(e.TournamentTeamId))
+                    .ToDictionary(e => teamIdByTournamentTeamId[e.TournamentTeamId], e => e.PoolId);
+            }
+        }
+
+        int RankKey(Team t) => ranksByTeamId?.GetValueOrDefault(t.Id) ?? t.SeedHint ?? int.MaxValue;
+        int PoolSeedKey(Team t) => seedInPoolByTeamId.GetValueOrDefault(t.Id, int.MaxValue);
+
+        if (request.PoolId is not null)
+            items = items.OrderBy(PoolSeedKey).ThenBy(RankKey).ThenBy(t => t.Name).ToList();
+        else if (request.DivisionId is not null)
+            items = items.OrderBy(RankKey).ThenBy(t => t.Id).ToList();
+        else
+            items = items.OrderBy(t => t.Name).ToList();
+
         return items.Select(t =>
         {
             var rank = ranksByTeamId?.GetValueOrDefault(t.Id);
             Guid? ttId = tournamentTeamByTeamId.TryGetValue(t.Id, out var found) ? found : null;
-            return t.ToDto(rank, ttId);
+            int? seedInPool = seedInPoolByTeamId.TryGetValue(t.Id, out var sip) ? sip : null;
+            Guid? poolId = poolIdByTeamId.TryGetValue(t.Id, out var pid) ? pid : null;
+            return t.ToDto(rank, ttId, seedInPool, poolId);
         }).ToList();
     }
 }
@@ -174,7 +213,9 @@ public sealed class MoveTeamHandler : IRequestHandler<MoveTeamCommand, TeamDto?>
     }
 }
 
-public sealed record AssignTeamPoolCommand(Guid TeamId, Guid? PoolId) : IRequest<TeamDto?>;
+public sealed record AssignTeamPoolCommand(Guid TeamId, Guid? PoolId) : IRequest<AssignTeamPoolResult?>;
+
+public sealed record AssignTeamPoolResult(TeamDto Team, bool ClearedPoolMatches);
 
 public sealed class AssignTeamPoolValidator : AbstractValidator<AssignTeamPoolCommand>
 {
@@ -184,12 +225,12 @@ public sealed class AssignTeamPoolValidator : AbstractValidator<AssignTeamPoolCo
     }
 }
 
-public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolCommand, TeamDto?>
+public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolCommand, AssignTeamPoolResult?>
 {
     private readonly IAppDbContext _db;
     public AssignTeamPoolHandler(IAppDbContext db) => _db = db;
 
-    public async Task<TeamDto?> Handle(AssignTeamPoolCommand request, CancellationToken ct)
+    public async Task<AssignTeamPoolResult?> Handle(AssignTeamPoolCommand request, CancellationToken ct)
     {
         var team = await _db.Teams.FirstOrDefaultAsync(t => t.Id == request.TeamId, ct);
         if (team is null) return null;
@@ -204,6 +245,27 @@ public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolComman
             if (pool is null || pool.DivisionId != team.DivisionId) return null;
         }
 
+        // No-op when unchanged — MudSelect can re-fire the current value (or null) on bind.
+        if (team.PoolId == request.PoolId)
+        {
+            var existingTt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
+            var existingSeed = await _db.PoolEntries.AsNoTracking()
+                .Where(e => e.TournamentTeamId == existingTt.Id)
+                .Select(e => (int?)e.SeedInPool)
+                .FirstOrDefaultAsync(ct);
+            return new AssignTeamPoolResult(
+                team.ToDto(tournamentTeamId: existingTt.Id, seedInPool: existingSeed, poolId: team.PoolId),
+                ClearedPoolMatches: false);
+        }
+
+        var affectedPoolIds = new HashSet<Guid>();
+        if (team.PoolId is { } fromPoolId)
+            affectedPoolIds.Add(fromPoolId);
+        if (request.PoolId is { } toPoolId)
+            affectedPoolIds.Add(toPoolId);
+
+        var cleared = await PoolTeamPlacement.ClearPoolMatchesIfAnyAsync(_db, division, affectedPoolIds, ct);
+
         team.AssignPool(request.PoolId);
 
         var tt = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, team, ct);
@@ -214,14 +276,181 @@ public sealed class AssignTeamPoolHandler : IRequestHandler<AssignTeamPoolComman
         foreach (var entry in oldEntries)
             _db.PoolEntries.Remove(entry);
 
+        int? seedInPool = null;
         if (pool is not null)
         {
-            var seedInPool = await _db.PoolEntries.CountAsync(e => e.PoolId == pool.Id, ct) + 1;
-            _db.PoolEntries.Add(new PoolEntry(division.OrganizationId, pool.Id, tt.Id, seedInPool));
+            seedInPool = await _db.PoolEntries.CountAsync(e => e.PoolId == pool.Id, ct) + 1;
+            _db.PoolEntries.Add(new PoolEntry(division.OrganizationId, pool.Id, tt.Id, seedInPool.Value));
+            if (seedInPool.Value > pool.TargetSize && seedInPool.Value <= 8)
+                pool.SetTargetSize(seedInPool.Value);
         }
 
         await _db.SaveChangesAsync(ct);
-        return team.ToDto();
+        return new AssignTeamPoolResult(
+            team.ToDto(seedInPool: seedInPool, poolId: request.PoolId),
+            ClearedPoolMatches: cleared);
+    }
+}
+
+public sealed record SwapTeamPoolsCommand(Guid TeamId, Guid OtherTeamId) : IRequest<SwapTeamPoolsResult?>;
+
+public sealed record SwapTeamPoolsResult(TeamDto Team, TeamDto OtherTeam);
+
+public sealed class SwapTeamPoolsValidator : AbstractValidator<SwapTeamPoolsCommand>
+{
+    public SwapTeamPoolsValidator()
+    {
+        RuleFor(x => x.TeamId).NotEmpty();
+        RuleFor(x => x.OtherTeamId).NotEmpty();
+        RuleFor(x => x.OtherTeamId).NotEqual(x => x.TeamId);
+    }
+}
+
+public sealed class SwapTeamPoolsHandler : IRequestHandler<SwapTeamPoolsCommand, SwapTeamPoolsResult?>
+{
+    private readonly IAppDbContext _db;
+    public SwapTeamPoolsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<SwapTeamPoolsResult?> Handle(SwapTeamPoolsCommand request, CancellationToken ct)
+    {
+        var teamA = await _db.Teams.FirstOrDefaultAsync(t => t.Id == request.TeamId, ct);
+        var teamB = await _db.Teams.FirstOrDefaultAsync(t => t.Id == request.OtherTeamId, ct);
+        if (teamA is null || teamB is null) return null;
+        if (teamA.DivisionId != teamB.DivisionId) return null;
+
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == teamA.DivisionId, ct);
+        if (division is null) return null;
+
+        var ttA = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, teamA, ct);
+        var ttB = await DivisionEntryRankingService.EnsureTournamentTeamAsync(_db, division, teamB, ct);
+
+        var entryA = await _db.PoolEntries.FirstOrDefaultAsync(e => e.TournamentTeamId == ttA.Id, ct);
+        var entryB = await _db.PoolEntries.FirstOrDefaultAsync(e => e.TournamentTeamId == ttB.Id, ct);
+        if (entryA is null || entryB is null) return null;
+
+        var poolIdA = entryA.PoolId;
+        var seedA = entryA.SeedInPool;
+        var poolIdB = entryB.PoolId;
+        var seedB = entryB.SeedInPool;
+
+        entryA.Reassign(poolIdB, seedB);
+        entryB.Reassign(poolIdA, seedA);
+        teamA.AssignPool(poolIdB);
+        teamB.AssignPool(poolIdA);
+
+        await PoolTeamPlacement.RemapPoolMatchTeamsAsync(
+            _db,
+            division.Id,
+            teamA.Id,
+            teamB.Id,
+            ttA.Id,
+            ttB.Id,
+            ct);
+
+        await _db.SaveChangesAsync(ct);
+        return new SwapTeamPoolsResult(
+            teamA.ToDto(tournamentTeamId: ttA.Id, seedInPool: seedB, poolId: poolIdB),
+            teamB.ToDto(tournamentTeamId: ttB.Id, seedInPool: seedA, poolId: poolIdA));
+    }
+}
+
+internal static class PoolTeamPlacement
+{
+    public static async Task<bool> ClearPoolMatchesIfAnyAsync(
+        IAppDbContext db,
+        Division division,
+        IReadOnlyCollection<Guid> poolIds,
+        CancellationToken ct)
+    {
+        if (poolIds.Count == 0) return false;
+
+        var poolStage = await db.Stages
+            .Where(s => s.DivisionId == division.Id && s.StageType == StageType.Pool)
+            .OrderBy(s => s.StageNumber)
+            .FirstOrDefaultAsync(ct);
+        if (poolStage is null) return false;
+
+        var hasMatches = await db.Matches.AnyAsync(
+            m => m.DivisionId == division.Id
+                 && m.StageId == poolStage.Id
+                 && m.PoolId != null
+                 && poolIds.Contains(m.PoolId.Value),
+            ct);
+        if (!hasMatches) return false;
+
+        var scheduleVersion = await ScheduleVersionProvisioning.EnsureCurrentAsync(db, division.TournamentId, ct);
+        await EntityGraphDeletes.ClearPoolPlayMatchesForPoolsAsync(
+            db, division.Id, poolStage.Id, scheduleVersion.Id, poolIds, ct);
+        return true;
+    }
+
+    public static async Task RemapPoolMatchTeamsAsync(
+        IAppDbContext db,
+        Guid divisionId,
+        Guid teamAId,
+        Guid teamBId,
+        Guid tournamentTeamAId,
+        Guid tournamentTeamBId,
+        CancellationToken ct)
+    {
+        var matches = await db.Matches
+            .Where(m => m.DivisionId == divisionId
+                        && m.PoolId != null
+                        && (m.HomeTeamId == teamAId
+                            || m.AwayTeamId == teamAId
+                            || m.RefTeamId == teamAId
+                            || m.HomeTeamId == teamBId
+                            || m.AwayTeamId == teamBId
+                            || m.RefTeamId == teamBId))
+            .ToListAsync(ct);
+
+        foreach (var match in matches)
+        {
+            var home = SwapId(match.HomeTeamId, teamAId, teamBId);
+            var away = SwapId(match.AwayTeamId, teamAId, teamBId);
+            var refTeam = SwapId(match.RefTeamId, teamAId, teamBId);
+            match.AssignTeams(home, away);
+            match.AssignReferee(refTeam);
+        }
+
+        var matchIds = matches.Select(m => m.Id).ToList();
+        if (matchIds.Count == 0) return;
+
+        var slots = await db.MatchSlotSources
+            .Where(s => matchIds.Contains(s.MatchId)
+                        && s.SourceKind == MatchSlotSourceKind.FixedTeam
+                        && (s.FixedTournamentTeamId == tournamentTeamAId
+                            || s.FixedTournamentTeamId == tournamentTeamBId))
+            .ToListAsync(ct);
+
+        foreach (var slot in slots)
+        {
+            if (slot.FixedTournamentTeamId == tournamentTeamAId)
+                slot.ConfigureFixedTeam(tournamentTeamBId);
+            else if (slot.FixedTournamentTeamId == tournamentTeamBId)
+                slot.ConfigureFixedTeam(tournamentTeamAId);
+        }
+
+        var officials = await db.MatchOfficials
+            .Where(o => matchIds.Contains(o.MatchId)
+                        && (o.WorkTeamTournamentTeamId == tournamentTeamAId
+                            || o.WorkTeamTournamentTeamId == tournamentTeamBId))
+            .ToListAsync(ct);
+
+        foreach (var official in officials)
+        {
+            var work = official.WorkTeamTournamentTeamId == tournamentTeamAId
+                ? tournamentTeamBId
+                : tournamentTeamAId;
+            official.ReassignWorkTeam(work, official.AssignmentSource);
+        }
+    }
+
+    private static Guid? SwapId(Guid? current, Guid a, Guid b)
+    {
+        if (current == a) return b;
+        if (current == b) return a;
+        return current;
     }
 }
 

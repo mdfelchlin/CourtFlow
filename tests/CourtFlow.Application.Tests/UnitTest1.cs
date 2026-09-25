@@ -358,7 +358,7 @@ public class ImportFeaturesTests
     }
 
     [Fact]
-    public async Task SnakeIntoPools_WritesPoolEntriesAndSeededStage()
+    public async Task SnakeIntoPools_WritesPoolEntriesAndSeededStage_WithoutMatches()
     {
         await using var db = BuildDb();
         var orgId = Guid.NewGuid();
@@ -387,12 +387,142 @@ public class ImportFeaturesTests
         var entries = await db.PoolEntries.ToListAsync();
         Assert.Equal(6, entries.Count);
 
+        var pools = await db.Pools.Where(p => p.DivisionId == division.Id).OrderBy(p => p.Sequence).ToListAsync();
+        Assert.Equal(2, pools.Count);
+        Assert.All(pools, p => Assert.Equal(3, p.TargetSize));
+
         var poolStage = await db.Stages.FirstAsync(s => s.DivisionId == division.Id && s.StageType == StageType.Pool);
         Assert.Equal(StageStatus.Seeded, poolStage.Status);
 
         var matches = await db.Matches.Where(m => m.DivisionId == division.Id && m.PoolId != null).ToListAsync();
-        Assert.True(matches.Count > 0);
+        Assert.Empty(matches);
+    }
+
+    [Fact]
+    public async Task GeneratePoolMatches_CreatesRoundRobinAfterSnake()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        await DefaultDivisionStages.EnsureProvisionedAsync(db, division);
+        await db.SaveChangesAsync();
+
+        for (var i = 1; i <= 6; i++)
+        {
+            var team = new Team(orgId, division.Id, $"Team {i}", Wave.AM);
+            db.Teams.Add(team);
+            var tt = new TournamentTeam(orgId, tournament.Id, division.Id, team.Id);
+            db.TournamentTeams.Add(tt);
+            db.DivisionRankings.Add(new DivisionRanking(orgId, division.Id, tt.Id, i, "test"));
+        }
+        await db.SaveChangesAsync();
+
+        var service = new StageMaterializationService(db, new FakeStandingsCalculator());
+        await service.SnakeIntoPoolsAsync(division.Id);
+        await service.GeneratePoolMatchesAsync(division.Id);
+
+        var poolStage = await db.Stages.FirstAsync(s => s.DivisionId == division.Id && s.StageType == StageType.Pool);
+        var matches = await db.Matches.Where(m => m.DivisionId == division.Id && m.PoolId != null).ToListAsync();
+        // Two pools of 3 → C(3,2)=3 matches each → 6
+        Assert.Equal(6, matches.Count);
         Assert.All(matches, m => Assert.Equal(poolStage.Id, m.StageId));
+    }
+
+    [Fact]
+    public async Task SwapTeamPools_RemapsExistingPoolMatchTeams()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        await DefaultDivisionStages.EnsureProvisionedAsync(db, division);
+        await db.SaveChangesAsync();
+
+        for (var i = 1; i <= 6; i++)
+        {
+            var team = new Team(orgId, division.Id, $"Team {i}", Wave.AM);
+            db.Teams.Add(team);
+            var tt = new TournamentTeam(orgId, tournament.Id, division.Id, team.Id);
+            db.TournamentTeams.Add(tt);
+            db.DivisionRankings.Add(new DivisionRanking(orgId, division.Id, tt.Id, i, "test"));
+        }
+        await db.SaveChangesAsync();
+
+        var materializer = new StageMaterializationService(db, new FakeStandingsCalculator());
+        await materializer.SnakeIntoPoolsAsync(division.Id);
+        await materializer.GeneratePoolMatchesAsync(division.Id);
+
+        var teams = await db.Teams.OrderBy(t => t.Name).ToListAsync();
+        var teamA = teams.First(t => t.PoolId is not null);
+        var teamB = teams.First(t => t.PoolId is not null && t.PoolId != teamA.PoolId);
+
+        var beforeMatchCount = await db.Matches.CountAsync(m => m.DivisionId == division.Id && m.PoolId != null);
+        var homeOrAwayWithA = await db.Matches.CountAsync(m =>
+            m.DivisionId == division.Id && (m.HomeTeamId == teamA.Id || m.AwayTeamId == teamA.Id));
+
+        var swap = new SwapTeamPoolsHandler(db);
+        var result = await swap.Handle(new SwapTeamPoolsCommand(teamA.Id, teamB.Id), CancellationToken.None);
+        Assert.NotNull(result);
+
+        var afterMatchCount = await db.Matches.CountAsync(m => m.DivisionId == division.Id && m.PoolId != null);
+        Assert.Equal(beforeMatchCount, afterMatchCount);
+
+        var homeOrAwayWithAAfter = await db.Matches.CountAsync(m =>
+            m.DivisionId == division.Id && (m.HomeTeamId == teamA.Id || m.AwayTeamId == teamA.Id));
+        Assert.Equal(homeOrAwayWithA, homeOrAwayWithAAfter);
+
+        await db.Entry(teamA).ReloadAsync();
+        await db.Entry(teamB).ReloadAsync();
+        Assert.Equal(result!.Team.PoolId, teamA.PoolId);
+        Assert.Equal(result.OtherTeam.PoolId, teamB.PoolId);
+    }
+
+    [Fact]
+    public async Task AssignTeamPool_ClearsMatchesForAffectedPools()
+    {
+        await using var db = BuildDb();
+        var orgId = Guid.NewGuid();
+        var tournament = new Tournament(orgId, "T1", new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 3), "America/Los_Angeles");
+        var division = new Division(orgId, tournament.Id, "Open", DivisionFormat.PoolPlusBracket, 32);
+        db.Tournaments.Add(tournament);
+        db.Divisions.Add(division);
+        await DefaultDivisionStages.EnsureProvisionedAsync(db, division);
+        await db.SaveChangesAsync();
+
+        for (var i = 1; i <= 6; i++)
+        {
+            var team = new Team(orgId, division.Id, $"Team {i}", Wave.AM);
+            db.Teams.Add(team);
+            var tt = new TournamentTeam(orgId, tournament.Id, division.Id, team.Id);
+            db.TournamentTeams.Add(tt);
+            db.DivisionRankings.Add(new DivisionRanking(orgId, division.Id, tt.Id, i, "test"));
+        }
+        await db.SaveChangesAsync();
+
+        var materializer = new StageMaterializationService(db, new FakeStandingsCalculator());
+        await materializer.SnakeIntoPoolsAsync(division.Id);
+        await materializer.GeneratePoolMatchesAsync(division.Id);
+
+        var teams = await db.Teams.ToListAsync();
+        var mover = teams.First(t => t.PoolId is not null);
+        var destPool = await db.Pools.FirstAsync(p => p.DivisionId == division.Id && p.Id != mover.PoolId);
+
+        var handler = new AssignTeamPoolHandler(db);
+        var result = await handler.Handle(new AssignTeamPoolCommand(mover.Id, destPool.Id), CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.True(result!.ClearedPoolMatches);
+
+        var remaining = await db.Matches.CountAsync(m =>
+            m.DivisionId == division.Id
+            && m.PoolId != null
+            && (m.PoolId == mover.PoolId || m.PoolId == destPool.Id));
+        // mover.PoolId already updated; check both original pools via dest and all matches cleared for both
+        Assert.Equal(0, await db.Matches.CountAsync(m => m.DivisionId == division.Id && m.PoolId != null));
     }
 
     [Fact]

@@ -20,6 +20,13 @@ public class PoolEntry : Entity, ITenantScoped
         SeedInPool = seedInPool;
     }
 
+    public void Reassign(Guid poolId, int seedInPool)
+    {
+        PoolId = poolId;
+        SeedInPool = seedInPool;
+        Touch();
+    }
+
     public void SetFinishPosition(int position)
     {
         FinishPosition = position;

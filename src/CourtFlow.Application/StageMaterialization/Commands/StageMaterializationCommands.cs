@@ -11,6 +11,15 @@ public sealed class SnakeIntoPoolsHandler(IStageMaterialization materialization)
         materialization.SnakeIntoPoolsAsync(request.DivisionId, cancellationToken);
 }
 
+public sealed record GeneratePoolMatchesCommand(Guid DivisionId) : IRequest;
+
+public sealed class GeneratePoolMatchesHandler(IStageMaterialization materialization)
+    : IRequestHandler<GeneratePoolMatchesCommand>
+{
+    public Task Handle(GeneratePoolMatchesCommand request, CancellationToken cancellationToken) =>
+        materialization.GeneratePoolMatchesAsync(request.DivisionId, cancellationToken);
+}
+
 public sealed record GenerateBracketsCommand(Guid DivisionId) : IRequest;
 
 public sealed class GenerateBracketsHandler(IStageMaterialization materialization)

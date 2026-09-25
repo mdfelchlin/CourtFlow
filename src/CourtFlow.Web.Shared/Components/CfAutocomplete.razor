@@ -1,24 +1,31 @@
 @typeparam T
 
-<MudAutocomplete T="T"
-                 Value="Value"
-                 ValueChanged="ValueChanged"
-                 Label="@Label"
-                 Dense="true"
-                 Margin="Margin.Dense"
-                 Variant="Variant.Outlined"
-                 Class="@Class"
-                 Style="@Style"
-                 Clearable="@Clearable"
-                 Strict="@Strict"
-                 CoerceText="@CoerceText"
-                 ResetValueOnEmptyText="@ResetValueOnEmptyText"
-                 Placeholder="@Placeholder"
-                 MaxItems="@MaxItems"
-                 FullWidth="@FullWidth"
-                 Disabled="@Disabled"
-                 SearchFunc="@SearchFunc"
-                 ToStringFunc="@ToStringFunc" />
+<div class="@RootClass" style="@Style">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="cf-field__label">@Label</label>
+    }
+    <MudAutocomplete T="T"
+                     Value="Value"
+                     ValueChanged="ValueChanged"
+                     Dense="true"
+                     Margin="Margin.Dense"
+                     Variant="Variant.Outlined"
+                     Class="cf-field__control"
+                     Clearable="@Clearable"
+                     Strict="@Strict"
+                     CoerceText="@CoerceText"
+                     ResetValueOnEmptyText="@ResetValueOnEmptyText"
+                     Placeholder="@Placeholder"
+                     MaxItems="@MaxItems"
+                     FullWidth="@FullWidth"
+                     Disabled="@Disabled"
+                     SearchFunc="@SearchFunc"
+                     ToStringFunc="@ToStringFunc"
+                     Adornment="@EffectiveAdornment"
+                     AdornmentIcon="@AdornmentIcon"
+                     UserAttributes="@AriaAttributes" />
+</div>
 
 @code {
     [Parameter] public T? Value { get; set; }
@@ -34,6 +41,18 @@
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public Func<T?, string>? ToStringFunc { get; set; }
     [Parameter] public Func<string, CancellationToken, Task<IEnumerable<T>>>? SearchFunc { get; set; }
+    [Parameter] public string? AdornmentIcon { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
+
+    private Adornment EffectiveAdornment =>
+        string.IsNullOrWhiteSpace(AdornmentIcon) ? Adornment.None : Adornment.Start;
+
+    private string RootClass =>
+        string.IsNullOrWhiteSpace(Class) ? "cf-field" : $"cf-field {Class}";
+
+    private Dictionary<string, object>? AriaAttributes =>
+        string.IsNullOrWhiteSpace(Label)
+            ? null
+            : new Dictionary<string, object> { ["aria-label"] = Label };
 }

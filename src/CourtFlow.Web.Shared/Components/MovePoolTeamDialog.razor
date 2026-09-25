@@ -1,0 +1,48 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Move <strong>@TeamDisplay.Label(Team.Club, Team.Name)</strong> to another pool.
+        </MudText>
+        <CfSelect T="Guid?"
+                   @bind-Value="_poolId"
+                   Label="Destination pool"
+                   Required="true"
+                   ToStringFunc="@FormatPool">
+            @foreach (var p in Pools)
+            {
+                <MudSelectItem T="Guid?" Value="@p.Id">@p.Name</MudSelectItem>
+            }
+        </CfSelect>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            Moving a team changes pool sizes. Any generated schedule for the affected pools will be cleared.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Confirm" Disabled="_poolId is null">Move</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public TeamDto Team { get; set; } = default!;
+    [Parameter] public IReadOnlyList<PoolOption> Pools { get; set; } = Array.Empty<PoolOption>();
+
+    private Guid? _poolId;
+
+    public sealed record PoolOption(Guid Id, string Name);
+
+    private string FormatPool(Guid? id)
+    {
+        if (id is null) return "";
+        return Pools.FirstOrDefault(p => p.Id == id)?.Name ?? id.ToString()!;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private void Confirm()
+    {
+        if (_poolId is null) return;
+        Dialog.Close(DialogResult.Ok(_poolId.Value));
+    }
+}

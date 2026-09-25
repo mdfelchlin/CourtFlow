@@ -47,6 +47,13 @@ public class TeamsController : ControllerBase
         return r is null ? NotFound() : Ok(r);
     }
 
+    [HttpPost("{id:guid}/swap-pool")]
+    public async Task<IActionResult> SwapPool(Guid id, [FromBody] SwapTeamPoolBody body, CancellationToken ct)
+    {
+        var r = await _mediator.Send(new SwapTeamPoolsCommand(id, body.OtherTeamId), ct);
+        return r is null ? NotFound() : Ok(r);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
         await _mediator.Send(new DeleteTeamCommand(id), ct) ? NoContent() : NotFound();
@@ -54,3 +61,4 @@ public class TeamsController : ControllerBase
 
 public sealed record MoveTeamDivisionBody(Guid DivisionId);
 public sealed record AssignTeamPoolBody(Guid? PoolId);
+public sealed record SwapTeamPoolBody(Guid OtherTeamId);

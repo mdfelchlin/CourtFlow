@@ -250,7 +250,7 @@ public class ScheduleIntegrationTests
     }
 
     [Fact]
-    public async Task SnakeIntoPools_AssignsWorkTeams()
+    public async Task GeneratePoolMatches_AssignsWorkTeams()
     {
         await using var db = ImportFeaturesTests.BuildDb();
         var orgId = Guid.NewGuid();
@@ -270,6 +270,7 @@ public class ScheduleIntegrationTests
 
         var materializer = new StageMaterializationService(db, new FakeStandingsCalculator());
         await materializer.SnakeIntoPoolsAsync(division.Id);
+        await materializer.GeneratePoolMatchesAsync(division.Id);
 
         var officials = await db.MatchOfficials.ToListAsync();
         Assert.NotEmpty(officials);

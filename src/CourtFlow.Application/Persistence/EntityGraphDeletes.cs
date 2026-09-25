@@ -48,18 +48,49 @@ public static class EntityGraphDeletes
             ct);
     }
 
-    public static async Task ClearDivisionPoolPlayMatchesAsync(
+    public static Task ClearDivisionPoolPlayMatchesAsync(
         IAppDbContext db,
         Guid divisionId,
         Guid poolStageId,
         Guid scheduleVersionId,
+        CancellationToken ct) =>
+        ClearPoolPlayMatchesAsync(
+            db,
+            divisionId,
+            poolStageId,
+            scheduleVersionId,
+            poolIds: null,
+            ct);
+
+    public static Task ClearPoolPlayMatchesForPoolsAsync(
+        IAppDbContext db,
+        Guid divisionId,
+        Guid poolStageId,
+        Guid scheduleVersionId,
+        IReadOnlyCollection<Guid> poolIds,
+        CancellationToken ct) =>
+        ClearPoolPlayMatchesAsync(
+            db,
+            divisionId,
+            poolStageId,
+            scheduleVersionId,
+            poolIds,
+            ct);
+
+    private static async Task ClearPoolPlayMatchesAsync(
+        IAppDbContext db,
+        Guid divisionId,
+        Guid poolStageId,
+        Guid scheduleVersionId,
+        IReadOnlyCollection<Guid>? poolIds,
         CancellationToken ct)
     {
-        var matchIds = await db.Matches
-            .Where(m => m.DivisionId == divisionId && m.PoolId != null && m.StageId == poolStageId)
-            .Select(m => m.Id)
-            .ToListAsync(ct);
+        var query = db.Matches
+            .Where(m => m.DivisionId == divisionId && m.PoolId != null && m.StageId == poolStageId);
+        if (poolIds is { Count: > 0 })
+            query = query.Where(m => m.PoolId != null && poolIds.Contains(m.PoolId.Value));
 
+        var matchIds = await query.Select(m => m.Id).ToListAsync(ct);
         if (matchIds.Count == 0)
             return;
 
@@ -68,6 +99,7 @@ public static class EntityGraphDeletes
             db.MatchAssignments.Where(a => a.ScheduleVersionId == scheduleVersionId && matchIds.Contains(a.MatchId)),
             ct);
 
+        await BulkDeleteAsync(db, db.MatchOfficials.Where(o => matchIds.Contains(o.MatchId)), ct);
         await BulkDeleteAsync(db, db.MatchSlotSources.Where(s => matchIds.Contains(s.MatchId)), ct);
         await BulkDeleteAsync(db, db.Matches.Where(m => matchIds.Contains(m.Id)), ct);
     }

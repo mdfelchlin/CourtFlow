@@ -203,7 +203,15 @@ else
                                    StartIcon="@Icons.Material.Filled.GridView"
                                    Disabled="_materializeBusy || _editingRankings || _teams.Count < 3 || !CanSnakeIntoPools"
                                    OnClick="SnakeIntoPoolsAsync">
-                            @(IsRoundRobinFormat ? "Generate round robin" : "Snake rankings into pools")
+                            Snake rankings into pools
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.CalendarMonth"
+                                   Disabled="_materializeBusy || !CanGeneratePoolMatches"
+                                   OnClick="GeneratePoolMatchesAsync">
+                            @(IsRoundRobinFormat ? "Generate round robin" : "Generate pool schedule")
                         </MudButton>
                         @if (!IsRoundRobinFormat)
                         {
@@ -219,6 +227,10 @@ else
                         @if (!CanSnakeIntoPools && _poolDraft.Count > 0)
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@SnakePrerequisiteHint</MudText>
+                        }
+                        @if (CanSnakeIntoPools && !CanGeneratePoolMatches)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Snake teams into pools, then generate the schedule.</MudText>
                         }
                     </MudStack>
                 </MudPaper>
@@ -252,11 +264,13 @@ else
                             @foreach (var pool in _poolDraft)
                             {
                                 <MudItem xs="12" md="6">
-                                    <MudPaper Class="pa-2" Outlined="true">
-                                        <MudStack Spacing="0">
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
-                                                <CfTextField @bind-Value="pool.Name" Label="Pool name" Class="flex-grow-1" />
-                                                <CfNumericField T="int" @bind-Value="pool.TargetSize" Label="Size" Min="2" Max="8" Style="max-width:6rem;" />
+                                    <MudPaper Class="pa-3 cf-pool-card" Outlined="true" Elevation="0">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2" Wrap="Wrap.Wrap">
+                                                <CfTextField @bind-Value="pool.Name"
+                                                             Label="Pool name"
+                                                             Class="flex-grow-1" />
+                                                <CfNumericField T="int" @bind-Value="pool.TargetSize" Label="Size" Min="2" Max="8" Style="max-width:5.5rem;" />
                                                 <MudTooltip Text="@PoolScheduleTooltip(pool)">
                                                     <MudIconButton Icon="@Icons.Material.Filled.Info"
                                                                    Size="Size.Small"
@@ -267,6 +281,7 @@ else
                                             <CfSelect T="Guid"
                                                        Label="Court(s)"
                                                        MultiSelection="true"
+                                                       AdornmentIcon="@Icons.Material.Filled.Place"
                                                        SelectedValues="@GetPoolCourtSelection(pool)"
                                                        SelectedValuesChanged="@(ids => SetPoolCourts(pool, ids.ToList()))"
                                                        ToStringFunc="@(id => _courtLabelById.GetValueOrDefault(id, id.ToString()))">
@@ -275,62 +290,45 @@ else
                                                     <MudSelectItem T="Guid" Value="@court.Id">@court.Label</MudSelectItem>
                                                 }
                                             </CfSelect>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                            <div class="cf-pool-team-list">
                                                 @for (var slot = 1; slot <= pool.TargetSize; slot++)
                                                 {
-                                                    var entry = PoolEntryLabel(pool, slot);
-                                                    <div>@entry</div>
+                                                    var currentSlot = slot;
+                                                    var slotTeam = GetPoolSlotTeam(pool, currentSlot);
+                                                    var rowTeam = slotTeam;
+                                                    <div class="cf-pool-team-row">
+                                                        <span class="cf-pool-seed">@currentSlot</span>
+                                                        <MudAvatar Size="Size.Small" Color="Color.Default" Variant="Variant.Filled" Class="cf-pool-team-avatar">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
+                                                        </MudAvatar>
+                                                        <span class="cf-pool-team-name">
+                                                            @(rowTeam is null ? "—" : TeamDisplay.Label(rowTeam.Club, rowTeam.Name))
+                                                        </span>
+                                                        @if (rowTeam is not null && pool.Id != Guid.Empty)
+                                                        {
+                                                            <div class="cf-pool-team-actions">
+                                                                <MudButton Size="Size.Small"
+                                                                           Variant="Variant.Outlined"
+                                                                           Color="Color.Primary"
+                                                                           StartIcon="@Icons.Material.Filled.SwapHoriz"
+                                                                           Disabled="_materializeBusy"
+                                                                           OnClick="@(() => OpenSwapPoolTeamDialogAsync(rowTeam))">Swap</MudButton>
+                                                                <MudButton Size="Size.Small"
+                                                                           Variant="Variant.Outlined"
+                                                                           Color="Color.Primary"
+                                                                           StartIcon="@Icons.Material.Filled.OpenWith"
+                                                                           Disabled="_materializeBusy"
+                                                                           OnClick="@(() => OpenMovePoolTeamDialogAsync(rowTeam))">Move</MudButton>
+                                                            </div>
+                                                        }
+                                                    </div>
                                                 }
-                                            </MudText>
-                                            @if (pool.Id != Guid.Empty)
-                                            {
-                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-2" Wrap="Wrap.Wrap">
-                                                    <MudText Typo="Typo.caption">Pool matches</MudText>
-                                                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
-                                                               Disabled="_materializeBusy || pool.Id == Guid.Empty"
-                                                               OnClick="@(() => OpenAddPoolMatchDialogAsync(pool))">Add</MudButton>
-                                                </MudStack>
-                                                @foreach (var pm in GetPoolMatches(pool))
-                                                {
-                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1" Wrap="Wrap.Wrap">
-                                                        <MudText Typo="Typo.caption">@pm.HomeTeamDisplay vs @pm.AwayTeamDisplay</MudText>
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                                                       Disabled="_materializeBusy"
-                                                                       OnClick="@(() => DeletePoolMatchAsync(pm.MatchId))" />
-                                                    </MudStack>
-                                                }
-                                                @if (GetPoolMatches(pool).Count == 0)
-                                                {
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">No matches yet — generate or add manually.</MudText>
-                                                }
-                                            }
+                                            </div>
                                         </MudStack>
                                     </MudPaper>
                                 </MudItem>
                             }
                         </MudGrid>
-                        <MudDivider Class="my-3" />
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Manual pool assignments</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">Override snake results by moving teams between pools.</MudText>
-                        @foreach (var team in _teams)
-                        {
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1" Wrap="Wrap.Wrap">
-                                <MudText Typo="Typo.body2" Style="min-width:12rem;">@TeamDisplay.Label(team.Club, team.Name)</MudText>
-                                <CfSelect T="Guid?" Value="@team.PoolId" ValueChanged="@(pid => AssignTeamPoolAsync(team, pid))" Label="Pool" Clearable="true" Style="max-width:14rem;">
-                                    @foreach (var p in _poolDraft.Where(p => p.Id != Guid.Empty))
-                                    {
-                                        <MudSelectItem T="Guid?" Value="@p.Id">@p.Name</MudSelectItem>
-                                    }
-                                </CfSelect>
-                            </MudStack>
-                        }
-                        <DivisionMatchGraphPanel DivisionId="DivisionId"
-                                                 DefaultStageId="@_stages.FirstOrDefault(s => s.StageType == StageTypeDto.Pool)?.Id"
-                                                 DefaultPoolId="@(_poolDraft.FirstOrDefault(p => p.Id != Guid.Empty)?.Id)"
-                                                 Teams="_teams"
-                                                 Pools="@PoolOptionsList"
-                                                 Courts="@CourtOptionsList"
-                                                 OnChanged="OnMatchGraphChangedAsync" />
                         @if (!IsRoundRobinFormat)
                         {
                         <MudDivider Class="my-3" />
@@ -490,6 +488,10 @@ else
     private Dictionary<Guid, string> _courtLabelById = new();
     private bool _loading = true;
     private int _wizardStep;
+    private Guid _lastLoadedDivisionId;
+    private int _loadGeneration;
+    private DateTime _ignorePoolAssignUntilUtc;
+    private Dictionary<(Guid PoolId, int Slot), TeamDto> _poolSlotTeams = new();
 
     private List<EditablePool> _poolDraft = new();
     private List<EditableBracket> _bracketDraft = new();
@@ -544,6 +546,13 @@ else
         && _poolDraft.All(p => p.Id != Guid.Empty)
         && PoolsMatchSuggestedLayout
         && !RankingsLocked;
+    private bool CanGeneratePoolMatches =>
+        !_editingRankings
+        && !RankingsLocked
+        && _poolDraft.Count > 0
+        && _poolDraft.All(p => p.Id != Guid.Empty)
+        && _stages.Any(s => s.StageType == StageTypeDto.Pool && s.Status is StageStatusDto.Seeded or StageStatusDto.InProgress or StageStatusDto.Completed)
+        && _poolDraft.All(p => _teams.Count(t => t.PoolId == p.Id) >= 2);
     private bool CanResolveBracketSlots =>
         !IsRoundRobinFormat
         && !IsBracketOnlyFormat
@@ -572,8 +581,9 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadAsync();
         ApplyStepFromQuery();
+        if (_lastLoadedDivisionId != DivisionId)
+            await LoadAsync();
     }
 
     private void ApplyStepFromQuery()
@@ -604,7 +614,9 @@ else
 
     private async Task LoadAsync()
     {
+        var generation = ++_loadGeneration;
         _loading = true;
+        IgnorePoolAssignsBriefly();
         try
         {
             await TournamentStore.EnsureInitializedAsync();
@@ -612,26 +624,42 @@ else
             if (tid is null) { _division = null; return; }
 
             var divisions = await Api.Divisions.ListAsync(tid);
+            if (generation != _loadGeneration) return;
+
             _division = divisions.FirstOrDefault(d => d.Id == DivisionId);
             if (_division is null) return;
 
             await ReloadTeamsAsync();
+            if (generation != _loadGeneration) return;
+
             _stages = (await Api.Stages.ListAsync(DivisionId)).OrderBy(s => s.StageNumber).ToList();
+            if (generation != _loadGeneration) return;
+
             _wizard = await Api.Divisions.GetWizardStateAsync(DivisionId);
+            if (generation != _loadGeneration) return;
+
             await LoadCourtsAsync(tid.Value);
+            if (generation != _loadGeneration) return;
+
             SyncDraftsFromWizard();
             await LoadWorkRotationAsync();
+            if (generation != _loadGeneration) return;
+
             await LoadStandingsPreviewAsync();
             ApplyStepFromQuery();
             await RefreshValidationAsync();
+            _lastLoadedDivisionId = DivisionId;
+            IgnorePoolAssignsBriefly();
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            if (generation == _loadGeneration)
+                Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
         {
-            _loading = false;
+            if (generation == _loadGeneration)
+                _loading = false;
         }
     }
 
@@ -649,17 +677,80 @@ else
         await RefreshValidationAsync();
     }
 
-    private async Task AssignTeamPoolAsync(TeamDto team, Guid? poolId)
+    private async Task OpenSwapPoolTeamDialogAsync(TeamDto team)
     {
+        var others = _teams.Where(t => t.Id != team.Id && t.PoolId is not null).ToList();
+        if (others.Count == 0)
+        {
+            Snackbar.Add("No other assigned teams to swap with.", Severity.Info);
+            return;
+        }
+
+        var poolNames = _poolDraft.Where(p => p.Id != Guid.Empty).ToDictionary(p => p.Id, p => p.Name);
+        var parameters = new DialogParameters<SwapPoolTeamDialog>
+        {
+            { x => x.Team, team },
+            { x => x.OtherTeams, others },
+            { x => x.PoolNames, poolNames }
+        };
+        var dialog = await DialogService.ShowAsync<SwapPoolTeamDialog>("Swap teams", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not Guid otherTeamId) return;
+
+        _materializeBusy = true;
         try
         {
-            await Api.Teams.AssignPoolAsync(team.Id, new AssignTeamPoolDto(poolId));
+            await Api.Teams.SwapPoolAsync(team.Id, new SwapTeamPoolDto(otherTeamId));
             await ReloadTeamsAsync();
+            await LoadWorkRotationAsync();
             await RefreshValidationAsync();
-            Snackbar.Add("Pool assignment updated", Severity.Success);
+            Snackbar.Add("Teams swapped.", Severity.Success);
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _materializeBusy = false; }
     }
+
+    private async Task OpenMovePoolTeamDialogAsync(TeamDto team)
+    {
+        var pools = _poolDraft
+            .Where(p => p.Id != Guid.Empty && p.Id != team.PoolId)
+            .Select(p => new MovePoolTeamDialog.PoolOption(p.Id, p.Name))
+            .ToList();
+        if (pools.Count == 0)
+        {
+            Snackbar.Add("No other pools to move into.", Severity.Info);
+            return;
+        }
+
+        var parameters = new DialogParameters<MovePoolTeamDialog>
+        {
+            { x => x.Team, team },
+            { x => x.Pools, pools }
+        };
+        var dialog = await DialogService.ShowAsync<MovePoolTeamDialog>("Move team", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not Guid poolId) return;
+
+        _materializeBusy = true;
+        try
+        {
+            var assignResult = await Api.Teams.AssignPoolAsync(team.Id, new AssignTeamPoolDto(poolId));
+            _wizard = await Api.Divisions.GetWizardStateAsync(DivisionId);
+            SyncDraftsFromWizard();
+            await ReloadTeamsAsync();
+            await LoadWorkRotationAsync();
+            await RefreshValidationAsync();
+            if (assignResult.ClearedPoolMatches)
+                Snackbar.Add("Team moved. Pool schedule cleared — regenerate when ready.", Severity.Warning);
+            else
+                Snackbar.Add("Team moved.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _materializeBusy = false; }
+    }
+
+    private void IgnorePoolAssignsBriefly() =>
+        _ignorePoolAssignUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
 
     private async Task LoadCourtsAsync(Guid tournamentId)
     {
@@ -682,9 +773,12 @@ else
     {
         if (_wizard is null)
         {
-            _poolDraft = new() { new EditablePool { Name = "Pool A", TargetSize = _poolSettingsDraft.TeamsPerPoolTarget, Sequence = 0 } };
-            _bracketDraft = new() { new EditableBracket { Name = "Gold", TeamCount = DefaultBracketTeamCount("Gold"), Type = BracketTypeDto.SingleElimination } };
-            _ruleDraft = new();
+            if (_poolDraft.Count == 0 || _poolDraft.All(p => p.Id == Guid.Empty))
+                _poolDraft = new() { new EditablePool { Name = "Pool A", TargetSize = _poolSettingsDraft.TeamsPerPoolTarget, Sequence = 0 } };
+            if (_bracketDraft.Count == 0)
+                _bracketDraft = new() { new EditableBracket { Name = "Gold", TeamCount = DefaultBracketTeamCount("Gold"), Type = BracketTypeDto.SingleElimination } };
+            if (_ruleDraft.Count == 0)
+                _ruleDraft = new();
             return;
         }
 
@@ -760,11 +854,19 @@ else
 
     private async Task ReloadTeamsAsync()
     {
+        IgnorePoolAssignsBriefly();
         _editingRankings = false;
         _rankingDraft = new();
         var teams = await Api.Teams.ListAsync(divisionId: DivisionId);
         _teams = teams.OrderBy(t => t.SeedHint ?? int.MaxValue).ThenBy(t => t.Id).ToList();
+        RebuildPoolSlotTeams();
+        IgnorePoolAssignsBriefly();
     }
+
+    private void RebuildPoolSlotTeams() =>
+        _poolSlotTeams = _teams
+            .Where(t => t.PoolId is not null && t.SeedInPool is not null)
+            .ToDictionary(t => (t.PoolId!.Value, t.SeedInPool!.Value));
 
     private int RankLabel(TeamDto team) => _teams.FindIndex(t => t.Id == team.Id) + 1;
     private int RankLabelInDraft(TeamDto team) => _rankingDraft.FindIndex(t => t.Id == team.Id) + 1;
@@ -792,6 +894,7 @@ else
             var updated = await Api.Divisions.ReorderTeamsAsync(DivisionId, new ReorderDivisionTeamsDto(ids));
             var byId = updated.ToDictionary(t => t.Id);
             _teams = ids.Select(id => byId.TryGetValue(id, out var u) ? u : _rankingDraft.First(t => t.Id == id)).ToList();
+            RebuildPoolSlotTeams();
             _editingRankings = false;
             _rankingDraft = new();
             _dropContainer?.Refresh();
@@ -853,13 +956,30 @@ else
         try
         {
             await Api.Divisions.SnakeIntoPoolsAsync(DivisionId);
+            IgnorePoolAssignsBriefly();
             await ReloadTeamsAsync();
             _stages = (await Api.Stages.ListAsync(DivisionId)).OrderBy(s => s.StageNumber).ToList();
             _wizard = await Api.Divisions.GetWizardStateAsync(DivisionId);
             SyncDraftsFromWizard();
             await LoadWorkRotationAsync();
+            IgnorePoolAssignsBriefly();
             GoToStep(1);
-            Snackbar.Add("Rankings snaked into pools; pool matches generated.", Severity.Success);
+            Snackbar.Add("Rankings snaked into pools.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _materializeBusy = false; }
+    }
+
+    private async Task GeneratePoolMatchesAsync()
+    {
+        _materializeBusy = true;
+        try
+        {
+            await Api.Divisions.GeneratePoolMatchesAsync(DivisionId);
+            await LoadWorkRotationAsync();
+            await LoadStandingsPreviewAsync();
+            await RefreshValidationAsync();
+            Snackbar.Add("Pool matches generated.", Severity.Success);
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         finally { _materializeBusy = false; }
@@ -1235,13 +1355,24 @@ else
     private IReadOnlyCollection<Guid> GetPoolCourtSelection(EditablePool pool) => pool.CourtIds.ToList();
     private void SetPoolCourts(EditablePool pool, IReadOnlyCollection<Guid> ids) => pool.CourtIds = ids.ToHashSet();
 
-    private string PoolEntryLabel(EditablePool pool, int slot)
+    private TeamDto? GetPoolSlotTeam(EditablePool pool, int slot)
     {
-        if (_wizard is null) return $"{slot}: —";
-        var entries = _teams.Where(t => t.PoolId == pool.Id).OrderBy(t => t.SeedHint ?? int.MaxValue).ToList();
-        if (slot <= entries.Count)
-            return $"{slot}: {TeamDisplay.Label(entries[slot - 1].Club, entries[slot - 1].Name)}";
-        return $"{slot}: —";
+        if (pool.Id != Guid.Empty && _poolSlotTeams.TryGetValue((pool.Id, slot), out var seeded))
+            return seeded;
+
+        if (pool.Id == Guid.Empty) return null;
+
+        var team = _teams.FirstOrDefault(t => t.PoolId == pool.Id && t.SeedInPool == slot);
+        if (team is not null) return team;
+
+        var legacyOrder = _teams.Where(t => t.PoolId == pool.Id)
+            .OrderBy(t => t.SeedInPool ?? int.MaxValue)
+            .ThenBy(t => t.SeedHint ?? int.MaxValue)
+            .ToList();
+        if (legacyOrder.Count >= slot && legacyOrder.All(t => t.SeedInPool is null))
+            return legacyOrder[slot - 1];
+
+        return null;
     }
 
     private string TeamNameForTournamentTeam(Guid? tournamentTeamId)
@@ -1255,39 +1386,6 @@ else
     {
         var team = _teams.FirstOrDefault(t => t.Id == row.TeamId);
         return team is null ? row.TeamName : TeamDisplay.Label(team.Club, team.Name);
-    }
-
-    private IReadOnlyList<PoolMatchWorkTeamDto> GetPoolMatches(EditablePool pool) =>
-        _workRotation.FirstOrDefault(w => w.PoolId == pool.Id)?.Matches
-        ?? Array.Empty<PoolMatchWorkTeamDto>();
-
-    private async Task OpenAddPoolMatchDialogAsync(EditablePool pool)
-    {
-        var parameters = new DialogParameters<CreateMatchDialog>
-        {
-            { x => x.DivisionId, DivisionId },
-            { x => x.StageId, _stages.FirstOrDefault(s => s.StageType == StageTypeDto.Pool)?.Id },
-            { x => x.PoolId, pool.Id },
-            { x => x.Courts, CourtOptionsList },
-            { x => x.Teams, _teams }
-        };
-        var dialog = await DialogService.ShowAsync<CreateMatchDialog>($"Add match · {pool.Name}", parameters);
-        var result = await dialog.Result;
-        if (result is { Canceled: false })
-            await OnMatchGraphChangedAsync();
-    }
-
-    private async Task DeletePoolMatchAsync(Guid matchId)
-    {
-        _materializeBusy = true;
-        try
-        {
-            await Api.Matches.DeleteAsync(matchId);
-            Snackbar.Add("Pool match removed", Severity.Success);
-            await OnMatchGraphChangedAsync();
-        }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-        finally { _materializeBusy = false; }
     }
 
     private bool PoolHasMatches(EditablePool pool) =>

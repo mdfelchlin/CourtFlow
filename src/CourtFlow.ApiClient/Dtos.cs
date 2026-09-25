@@ -106,12 +106,15 @@ public sealed record PoolDto(Guid Id, Guid DivisionId, string Name);
 public sealed record CreatePoolDto(Guid DivisionId, string Name);
 public sealed record UpdatePoolDto(Guid Id, string Name);
 
-public sealed record TeamDto(Guid Id, Guid? TournamentTeamId, Guid DivisionId, Guid? PoolId, string Name, string? Club, WaveDto Wave, int? SeedHint);
+public sealed record TeamDto(Guid Id, Guid? TournamentTeamId, Guid DivisionId, Guid? PoolId, string Name, string? Club, WaveDto Wave, int? SeedHint, int? SeedInPool);
 public sealed record CreateTeamDto(Guid DivisionId, string Name, string? Club);
 public sealed record UpdateTeamDto(Guid Id, string Name, string? Club);
 public sealed record MoveTeamDto(Guid DivisionId);
 
 public sealed record AssignTeamPoolDto(Guid? PoolId);
+public sealed record AssignTeamPoolResultDto(TeamDto Team, bool ClearedPoolMatches);
+public sealed record SwapTeamPoolDto(Guid OtherTeamId);
+public sealed record SwapTeamPoolsResultDto(TeamDto Team, TeamDto OtherTeam);
 public sealed record ReorderDivisionTeamsDto(IReadOnlyList<Guid> OrderedTeamIds);
 public sealed record ApplyDivisionSeedingDto(RankedSeedStrategyDto Strategy);
 public sealed record ApplyDivisionSeedingResultDto(bool Ok, string? Error);

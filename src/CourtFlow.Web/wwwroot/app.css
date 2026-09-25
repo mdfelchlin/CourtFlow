@@ -3,6 +3,8 @@
     --cf-radius-card: 8px;
     --cf-toolbar-icon-size: 20px;
     --cf-muted: #6b7280;
+    --cf-shadow-card: 0 1px 2px color-mix(in srgb, var(--mud-palette-black, #000) 6%, transparent),
+        0 2px 8px color-mix(in srgb, var(--mud-palette-black, #000) 8%, transparent);
 
     /* Semantic surfaces — Court Status Grid & schedule cues (mud palette resolves at runtime) */
     --cf-surface-0: var(--mud-palette-background-grey, #e8eaf0);
@@ -128,6 +130,48 @@ h1:focus {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+
+/* Stacked labels above outlined Mud inputs (Cf* wrappers) */
+.cf-field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.cf-field__label {
+    display: block;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+}
+
+.cf-field__control {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.cf-field .mud-input-adornment-start {
+    margin-inline-end: 0.5rem;
+}
+
+.cf-field .mud-input-adornment-start .mud-icon-root {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    background: var(--cf-tint-info-pale);
+    color: var(--mud-palette-primary);
+    box-sizing: border-box;
 }
 
 .cf-select--sm {
@@ -256,6 +300,9 @@ h1:focus {
     width: 100%;
 }
 
+.cf-field.cf-field--sm,
+.cf-field.cf-field--md,
+.cf-field.cf-field--lg,
 .mud-picker.cf-field--sm,
 .mud-picker.cf-field--md,
 .mud-picker.cf-field--lg {

@@ -1,16 +1,28 @@
-<MudDatePicker @bind-Date="Date"
-               Label="@Label"
-               Variant="Variant.Outlined"
-               Margin="Margin.Dense"
-               PickerVariant="PickerVariant.Dialog"
-               Editable="true"
-               DateFormat="MM/dd/yyyy"
-               Mask="@(new DateMask("MM/dd/yyyy"))"
-               Adornment="Adornment.Start"
-               AdornmentIcon="@Icons.Material.Filled.CalendarToday"
-               Required="@Required"
-               Disabled="@Disabled"
-               Class="@CombinedClass" />
+<div class="@RootClass">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="cf-field__label">
+            @Label@if (Required)
+            {
+                <span aria-hidden="true"> *</span>
+            }
+        </label>
+    }
+    <MudDatePicker Date="Date"
+                   DateChanged="DateChanged"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   PickerVariant="PickerVariant.Dialog"
+                   Editable="true"
+                   DateFormat="MM/dd/yyyy"
+                   Mask="@(new DateMask("MM/dd/yyyy"))"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@EffectiveAdornmentIcon"
+                   Required="@Required"
+                   Disabled="@Disabled"
+                   Class="cf-field__control"
+                   UserAttributes="@AriaAttributes" />
+</div>
 
 @code {
     [Parameter] public string? Label { get; set; }
@@ -18,8 +30,21 @@
     [Parameter] public EventCallback<DateTime?> DateChanged { get; set; }
     [Parameter] public bool Required { get; set; }
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? AdornmentIcon { get; set; }
     [Parameter] public string? Class { get; set; }
 
-    private string CombinedClass =>
-        string.IsNullOrWhiteSpace(Class) ? "cf-date-field" : $"cf-date-field {Class}";
+    private string EffectiveAdornmentIcon =>
+        string.IsNullOrWhiteSpace(AdornmentIcon)
+            ? Icons.Material.Filled.CalendarToday
+            : AdornmentIcon;
+
+    private string RootClass =>
+        string.IsNullOrWhiteSpace(Class)
+            ? "cf-field cf-date-field"
+            : $"cf-field cf-date-field {Class}";
+
+    private Dictionary<string, object>? AriaAttributes =>
+        string.IsNullOrWhiteSpace(Label)
+            ? null
+            : new Dictionary<string, object> { ["aria-label"] = Label };
 }

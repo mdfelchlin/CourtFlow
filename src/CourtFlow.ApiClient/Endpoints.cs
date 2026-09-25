@@ -140,6 +140,12 @@ public sealed class DivisionEndpoints(ICourtFlowDivisionsApi api)
         res.EnsureSuccessStatusCode();
     }
 
+    public async Task GeneratePoolMatchesAsync(Guid divisionId, CancellationToken ct = default)
+    {
+        var res = await _api.GeneratePoolMatchesAsync(divisionId, ct).ConfigureAwait(false);
+        res.EnsureSuccessStatusCode();
+    }
+
     public async Task GenerateBracketsAsync(Guid divisionId, CancellationToken ct = default)
     {
         var res = await _api.GenerateBracketsAsync(divisionId, ct).ConfigureAwait(false);
@@ -262,8 +268,11 @@ public sealed class TeamEndpoints(ICourtFlowTeamsApi api)
     public Task<TeamDto> MoveDivisionAsync(Guid teamId, MoveTeamDto dto, CancellationToken ct = default)
         => _api.MoveDivisionAsync(teamId, dto, ct);
 
-    public Task<TeamDto> AssignPoolAsync(Guid teamId, AssignTeamPoolDto dto, CancellationToken ct = default)
+    public Task<AssignTeamPoolResultDto> AssignPoolAsync(Guid teamId, AssignTeamPoolDto dto, CancellationToken ct = default)
         => _api.AssignPoolAsync(teamId, dto, ct);
+
+    public Task<SwapTeamPoolsResultDto> SwapPoolAsync(Guid teamId, SwapTeamPoolDto dto, CancellationToken ct = default)
+        => _api.SwapPoolAsync(teamId, dto, ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {

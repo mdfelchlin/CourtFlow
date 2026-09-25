@@ -44,3 +44,80 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Pool wizard cards */
+.cf-pool-card {
+    height: 100%;
+    box-shadow: var(--cf-shadow-card);
+}
+
+.cf-pool-team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.65rem;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--cf-radius-card, 8px);
+    background: color-mix(in srgb, var(--mud-palette-background-grey, #f5f5f5) 55%, var(--mud-palette-surface));
+}
+
+.cf-pool-team-row {
+    display: grid;
+    grid-template-columns: 1.75rem 2rem minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.25rem 0.35rem;
+}
+
+.cf-pool-seed {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--mud-palette-primary);
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+}
+
+.cf-pool-team-avatar {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    font-size: 0.875rem !important;
+    background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent) !important;
+    color: var(--mud-palette-primary) !important;
+}
+
+.cf-pool-team-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-primary);
+}
+
+.cf-pool-team-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+    .cf-pool-team-row {
+        grid-template-columns: 1.75rem 2rem minmax(0, 1fr);
+        grid-template-rows: auto auto;
+    }
+
+    .cf-pool-team-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        padding-left: 0.15rem;
+    }
+}

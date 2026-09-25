@@ -63,7 +63,7 @@ public sealed class StageMaterializationService : IStageMaterialization
         if (poolSizes.Count == 0)
             throw new InvalidOperationException($"Cannot derive pool layout for {ordered.Count} teams.");
 
-        var divisionPools = await EnsurePoolsAsync(division, poolSizes.Count, cancellationToken);
+        var divisionPools = await EnsurePoolsAsync(division, poolSizes, cancellationToken);
         var poolSequence = PoolSeeding.BuildSnakePoolSequence(poolSizes);
 
         var poolIds = divisionPools.Select(p => p.Id).ToList();
@@ -91,11 +91,43 @@ public sealed class StageMaterializationService : IStageMaterialization
                 seedInPool));
         }
 
+        for (var i = 0; i < divisionPools.Count; i++)
+        {
+            var size = i < poolSizes.Count
+                ? poolSizes[i]
+                : seedCounters.GetValueOrDefault(divisionPools[i].Id, divisionPools[i].TargetSize);
+            if (size >= 2)
+                divisionPools[i].SetTargetSize(size);
+        }
+
         if (poolStage.Status == StageStatus.Draft)
             poolStage.TransitionTo(StageStatus.Configured);
 
         if (poolStage.Status == StageStatus.Configured)
             poolStage.TransitionTo(StageStatus.Seeded);
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task GeneratePoolMatchesAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        var division = await _db.Divisions.FirstOrDefaultAsync(d => d.Id == divisionId, cancellationToken)
+            ?? throw new InvalidOperationException("Division not found.");
+
+        var poolStage = await _db.Stages
+            .Where(s => s.DivisionId == divisionId && s.StageType == StageType.Pool)
+            .OrderBy(s => s.StageNumber)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Pool stage not found.");
+
+        if (poolStage.Status is StageStatus.InProgress or StageStatus.Completed)
+            throw new InvalidOperationException("Pool stage is in progress or completed — use Repairs to change matches.");
+
+        if (poolStage.Status is StageStatus.Draft or StageStatus.Configured)
+            throw new InvalidOperationException("Snake rankings into pools before generating the pool schedule.");
+
+        var poolSettings = await _db.PoolSettings.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.StageId == poolStage.Id, cancellationToken);
 
         await ReplaceDivisionPoolMatchesAsync(division, poolStage, poolSettings, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
@@ -533,20 +565,19 @@ public sealed class StageMaterializationService : IStageMaterialization
         }
     }
 
-    private async Task<List<Pool>> EnsurePoolsAsync(Division division, int poolCount, CancellationToken ct)
+    private async Task<List<Pool>> EnsurePoolsAsync(Division division, IReadOnlyList<int> poolSizes, CancellationToken ct)
     {
+        var poolCount = poolSizes.Count;
         var pools = await _db.Pools
             .Where(p => p.DivisionId == division.Id)
             .OrderBy(p => p.Sequence)
             .ThenBy(p => p.Name)
             .ToListAsync(ct);
 
-        if (pools.Count >= poolCount)
-            return pools.Take(poolCount).ToList();
-
         var divisionPools = new List<Pool>(poolCount);
         for (var i = 0; i < poolCount; i++)
         {
+            var targetSize = poolSizes[i];
             Pool? pool = i < pools.Count ? pools[i] : null;
             if (pool is null)
             {
@@ -557,9 +588,13 @@ public sealed class StageMaterializationService : IStageMaterialization
             if (pool is null)
             {
                 var name = $"Pool {(char)('A' + i)}";
-                pool = new Pool(division.OrganizationId, division.Id, name, i, targetSize: 4);
+                pool = new Pool(division.OrganizationId, division.Id, name, i, targetSize: targetSize);
                 _db.Pools.Add(pool);
                 pools.Add(pool);
+            }
+            else
+            {
+                pool.SetTargetSize(targetSize);
             }
 
             divisionPools.Add(pool);
@@ -618,14 +653,37 @@ public sealed class StageMaterializationService : IStageMaterialization
             from tt in _db.TournamentTeams
             where tt.TournamentId == division.TournamentId && tt.DivisionId == division.Id
             select new { tt.TeamId, tt.Id }).ToDictionaryAsync(x => x.TeamId, x => x.Id, ct);
+        var teamIdByTournamentTeamId = tournamentTeamByTeamId.ToDictionary(x => x.Value, x => x.Key);
+
+        var poolEntries = await _db.PoolEntries
+            .Where(e => pools.Select(p => p.Id).Contains(e.PoolId))
+            .OrderBy(e => e.PoolId)
+            .ThenBy(e => e.SeedInPool)
+            .ToListAsync(ct);
+        var poolTeamsByPoolId = poolEntries
+            .GroupBy(e => e.PoolId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => teamIdByTournamentTeamId.GetValueOrDefault(e.TournamentTeamId))
+                    .Where(id => id != Guid.Empty)
+                    .ToList());
 
         foreach (var pool in pools)
         {
-            var poolTeams = teams.Where(t => t.PoolId == pool.Id)
-                .OrderBy(t => t.SeedHint ?? int.MaxValue)
-                .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(t => t.Id)
-                .ToList();
+            List<Guid> poolTeams;
+            if (poolTeamsByPoolId.TryGetValue(pool.Id, out var seededTeams) && seededTeams.Count > 0)
+            {
+                poolTeams = seededTeams;
+            }
+            else
+            {
+                poolTeams = teams.Where(t => t.PoolId == pool.Id)
+                    .OrderBy(t => t.SeedHint ?? int.MaxValue)
+                    .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(t => t.Id)
+                    .ToList();
+            }
+
             if (poolTeams.Count < 2)
                 continue;
 
