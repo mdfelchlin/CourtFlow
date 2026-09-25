@@ -1,5 +1,5 @@
 # Intent: CourtFlow
-Author: product owner. Status: draft.
+Author: product owner. Status: accepted.
 
 ## What this is
 CourtFlow is a volleyball tournament application. A director sets up a tournament, runs it, repairs it when the day changes, and publishes what coaches and spectators may see, without emailing a vendor.
