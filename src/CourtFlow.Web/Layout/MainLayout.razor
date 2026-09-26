@@ -8,7 +8,9 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="CfDefaults.AppBarElevation" Color="Color.Primary">
+    @* Color.Default paints the bar with the palette's AppbarBackground and AppbarText roles, which stay the
+       brand teal in both modes even though the dark Primary is lighter. *@
+    <MudAppBar Elevation="CfDefaults.AppBarElevation" Color="Color.Default">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
                        Edge="Edge.Start"

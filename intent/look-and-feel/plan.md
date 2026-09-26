@@ -24,7 +24,7 @@ flowchart LR
    - Delete `wwwroot/lib/bootstrap` and `Layout/MainLayout.razor.css`.
    - Cut `wwwroot/css/app.css` down to the loading screen and `#blazor-error-ui`. Remove the Bootstrap, form-validation, `code`, and `.blazor-error-boundary` rules. The app has no `ErrorBoundary`, so nothing renders that last class.
    - In `index.html`, swap the Roboto link for Inter.
-2. **Add brand assets.** Copy `poc/src/CourtFlow.Web/wwwroot/CourtFlow.png` to `wwwroot/CourtFlow.png`. Replace `favicon.png` and `icon-192.png` with versions made from that logo. This is a one-time image step with any image tool.
+2. **Add brand assets.** Copy `poc/src/CourtFlow.Web/wwwroot/CourtFlow.png` to `wwwroot/CourtFlow.png`, keying its solid teal background to transparent. Replace `favicon.png` and `icon-192.png` with versions made from the original logo, keeping the solid background. This is a one-time image step with any image tool.
 3. **Build the typed theme and theme mode.** Add the `Theming/` files. Add `wwwroot/js/theme.js` and load it in `index.html` before the Blazor script. Register the services in `Program.cs` and resolve the mode before `RunAsync`.
 4. **Add the stylistic guard tests** (`StylingRulesTests`, `ThemeContrastTests`). Adding them early keeps every later step honest.
 5. **Build the layout.** Rewrite `MainLayout`, add `NavMenu`, and bring `NotFound` inside the frame.

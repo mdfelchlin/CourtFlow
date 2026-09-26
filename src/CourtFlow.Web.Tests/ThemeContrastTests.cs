@@ -54,6 +54,18 @@ public class ThemeContrastTests
         AssertContrast(palette.DrawerText, palette.DrawerBackground, "drawer text");
     }
 
+    /// <summary>MudBlazor uses Primary as text for links and the active drawer item.</summary>
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public void Primary_reads_as_text_on_every_surface(string mode)
+    {
+        var palette = Palette(mode);
+
+        AssertContrast(palette.Primary, palette.Background, "primary text on background");
+        AssertContrast(palette.Primary, palette.Surface, "primary text on surface");
+        AssertContrast(palette.Primary, palette.DrawerBackground, "primary text on drawer");
+    }
+
     private static Palette Palette(string mode) =>
         mode == "dark" ? CourtFlowTheme.Theme.PaletteDark : CourtFlowTheme.Theme.PaletteLight;
 

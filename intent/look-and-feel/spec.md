@@ -53,7 +53,7 @@ The brand values below carry over from the proof of concept. They are defined on
 
 | Role | Value |
 | --- | --- |
-| Primary | `#1E4F60` |
+| Primary | `#6FB0C8`, with dark text `#1F2A30` |
 | Secondary | `#A56747` |
 | Background | `#1D2327` |
 | Surface | `#2A3237` |
@@ -65,11 +65,13 @@ The brand values below carry over from the proof of concept. They are defined on
 
 Success, info, warning, and error keep their light values in dark mode unless contrast fails. Text on any colored surface meets WCAG AA in both modes. Warning in particular pairs with dark text, not white.
 
+Primary is lighter in dark mode than the app bar because MudBlazor also uses it as text: links, the active drawer item, and focus rings. The brand teal fails AA as text on dark surfaces, so the dark Primary is a lightened teal with dark text on it, the same treatment Warning gets. Primary as text must reach AA on the background, the surface, and the drawer in both modes.
+
 **Typography.** The font stack is Inter, then "Segoe UI", Roboto, Helvetica, Arial, sans-serif. The base size is 0.95rem, weight 400, line height 1.5. Headings styled as `h4` and `h6` use weight 600. Buttons use weight 600 and sentence case, never uppercase. Sizes are in rem so browser zoom and font settings apply.
 
 **Shape.** The default corner radius is 10 px for cards, dialogs, paper, and buttons.
 
-**Logo and icons.** The logo is the proof of concept's `CourtFlow.png`. The favicon and the 192 px app icon are made from that logo and replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons, using the proof of concept's choices: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
+**Logo and icons.** The logo is the proof of concept's `CourtFlow.png` with its solid teal background made transparent, so it sits on the app bar in both modes without a visible square. The favicon and the 192 px app icon are made from that logo and keep the solid background. They replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons, using the proof of concept's choices: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
 
 ## Light and dark
 

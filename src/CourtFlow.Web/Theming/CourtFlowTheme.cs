@@ -34,7 +34,10 @@ public static class CourtFlowTheme
         },
         PaletteDark = new PaletteDark
         {
-            Primary = "#1E4F60",
+            // Lighter than the app bar because MudBlazor also uses Primary as text: links, the active
+            // drawer item, focus rings. The brand teal is unreadable as text on dark surfaces.
+            Primary = "#6FB0C8",
+            PrimaryContrastText = "#1F2A30",
             Secondary = "#A56747",
             Background = "#1D2327",
             Surface = "#2A3237",
