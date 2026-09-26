@@ -1,0 +1,84 @@
+﻿@page "/"
+@inject ICourtFlowApi Api
+@inject NavigationManager Navigation
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<PageTitle>Tournaments</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="Tournaments">
+        <Actions>
+            <CfAddButton id="add-tournament" AriaLabel="Add tournament" OnClick="Add" />
+        </Actions>
+    </CfPageHeader>
+
+    @if (tournaments is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (tournaments.Count == 0)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="empty-tournaments">@EmptyMessage</CfAlert>
+    }
+    else
+    {
+        <MudTable T="TournamentResponse" Items="tournaments" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Start date</MudTh>
+                <MudTh>End date</MudTh>
+                <MudTh>Time zone</MudTh>
+                <MudTh>Default match duration</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Start date">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd DataLabel="End date">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd DataLabel="Time zone">@UsTimeZones.Label(context.TimeZoneId)</MudTd>
+                <MudTd DataLabel="Default match duration">@context.DefaultMatchDurationMinutes min</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                        <CfIconButton id="@($"edit-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.Edit"
+                                      Label="@($"Edit {context.Name}")"
+                                      OnClick="@(() => Edit(context.Id))" />
+                        <CfIconButton id="@($"delete-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.Delete"
+                                      Label="@($"Delete {context.Name}")"
+                                      Color="Color.Error"
+                                      OnClick="@(() => DeleteAsync(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    public const string EmptyMessage = "No tournaments yet. Use Add to create one.";
+    public const string DeleteConsequence = "Its venues and courts are also deleted.";
+
+    private IReadOnlyList<TournamentResponse>? tournaments;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private void Add() => Navigation.NavigateTo("/tournaments/new");
+
+    private void Edit(Guid id) => Navigation.NavigateTo($"/tournaments/{id}");
+
+    private async Task DeleteAsync(TournamentResponse tournament)
+    {
+        if (!await Confirmations.ConfirmDeleteAsync(tournament.Name, DeleteConsequence))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeleteTournamentAsync(tournament.Id)))
+        {
+            Feedback.Deleted();
+            await Reload();
+        }
+    }
+
+    private async Task Reload() => tournaments = await Api.ListTournamentsAsync();
+}

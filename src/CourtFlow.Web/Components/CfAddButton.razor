@@ -1,0 +1,16 @@
+@* The small, primary "Add" button. AriaLabel names what is added, such as "Add tournament". *@
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           Size="CfDefaults.ButtonSize"
+           StartIcon="@Icons.Material.Filled.Add"
+           aria-label="@AriaLabel"
+           OnClick="OnClick"
+           @attributes="AdditionalAttributes">Add</MudButton>
+
+@code {
+    [Parameter, EditorRequired] public string AriaLabel { get; set; } = "";
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

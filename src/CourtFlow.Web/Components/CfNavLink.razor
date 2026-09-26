@@ -1,0 +1,43 @@
+@* A drawer link that is active on any of its ActivePrefixes, not only on its own Href. *@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@*
+    Blazor's NavLink decides "active" from the URL alone, and MudNavLink puts extra classes on its
+    wrapper rather than the link, so the active class cannot be added directly. Instead the match
+    mode is switched: Prefix when this component decides the link is active (an Href of "/" then
+    matches every path), and All otherwise (an Href of "/" then matches only the list).
+*@
+<MudNavLink Href="@Href"
+            Icon="@Icon"
+            Match="@(IsActive ? NavLinkMatch.Prefix : NavLinkMatch.All)">@ChildContent</MudNavLink>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = "/";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Paths that mark this link active. "/" matches only the root. Any other prefix matches
+    /// itself and anything below it, such as "/tournaments" matching "/tournaments/new".
+    /// Defaults to the link's own Href.
+    /// </summary>
+    [Parameter] public IReadOnlyList<string>? ActivePrefixes { get; set; }
+
+    public bool IsActive => Matches(CurrentPath, ActivePrefixes ?? [Href]);
+
+    private string CurrentPath =>
+        "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => StateHasChanged();
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    public static bool Matches(string path, IReadOnlyList<string> prefixes) =>
+        prefixes.Any(prefix =>
+            prefix == "/"
+                ? path == "/"
+                : path == prefix || path.StartsWith(prefix + "/", StringComparison.Ordinal));
+}

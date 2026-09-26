@@ -1,0 +1,28 @@
+@* The page's h1, styled like h4, with an optional back button, icon, and actions on the right. *@
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        @if (BackHref is not null)
+        {
+            <CfIconButton Icon="@Icons.Material.Filled.ArrowBack" Label="@BackLabel" Href="@BackHref" Size="Size.Medium" />
+        }
+        @if (Icon is not null)
+        {
+            <MudIcon Icon="@Icon" Size="Size.Large" Color="Color.Primary" />
+        }
+        <MudText Typo="Typo.h4" HtmlTag="h1">@Title</MudText>
+    </MudStack>
+    @if (Actions is not null)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            @Actions
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? BackHref { get; set; }
+    [Parameter] public string BackLabel { get; set; } = "Back to tournaments";
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

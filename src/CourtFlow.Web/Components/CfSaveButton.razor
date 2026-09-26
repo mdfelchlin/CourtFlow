@@ -1,0 +1,33 @@
+@* The primary save button. It disables itself while OnSave runs, so a double click saves once. *@
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           StartIcon="@Icons.Material.Filled.Save"
+           Disabled="saving"
+           OnClick="RunAsync"
+           @attributes="AdditionalAttributes">@Text</MudButton>
+
+@code {
+    private bool saving;
+
+    [Parameter] public string Text { get; set; } = "Save";
+    [Parameter, EditorRequired] public Func<Task> OnSave { get; set; } = () => Task.CompletedTask;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private async Task RunAsync()
+    {
+        if (saving)
+            return;
+
+        saving = true;
+        try
+        {
+            await OnSave();
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

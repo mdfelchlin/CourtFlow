@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="CourtFlow.Domain/CourtFlow.Domain.csproj" />
+  <Project Path="CourtFlow.Application/CourtFlow.Application.csproj" />
+  <Project Path="CourtFlow.Infrastructure/CourtFlow.Infrastructure.csproj" />
+  <Project Path="CourtFlow.Api/CourtFlow.Api.csproj" />
+  <Project Path="CourtFlow.Web/CourtFlow.Web.csproj" />
+  <Project Path="CourtFlow.Domain.Tests/CourtFlow.Domain.Tests.csproj" />
+  <Project Path="CourtFlow.Api.Tests/CourtFlow.Api.Tests.csproj" />
+  <Project Path="CourtFlow.Web.Tests/CourtFlow.Web.Tests.csproj" />
+</Solution>

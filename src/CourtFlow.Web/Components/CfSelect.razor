@@ -1,0 +1,40 @@
+@* A single-value select over a fixed list of items, with a prompt when nothing is chosen. *@
+@typeparam T
+
+<CfField Label="@Label" Required="Required" InputId="@inputId" @attributes="AdditionalAttributes">
+    <MudSelect T="T"
+               Value="Value"
+               ValueChanged="ValueChanged"
+               InputId="@inputId"
+               Variant="CfDefaults.FieldVariant"
+               Margin="CfDefaults.FieldMargin"
+               Dense="true"
+               Required="Required"
+               Disabled="Disabled"
+               Placeholder="@Placeholder"
+               ToStringFunc="@LabelOf"
+               FullWidth="true">
+        @foreach (var item in Items)
+        {
+            <MudSelectItem T="T" Value="@item">@ToLabel(item)</MudSelectItem>
+        }
+    </MudSelect>
+</CfField>
+
+@code {
+    private readonly string inputId = CfIds.Next();
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter, EditorRequired] public IEnumerable<T> Items { get; set; } = [];
+    [Parameter, EditorRequired] public Func<T, string> ToLabel { get; set; } = item => item?.ToString() ?? "";
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string LabelOf(T? item) => item is null ? "" : ToLabel(item);
+}

@@ -1,0 +1,245 @@
+﻿@page "/tournaments/new"
+@page "/tournaments/{Id:guid}"
+@inject ICourtFlowApi Api
+@inject NavigationManager Navigation
+@inject IDialogService Dialogs
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<PageTitle>@(IsNew ? "New tournament" : "Tournament")</PageTitle>
+
+<MudStack Spacing="4">
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" data-testid="editor-loading" />
+    }
+    else if (notFound)
+    {
+        <CfPageHeader Title="Tournament" BackHref="/" />
+        <CfAlert Severity="Severity.Error" data-testid="not-found">@NotFoundMessage</CfAlert>
+        <MudLink Href="/">Back to tournaments</MudLink>
+    }
+    else
+    {
+        <CfPageHeader Title="@(IsNew ? "New tournament" : name)" BackHref="/" />
+
+        <MudPaper Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">Details</MudText>
+                <CfTextField @bind-Value="name" Label="Name" Required="true" data-testid="name" />
+                <CfTextField @bind-Value="description" Label="Description" Lines="2" data-testid="description" />
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <CfDateField @bind-Value="startDate" Label="Start date" Required="true" data-testid="start-date" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <CfDateField @bind-Value="endDate" Label="End date" Required="true" data-testid="end-date" />
+                    </MudItem>
+                </MudGrid>
+                <CfSelect T="string"
+                          @bind-Value="timeZoneId"
+                          Label="Time zone"
+                          Required="true"
+                          Items="TimeZoneIds"
+                          ToLabel="UsTimeZones.Label"
+                          Placeholder="Select a time zone"
+                          data-testid="time-zone" />
+                <CfNumericField T="int?" @bind-Value="duration" Label="Default match duration (minutes)" Required="true" Min="15" Max="240" data-testid="duration" />
+                @if (longSpanWarning)
+                {
+                    <CfAlert Severity="Severity.Warning" data-testid="span-warning">This tournament covers more than five calendar days.</CfAlert>
+                }
+                @if (duplicateNameWarning)
+                {
+                    <CfAlert Severity="Severity.Warning" data-testid="name-warning">Another tournament already has this name.</CfAlert>
+                }
+                <MudStack Row="true" Justify="Justify.FlexEnd">
+                    <CfSaveButton id="save-details" Text="Save details" OnSave="SaveDetailsAsync" />
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        @if (IsNew)
+        {
+            <CfAlert Severity="Severity.Info">Details must be saved first.</CfAlert>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h6">Venues</MudText>
+                        <CfAddButton id="add-venue" AriaLabel="Add venue" OnClick="AddVenueAsync" />
+                    </MudStack>
+                    @if (venues.Count == 0)
+                    {
+                        <CfAlert Severity="Severity.Info" data-testid="empty-venues">@EmptyVenuesMessage</CfAlert>
+                    }
+                    else
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var venue in venues)
+                            {
+                                <MudPaper Outlined="true" Class="pa-3" data-testid="venue">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle1">@venue.Name</MudText>
+                                            @if (!string.IsNullOrEmpty(venue.Address))
+                                            {
+                                                <MudText Typo="Typo.body2">@venue.Address</MudText>
+                                            }
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudIcon Icon="@Icons.Material.Filled.SportsVolleyball" Size="Size.Small" />
+                                                <MudText Typo="Typo.body2">@venue.CourtCount court@(venue.CourtCount == 1 ? "" : "s")</MudText>
+                                            </MudStack>
+                                        </MudStack>
+                                        <MudStack Row="true" Spacing="1">
+                                            <CfIconButton id="@($"edit-venue-{venue.Id}")"
+                                                          Icon="@Icons.Material.Filled.Edit"
+                                                          Label="@($"Edit {venue.Name}")"
+                                                          OnClick="@(() => EditVenueAsync(venue))" />
+                                            <CfIconButton id="@($"delete-venue-{venue.Id}")"
+                                                          Icon="@Icons.Material.Filled.Delete"
+                                                          Label="@($"Delete {venue.Name}")"
+                                                          Color="Color.Error"
+                                                          OnClick="@(() => DeleteVenueAsync(venue))" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+    }
+</MudStack>
+
+@code {
+    public const string NotFoundMessage = "This tournament was not found.";
+    public const string EmptyVenuesMessage = "No venues yet. Use Add to create one.";
+    public const string DeleteVenueConsequence = "Its courts are also deleted.";
+
+    private static readonly IReadOnlyList<string> TimeZoneIds = UsTimeZones.All.Select(zone => zone.Id).ToList();
+
+    [Parameter] public Guid Id { get; set; }
+
+    private bool IsNew => Id == Guid.Empty;
+    private bool loading = true;
+    private bool notFound;
+    private string name = "";
+    private string description = "";
+    private DateOnly? startDate;
+    private DateOnly? endDate;
+    private string? timeZoneId;
+    private int? duration;
+    private IReadOnlyList<TournamentResponse> tournaments = [];
+    private List<VenueResponse> venues = [];
+    private Guid loadedFor = Guid.NewGuid();
+
+    private bool longSpanWarning =>
+        startDate is DateOnly start && endDate is DateOnly end && end > start && TournamentWarnings.SpanExceedsFiveDays(start, end);
+
+    private bool duplicateNameWarning =>
+        TournamentWarnings.NameMatchesAnother(name, tournaments.Where(item => item.Id != Id).Select(item => item.Name));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedFor == Id)
+            return;
+
+        loadedFor = Id;
+        loading = true;
+        try
+        {
+            tournaments = await Api.ListTournamentsAsync();
+
+            if (IsNew)
+            {
+                notFound = false;
+                name = "";
+                description = "";
+                startDate = null;
+                endDate = null;
+                timeZoneId = null;
+                duration = null;
+                venues = [];
+                return;
+            }
+
+            var tournament = await Api.GetTournamentAsync(Id);
+            if (tournament is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            notFound = false;
+            name = tournament.Name;
+            description = tournament.Description;
+            startDate = tournament.StartDate;
+            endDate = tournament.EndDate;
+            timeZoneId = tournament.TimeZoneId;
+            duration = tournament.DefaultMatchDurationMinutes;
+            await ReloadVenuesAsync();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveDetailsAsync()
+    {
+        var saved = await Feedback.RunAsync(async () =>
+        {
+            Tournament.Validate(name, description, startDate, endDate, timeZoneId, duration);
+            var request = new TournamentRequest(name, description, startDate, endDate, timeZoneId, duration);
+            if (IsNew)
+            {
+                var created = await Api.CreateTournamentAsync(request);
+                Navigation.NavigateTo($"/tournaments/{created.Id}");
+                return;
+            }
+
+            await Api.UpdateTournamentAsync(Id, request);
+            tournaments = await Api.ListTournamentsAsync();
+        });
+
+        if (saved)
+            Feedback.Saved();
+    }
+
+    private Task AddVenueAsync() => OpenVenueDialogAsync(VenueDialog.AddTitle, existing: null);
+
+    private Task EditVenueAsync(VenueResponse venue) => OpenVenueDialogAsync(VenueDialog.EditTitle, venue);
+
+    private async Task OpenVenueDialogAsync(string title, VenueResponse? existing)
+    {
+        var parameters = new DialogParameters<VenueDialog>
+        {
+            { dialog => dialog.TournamentId, Id },
+            { dialog => dialog.Existing, existing },
+        };
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<VenueDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadVenuesAsync();
+    }
+
+    private async Task DeleteVenueAsync(VenueResponse venue)
+    {
+        if (!await Confirmations.ConfirmDeleteAsync(venue.Name, DeleteVenueConsequence))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeleteVenueAsync(venue.Id)))
+        {
+            Feedback.Deleted();
+            await ReloadVenuesAsync();
+        }
+    }
+
+    private async Task ReloadVenuesAsync() => venues = (await Api.ListVenuesAsync(Id)).ToList();
+}

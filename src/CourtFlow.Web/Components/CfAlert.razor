@@ -1,0 +1,10 @@
+@* An inline alert for empty states, advice, and not-found. Filled, so its text is the status color's contrast text and reads in both modes. *@
+<MudAlert Severity="Severity" Variant="CfDefaults.AlertVariant" Dense="true" @attributes="AdditionalAttributes">@ChildContent</MudAlert>
+
+@code {
+    [Parameter, EditorRequired] public Severity Severity { get; set; } = Severity.Info;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

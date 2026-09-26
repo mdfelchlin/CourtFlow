@@ -1,0 +1,60 @@
+@* Adds or edits one venue. It calls the API itself so it can stay open on a rejected save or a failed call. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <CfTextField @bind-Value="name" Label="Venue name" Required="true" data-testid="venue-name" />
+            <CfTextField @bind-Value="address" Label="Address" data-testid="venue-address" />
+            <CfNumericField T="int?" @bind-Value="courtCount" Label="Court count" Required="true" Min="0" Max="99" data-testid="venue-court-count" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-venue" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        <CfSaveButton id="save-venue" Text="Save venue" OnSave="SaveAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string AddTitle = "Add venue";
+    public const string EditTitle = "Edit venue";
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid TournamentId { get; set; }
+    [Parameter] public VenueResponse? Existing { get; set; }
+
+    private string name = "";
+    private string address = "";
+    private int? courtCount;
+
+    protected override void OnInitialized()
+    {
+        name = Existing?.Name ?? "";
+        address = Existing?.Address ?? "";
+        courtCount = Existing?.CourtCount;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        var saved = await Feedback.RunAsync(async () =>
+        {
+            Venue.Validate(name, address, courtCount);
+            var request = new VenueRequest(name, address, courtCount);
+            if (Existing is null)
+                await Api.CreateVenueAsync(TournamentId, request);
+            else
+                await Api.UpdateVenueAsync(Existing.Id, request);
+        });
+
+        if (!saved)
+            return;
+
+        Feedback.Saved();
+        Dialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,0 +1,22 @@
+@* An icon-only button. Label is both the tooltip and the accessible name, and should name the item, such as "Edit Spring Classic". *@
+<MudTooltip Text="@Label">
+    <MudIconButton Icon="@Icon"
+                   Color="Color"
+                   Size="Size"
+                   Href="@Href"
+                   aria-label="@Label"
+                   OnClick="OnClick"
+                   @attributes="AdditionalAttributes" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public Color Color { get; set; } = Color.Default;
+    [Parameter] public Size Size { get; set; } = CfDefaults.ButtonSize;
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}
