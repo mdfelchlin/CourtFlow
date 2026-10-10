@@ -4,7 +4,9 @@
   <Project Path="CourtFlow.Infrastructure/CourtFlow.Infrastructure.csproj" />
   <Project Path="CourtFlow.Api/CourtFlow.Api.csproj" />
   <Project Path="CourtFlow.Web/CourtFlow.Web.csproj" />
+  <Project Path="CourtFlow.AppHost/CourtFlow.AppHost.csproj" />
   <Project Path="CourtFlow.Domain.Tests/CourtFlow.Domain.Tests.csproj" />
+  <Project Path="CourtFlow.AppHost.Tests/CourtFlow.AppHost.Tests.csproj" />
   <Project Path="CourtFlow.Api.Tests/CourtFlow.Api.Tests.csproj" />
   <Project Path="CourtFlow.Web.Tests/CourtFlow.Web.Tests.csproj" />
 </Solution>
