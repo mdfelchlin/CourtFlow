@@ -68,6 +68,32 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<DivisionResponse>> ListDivisionsAsync(Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        var items = await http.GetFromJsonAsync<List<DivisionResponse>>($"api/tournaments/{tournamentId}/divisions", cancellationToken);
+        return items ?? [];
+    }
+
+    public async Task<DivisionResponse> CreateDivisionAsync(Guid tournamentId, DivisionRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PostAsJsonAsync($"api/tournaments/{tournamentId}/divisions", request, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<DivisionResponse>(cancellationToken))!;
+    }
+
+    public async Task<DivisionResponse> UpdateDivisionAsync(Guid divisionId, DivisionRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PutAsJsonAsync($"api/divisions/{divisionId}", request, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<DivisionResponse>(cancellationToken))!;
+    }
+
+    public async Task DeleteDivisionAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        var response = await http.DeleteAsync($"api/divisions/{divisionId}", cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     private static async Task ThrowIfRejected(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.IsSuccessStatusCode)

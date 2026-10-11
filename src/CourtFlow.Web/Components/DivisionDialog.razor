@@ -1,0 +1,75 @@
+@* Adds or edits one division. It calls the API itself so it can stay open on a rejected save or a failed call. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <CfTextField @bind-Value="name" Label="Name" Required="true" data-testid="division-name" />
+            <CfSelect T="string"
+                      @bind-Value="gender"
+                      Label="Gender"
+                      Required="true"
+                      Items="Genders"
+                      ToLabel="LabelGender"
+                      Placeholder="Select a gender"
+                      data-testid="division-gender" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-division" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        <CfSaveButton id="save-division" Text="Save division" OnSave="SaveAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string AddTitle = "Add division";
+    public const string EditTitle = "Edit division";
+    public const string GenderPrompt = "Select a gender";
+
+    private static readonly IReadOnlyList<string> Genders = ["Female", "Male"];
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid TournamentId { get; set; }
+    [Parameter] public DivisionResponse? Existing { get; set; }
+    [Parameter] public IReadOnlyList<DivisionResponse> ExistingDivisions { get; set; } = [];
+
+    private string name = "";
+    private string? gender;
+
+    protected override void OnInitialized()
+    {
+        name = Existing?.Name ?? "";
+        gender = Existing?.Gender;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        var saved = await Feedback.RunAsync(async () =>
+        {
+            Division.Validate(name, gender);
+            Division.EnsureUnique(
+                name,
+                gender,
+                ExistingDivisions.Select(division => (division.Id, division.Name, division.Gender)),
+                Existing?.Id);
+            var request = new DivisionRequest(name, gender);
+            if (Existing is null)
+                await Api.CreateDivisionAsync(TournamentId, request);
+            else
+                await Api.UpdateDivisionAsync(Existing.Id, request);
+        });
+
+        if (!saved)
+            return;
+
+        Feedback.Saved();
+        Dialog.Close(DialogResult.Ok(true));
+    }
+
+    private static string LabelGender(string value) => value;
+}

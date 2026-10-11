@@ -111,6 +111,46 @@
                     }
                 </MudStack>
             </MudPaper>
+
+            <MudPaper Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h6">Divisions</MudText>
+                        <CfAddButton id="add-division" AriaLabel="Add division" OnClick="AddDivisionAsync" />
+                    </MudStack>
+                    @if (divisions.Count == 0)
+                    {
+                        <CfAlert Severity="Severity.Info" data-testid="empty-divisions">@EmptyDivisionsMessage</CfAlert>
+                    }
+                    else
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var division in divisions)
+                            {
+                                <MudPaper Outlined="true" Class="pa-3" data-testid="division">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle1">@division.Name</MudText>
+                                            <MudText Typo="Typo.body2">@division.Gender</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Spacing="1">
+                                            <CfIconButton id="@($"edit-division-{division.Id}")"
+                                                          Icon="@Icons.Material.Filled.Edit"
+                                                          Label="@($"Edit {division.Name}, {division.Gender}")"
+                                                          OnClick="@(() => EditDivisionAsync(division))" />
+                                            <CfIconButton id="@($"delete-division-{division.Id}")"
+                                                          Icon="@Icons.Material.Filled.Delete"
+                                                          Label="@($"Delete {division.Name}, {division.Gender}")"
+                                                          Color="Color.Error"
+                                                          OnClick="@(() => DeleteDivisionAsync(division))" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
         }
     }
 </MudStack>
@@ -118,6 +158,7 @@
 @code {
     public const string NotFoundMessage = "This tournament was not found.";
     public const string EmptyVenuesMessage = "No venues yet. Use Add to create one.";
+    public const string EmptyDivisionsMessage = "No divisions yet. Use Add to create one.";
     public const string DeleteVenueConsequence = "Its courts are also deleted.";
 
     private static readonly IReadOnlyList<string> TimeZoneIds = UsTimeZones.All.Select(zone => zone.Id).ToList();
@@ -135,6 +176,7 @@
     private int? duration;
     private IReadOnlyList<TournamentResponse> tournaments = [];
     private List<VenueResponse> venues = [];
+    private List<DivisionResponse> divisions = [];
     private Guid loadedFor = Guid.NewGuid();
 
     private bool longSpanWarning =>
@@ -164,6 +206,7 @@
                 timeZoneId = null;
                 duration = null;
                 venues = [];
+                divisions = [];
                 return;
             }
 
@@ -171,6 +214,7 @@
             if (tournament is null)
             {
                 notFound = true;
+                divisions = [];
                 return;
             }
 
@@ -182,6 +226,7 @@
             timeZoneId = tournament.TimeZoneId;
             duration = tournament.DefaultMatchDurationMinutes;
             await ReloadVenuesAsync();
+            await ReloadDivisionsAsync();
         }
         finally
         {
@@ -242,4 +287,39 @@
     }
 
     private async Task ReloadVenuesAsync() => venues = (await Api.ListVenuesAsync(Id)).ToList();
+
+    private Task AddDivisionAsync() => OpenDivisionDialogAsync(DivisionDialog.AddTitle, existing: null);
+
+    private Task EditDivisionAsync(DivisionResponse division) => OpenDivisionDialogAsync(DivisionDialog.EditTitle, division);
+
+    private async Task OpenDivisionDialogAsync(string title, DivisionResponse? existing)
+    {
+        var parameters = new DialogParameters<DivisionDialog>
+        {
+            { dialog => dialog.TournamentId, Id },
+            { dialog => dialog.Existing, existing },
+            { dialog => dialog.ExistingDivisions, divisions },
+        };
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<DivisionDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadDivisionsAsync();
+    }
+
+    private async Task DeleteDivisionAsync(DivisionResponse division)
+    {
+        if (!await Confirmations.ConfirmDeleteAsync($"{division.Name} ({division.Gender})", ""))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeleteDivisionAsync(division.Id)))
+        {
+            Feedback.Deleted();
+            await ReloadDivisionsAsync();
+        }
+    }
+
+    private async Task ReloadDivisionsAsync() =>
+        divisions = Division.OrderForList(await Api.ListDivisionsAsync(Id), division => division.Name, division => division.Gender).ToList();
 }

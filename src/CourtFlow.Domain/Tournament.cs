@@ -12,8 +12,10 @@ public sealed class Tournament
     public int DefaultMatchDurationMinutes { get; private set; }
 
     private readonly List<Venue> _venues = [];
+    private readonly List<Division> _divisions = [];
 
     public IReadOnlyCollection<Venue> Venues => _venues;
+    public IReadOnlyCollection<Division> Divisions => _divisions;
 
     private Tournament()
     {
@@ -96,6 +98,34 @@ public sealed class Tournament
             ?? throw new DomainRuleException("Venue was not found.");
         _venues.Remove(venue);
     }
+
+    public Division AddDivision(string? name, string? gender)
+    {
+        Division.EnsureUnique(name, gender, ListedDivisions(), exceptId: null);
+        var division = new Division(OrganizationId, Id, name, gender);
+        _divisions.Add(division);
+        return division;
+    }
+
+    public Division UpdateDivision(Guid divisionId, string? name, string? gender)
+    {
+        var division = _divisions.FirstOrDefault(item => item.Id == divisionId)
+            ?? throw new DomainRuleException("Division was not found.");
+        Division.EnsureUnique(name, gender, ListedDivisions(), division.Id);
+        division.Rename(name);
+        division.SetGender(gender);
+        return division;
+    }
+
+    public void RemoveDivision(Guid divisionId)
+    {
+        var division = _divisions.FirstOrDefault(item => item.Id == divisionId)
+            ?? throw new DomainRuleException("Division was not found.");
+        _divisions.Remove(division);
+    }
+
+    private IEnumerable<(Guid Id, string Name, string Gender)> ListedDivisions() =>
+        _divisions.Select(division => (division.Id, division.Name, division.Gender.ToString()));
 
     private static string RequireName(string? name)
     {

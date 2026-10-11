@@ -9,6 +9,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
     public DbSet<Tournament> Tournaments => Set<Tournament>();
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Court> Courts => Set<Court>();
+    public DbSet<Division> Divisions => Set<Division>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,13 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Navigation(tournament => tournament.Venues)
                 .HasField("_venues")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.HasMany(tournament => tournament.Divisions)
+                .WithOne()
+                .HasForeignKey(division => division.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(tournament => tournament.Divisions)
+                .HasField("_divisions")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<Venue>(entity =>
@@ -53,6 +61,16 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Navigation(venue => venue.Courts)
                 .HasField("_courts")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<Division>(entity =>
+        {
+            entity.ToTable("divisions");
+            entity.HasKey(division => division.Id);
+            entity.Property(division => division.Id).ValueGeneratedNever();
+            entity.Property(division => division.Name).IsRequired();
+            entity.Property(division => division.Gender).HasConversion<string>().IsRequired();
+            entity.HasQueryFilter(division => division.OrganizationId == TestOrganizationSeed.Id);
         });
 
         modelBuilder.Entity<Court>(entity =>

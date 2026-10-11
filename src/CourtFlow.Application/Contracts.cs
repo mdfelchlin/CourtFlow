@@ -28,3 +28,11 @@ public sealed record SaveTournament(
     int? DefaultMatchDurationMinutes);
 
 public sealed record SaveVenue(string? Name, string? Address, int? CourtCount);
+
+public sealed record DivisionDetails(
+    Guid Id,
+    Guid TournamentId,
+    string Name,
+    string Gender);
+
+public sealed record SaveDivision(string? Name, string? Gender);

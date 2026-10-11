@@ -1,6 +1,7 @@
 using CourtFlow.Api;
 using CourtFlow.Application;
 using CourtFlow.Application.Tournaments;
+using CourtFlow.Application.Divisions;
 using CourtFlow.Application.Venues;
 using CourtFlow.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ builder.Services.AddScoped<ITournamentRepository, TournamentRepository>();
 builder.Services.AddScoped<IOrganizationScope, TestOrganizationScope>();
 builder.Services.AddScoped<TournamentUseCases>();
 builder.Services.AddScoped<VenueUseCases>();
+builder.Services.AddScoped<DivisionUseCases>();
 
 var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
@@ -36,6 +38,7 @@ using (var scope = app.Services.CreateScope())
 
 app.MapTournamentEndpoints();
 app.MapVenueEndpoints();
+app.MapDivisionEndpoints();
 
 app.Run();
 

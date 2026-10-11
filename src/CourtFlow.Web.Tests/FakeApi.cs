@@ -6,14 +6,19 @@ public sealed class FakeApi : ICourtFlowApi
 {
     public List<TournamentResponse> Tournaments { get; } = [];
     public Dictionary<Guid, List<VenueResponse>> Venues { get; } = [];
+    public Dictionary<Guid, List<DivisionResponse>> Divisions { get; } = [];
     public int DeleteTournamentCalls { get; private set; }
     public int DeleteVenueCalls { get; private set; }
+    public int DeleteDivisionCalls { get; private set; }
     public int CreateCalls { get; private set; }
     public int UpdateCalls { get; private set; }
     public int CreateVenueCalls { get; private set; }
     public int UpdateVenueCalls { get; private set; }
+    public int CreateDivisionCalls { get; private set; }
+    public int UpdateDivisionCalls { get; private set; }
     public TournamentRequest? LastSaved { get; private set; }
     public VenueRequest? LastVenueSaved { get; private set; }
+    public DivisionRequest? LastDivisionSaved { get; private set; }
 
     /// <summary>When set, the next call throws <see cref="HttpRequestException"/> with this message, then clears.</summary>
     public string? FailWith { get; set; }
@@ -127,6 +132,55 @@ public sealed class FakeApi : ICourtFlowApi
         DeleteVenueCalls++;
         foreach (var venues in Venues.Values)
             venues.RemoveAll(venue => venue.Id == venueId);
+    }
+
+    public async Task<IReadOnlyList<DivisionResponse>> ListDivisionsAsync(Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        return Divisions.TryGetValue(tournamentId, out var divisions) ? divisions : [];
+    }
+
+    public async Task<DivisionResponse> CreateDivisionAsync(Guid tournamentId, DivisionRequest request, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        CreateDivisionCalls++;
+        LastDivisionSaved = request;
+        var created = new DivisionResponse(Guid.NewGuid(), tournamentId, request.Name!.Trim(), request.Gender!);
+        if (!Divisions.TryGetValue(tournamentId, out var divisions))
+            Divisions[tournamentId] = divisions = [];
+        divisions.Add(created);
+        return created;
+    }
+
+    public async Task<DivisionResponse> UpdateDivisionAsync(Guid divisionId, DivisionRequest request, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        UpdateDivisionCalls++;
+        LastDivisionSaved = request;
+        foreach (var divisions in Divisions.Values)
+        {
+            var index = divisions.FindIndex(division => division.Id == divisionId);
+            if (index < 0)
+                continue;
+
+            var updated = divisions[index] with
+            {
+                Name = request.Name!.Trim(),
+                Gender = request.Gender!,
+            };
+            divisions[index] = updated;
+            return updated;
+        }
+
+        throw new InvalidOperationException("Division was not found.");
+    }
+
+    public async Task DeleteDivisionAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        DeleteDivisionCalls++;
+        foreach (var divisions in Divisions.Values)
+            divisions.RemoveAll(division => division.Id == divisionId);
     }
 
     private Task ThrowIfFailing()

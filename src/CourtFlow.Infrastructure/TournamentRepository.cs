@@ -22,18 +22,26 @@ public sealed class TournamentRepository(CourtFlowDbContext db) : ITournamentRep
             .ToListAsync(cancellationToken);
 
     public Task<Tournament?> GetAsync(Guid id, CancellationToken cancellationToken) =>
-        db.Tournaments
-            .Include(tournament => tournament.Venues)
-            .ThenInclude(venue => venue.Courts)
+        WithChildren(db.Tournaments)
             .FirstOrDefaultAsync(tournament => tournament.Id == id, cancellationToken);
 
     public Task<Tournament?> GetByVenueAsync(Guid venueId, CancellationToken cancellationToken) =>
-        db.Tournaments
-            .Include(tournament => tournament.Venues)
-            .ThenInclude(venue => venue.Courts)
+        WithChildren(db.Tournaments)
             .FirstOrDefaultAsync(
                 tournament => tournament.Venues.Any(venue => venue.Id == venueId),
                 cancellationToken);
+
+    public Task<Tournament?> GetByDivisionAsync(Guid divisionId, CancellationToken cancellationToken) =>
+        WithChildren(db.Tournaments)
+            .FirstOrDefaultAsync(
+                tournament => tournament.Divisions.Any(division => division.Id == divisionId),
+                cancellationToken);
+
+    private static IQueryable<Tournament> WithChildren(IQueryable<Tournament> tournaments) =>
+        tournaments
+            .Include(tournament => tournament.Venues)
+            .ThenInclude(venue => venue.Courts)
+            .Include(tournament => tournament.Divisions);
 
     public async Task AddAsync(Tournament tournament, CancellationToken cancellationToken) =>
         await db.Tournaments.AddAsync(tournament, cancellationToken);

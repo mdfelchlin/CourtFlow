@@ -11,4 +11,8 @@ public interface ICourtFlowApi
     Task<VenueResponse> CreateVenueAsync(Guid tournamentId, VenueRequest request, CancellationToken cancellationToken = default);
     Task<VenueResponse> UpdateVenueAsync(Guid venueId, VenueRequest request, CancellationToken cancellationToken = default);
     Task DeleteVenueAsync(Guid venueId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DivisionResponse>> ListDivisionsAsync(Guid tournamentId, CancellationToken cancellationToken = default);
+    Task<DivisionResponse> CreateDivisionAsync(Guid tournamentId, DivisionRequest request, CancellationToken cancellationToken = default);
+    Task<DivisionResponse> UpdateDivisionAsync(Guid divisionId, DivisionRequest request, CancellationToken cancellationToken = default);
+    Task DeleteDivisionAsync(Guid divisionId, CancellationToken cancellationToken = default);
 }

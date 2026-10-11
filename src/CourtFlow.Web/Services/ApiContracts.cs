@@ -28,3 +28,11 @@ public sealed record VenueResponse(
     IReadOnlyList<CourtResponse> Courts);
 
 public sealed record VenueRequest(string? Name, string? Address, int? CourtCount);
+
+public sealed record DivisionResponse(
+    Guid Id,
+    Guid TournamentId,
+    string Name,
+    string Gender);
+
+public sealed record DivisionRequest(string? Name, string? Gender);

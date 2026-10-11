@@ -43,6 +43,32 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.ToTable("courts", (string)null);
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Division", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TournamentId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TournamentId");
+
+                    b.ToTable("divisions", (string)null);
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Organization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -126,6 +152,15 @@ namespace CourtFlow.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Division", b =>
+                {
+                    b.HasOne("CourtFlow.Domain.Tournament", null)
+                        .WithMany("Divisions")
+                        .HasForeignKey("TournamentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Venue", b =>
                 {
                     b.HasOne("CourtFlow.Domain.Tournament", null)
@@ -137,6 +172,8 @@ namespace CourtFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("CourtFlow.Domain.Tournament", b =>
                 {
+                    b.Navigation("Divisions");
+
                     b.Navigation("Venues");
                 });
 
