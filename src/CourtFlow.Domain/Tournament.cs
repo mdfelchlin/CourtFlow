@@ -2,6 +2,9 @@ namespace CourtFlow.Domain;
 
 public sealed class Tournament
 {
+    public const string TeamAlreadyEntered = "This team is already entered in this tournament.";
+    public const string EntryNotFound = "Team entry was not found.";
+
     public Guid Id { get; private set; }
     public Guid OrganizationId { get; private set; }
     public string Name { get; private set; } = "";
@@ -13,9 +16,11 @@ public sealed class Tournament
 
     private readonly List<Venue> _venues = [];
     private readonly List<Division> _divisions = [];
+    private readonly List<TournamentTeam> _entries = [];
 
     public IReadOnlyCollection<Venue> Venues => _venues;
     public IReadOnlyCollection<Division> Divisions => _divisions;
+    public IReadOnlyCollection<TournamentTeam> Entries => _entries;
 
     private Tournament()
     {
@@ -121,8 +126,43 @@ public sealed class Tournament
     {
         var division = _divisions.FirstOrDefault(item => item.Id == divisionId)
             ?? throw new DomainRuleException("Division was not found.");
+        var teamCount = _entries.Count(entry => entry.DivisionId == divisionId);
+        if (teamCount > 0)
+            throw new DomainRuleException(Division.HasTeams(teamCount));
+
         _divisions.Remove(division);
     }
+
+    public TournamentTeam? EntryFor(Guid teamId) => _entries.FirstOrDefault(entry => entry.TeamId == teamId);
+
+    public TournamentTeam EnterTeam(Guid teamId, Guid? divisionId)
+    {
+        var division = RequireOwnDivision(divisionId);
+        if (EntryFor(teamId) is not null)
+            throw new DomainRuleException(TeamAlreadyEntered);
+
+        var entry = new TournamentTeam(OrganizationId, Id, teamId, division);
+        _entries.Add(entry);
+        return entry;
+    }
+
+    public TournamentTeam MoveEntry(Guid entryId, Guid? divisionId)
+    {
+        var entry = FindEntry(entryId);
+        entry.MoveTo(RequireOwnDivision(divisionId));
+        return entry;
+    }
+
+    public void RemoveEntry(Guid entryId) => _entries.Remove(FindEntry(entryId));
+
+    private TournamentTeam FindEntry(Guid entryId) =>
+        _entries.FirstOrDefault(item => item.Id == entryId)
+            ?? throw new DomainRuleException(EntryNotFound);
+
+    private Guid RequireOwnDivision(Guid? divisionId) =>
+        divisionId is { } id && _divisions.Any(division => division.Id == id)
+            ? id
+            : throw new DomainRuleException(Division.Required);
 
     private IEnumerable<(Guid Id, string Name, string Gender)> ListedDivisions() =>
         _divisions.Select(division => (division.Id, division.Name, division.Gender.ToString()));

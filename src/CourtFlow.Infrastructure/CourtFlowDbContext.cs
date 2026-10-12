@@ -10,6 +10,9 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<Division> Divisions => Set<Division>();
+    public DbSet<Club> Clubs => Set<Club>();
+    public DbSet<Team> Teams => Set<Team>();
+    public DbSet<TournamentTeam> TournamentTeams => Set<TournamentTeam>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +47,13 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Navigation(tournament => tournament.Divisions)
                 .HasField("_divisions")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.HasMany(tournament => tournament.Entries)
+                .WithOne()
+                .HasForeignKey(entry => entry.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(tournament => tournament.Entries)
+                .HasField("_entries")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<Venue>(entity =>
@@ -71,6 +81,52 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(division => division.Name).IsRequired();
             entity.Property(division => division.Gender).HasConversion<string>().IsRequired();
             entity.HasQueryFilter(division => division.OrganizationId == TestOrganizationSeed.Id);
+        });
+
+        modelBuilder.Entity<Club>(entity =>
+        {
+            entity.ToTable("clubs");
+            entity.HasKey(club => club.Id);
+            entity.Property(club => club.Id).ValueGeneratedNever();
+            entity.Property(club => club.Name).IsRequired();
+            entity.Property(club => club.NormalizedName).IsRequired();
+            entity.HasIndex(club => new { club.OrganizationId, club.NormalizedName }).IsUnique();
+            entity.HasQueryFilter(club => club.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasMany(club => club.Teams)
+                .WithOne()
+                .HasForeignKey(team => team.ClubId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(club => club.Teams)
+                .HasField("_teams")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<Team>(entity =>
+        {
+            entity.ToTable("teams");
+            entity.HasKey(team => team.Id);
+            entity.Property(team => team.Id).ValueGeneratedNever();
+            entity.Property(team => team.Name).IsRequired();
+            entity.Property(team => team.NormalizedName).IsRequired();
+            entity.HasIndex(team => new { team.ClubId, team.NormalizedName }).IsUnique();
+            entity.HasQueryFilter(team => team.OrganizationId == TestOrganizationSeed.Id);
+        });
+
+        modelBuilder.Entity<TournamentTeam>(entity =>
+        {
+            entity.ToTable("tournament_teams");
+            entity.HasKey(entry => entry.Id);
+            entity.Property(entry => entry.Id).ValueGeneratedNever();
+            entity.HasIndex(entry => new { entry.TournamentId, entry.TeamId }).IsUnique();
+            entity.HasQueryFilter(entry => entry.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasOne<Team>()
+                .WithMany()
+                .HasForeignKey(entry => entry.TeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Division>()
+                .WithMany()
+                .HasForeignKey(entry => entry.DivisionId)
+                .OnDelete(DeleteBehavior.ClientCascade);
         });
 
         modelBuilder.Entity<Court>(entity =>

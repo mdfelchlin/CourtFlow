@@ -34,8 +34,8 @@
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
-                <MudTd DataLabel="Start date">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd DataLabel="End date">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd DataLabel="Start date">@CalendarDateFormat.Display(context.StartDate)</MudTd>
+                <MudTd DataLabel="End date">@CalendarDateFormat.Display(context.EndDate)</MudTd>
                 <MudTd DataLabel="Time zone">@UsTimeZones.Label(context.TimeZoneId)</MudTd>
                 <MudTd DataLabel="Default match duration">@context.DefaultMatchDurationMinutes min</MudTd>
                 <MudTd DataLabel="Actions">
@@ -58,7 +58,7 @@
 
 @code {
     public const string EmptyMessage = "No tournaments yet. Use Add to create one.";
-    public const string DeleteConsequence = "Its venues, courts, and divisions are also deleted.";
+    public const string DeleteConsequence = "Its venues, courts, divisions, and teams are also deleted.";
 
     private IReadOnlyList<TournamentResponse>? tournaments;
 

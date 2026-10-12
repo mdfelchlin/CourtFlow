@@ -1,0 +1,169 @@
+@* Previews a teams CSV and imports it. Nothing is written until Import, and only if every row still passes. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <CfFileDropZone Label="CSV file"
+                            Prompt="Drop a .csv file here"
+                            BrowseText="Browse"
+                            Accept=".csv"
+                            FileChosen="ChooseAsync"
+                            data-testid="import-file" />
+            <MudLink Href="@TemplatePath" download="@TemplatePath" data-testid="template-link">Download template</MudLink>
+
+            @if (localError is not null)
+            {
+                <CfAlert Severity="Severity.Error" data-testid="file-error">@localError</CfAlert>
+            }
+            @if (stale)
+            {
+                <CfAlert Severity="Severity.Warning" data-testid="stale">@StaleMessage</CfAlert>
+            }
+            @if (preview?.FileError is { } fileError)
+            {
+                <CfAlert Severity="Severity.Error" data-testid="file-error">@fileError</CfAlert>
+            }
+
+            <MudText Typo="Typo.subtitle2" aria-live="polite" data-testid="import-summary">@SummaryLine</MudText>
+
+            @if (preview is { FileError: null } shown)
+            {
+                @if (shown.Summary.Rejected > 0)
+                {
+                    <CfSwitch Label="@RejectedOnlyLabel" @bind-Value="rejectedOnly" data-testid="rejected-only" />
+                }
+                <MudTable T="TeamImportRowResponse" Items="VisibleRows" Dense="true" Breakpoint="Breakpoint.Sm" Elevation="0" data-testid="import-rows">
+                    <HeaderContent>
+                        <MudTh>Line</MudTh>
+                        <MudTh>Club</MudTh>
+                        <MudTh>Team</MudTh>
+                        <MudTh>Division</MudTh>
+                        <MudTh>Gender</MudTh>
+                        <MudTh>Outcome</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Line" data-testid="import-row">@context.Line</MudTd>
+                        <MudTd DataLabel="Club">@context.Club</MudTd>
+                        <MudTd DataLabel="Team">@context.Team</MudTd>
+                        <MudTd DataLabel="Division">@context.Division</MudTd>
+                        <MudTd DataLabel="Gender">@context.Gender</MudTd>
+                        <MudTd DataLabel="Outcome">
+                            @if (context.Outcome == TeamImportOutcome.Rejected)
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" data-testid="rejected-icon" />
+                                    <MudText Typo="Typo.body2" Color="Color.Error">@OutcomeText(context)</MudText>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                @OutcomeText(context)
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-import" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        <CfSaveButton id="import" Text="Import" Icon="@Icons.Material.Filled.UploadFile" Disabled="!CanImport" OnSave="ImportAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string Title = "Import teams";
+    public const string TemplatePath = "teams-template.csv";
+    public const long MaxBytes = 2 * 1024 * 1024;
+    public const string TooLargeMessage = "The file is larger than 2 MB.";
+    public const string StaleMessage = "The teams changed since the preview. Review it and import again.";
+    public const string RejectedOnlyLabel = "Rejected only";
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid TournamentId { get; set; }
+
+    private string fileName = "";
+    private byte[]? content;
+    private string? localError;
+    private TeamImportPreviewResponse? preview;
+    private bool stale;
+    private bool rejectedOnly;
+
+    private bool CanImport => content is not null && preview is { FileError: null, Summary.Rejected: 0, Rows.Count: > 0 };
+
+    private string SummaryLine => preview is { FileError: null } shown ? SummaryText(shown.Summary) : "";
+
+    private IEnumerable<TeamImportRowResponse> VisibleRows =>
+        rejectedOnly ? preview!.Rows.Where(row => row.Outcome == TeamImportOutcome.Rejected) : preview!.Rows;
+
+    public static string SummaryText(TeamImportSummaryResponse summary) =>
+        string.Join(" · ",
+            Count(summary.Rows, "row", "rows"),
+            Count(summary.NewClubs, "new club", "new clubs"),
+            Count(summary.NewTeams, "new team", "new teams"),
+            $"{summary.ToAdd} to add",
+            $"{summary.ToMove} to move",
+            $"{summary.Unchanged} unchanged",
+            $"{summary.Rejected} rejected");
+
+    public static string OutcomeText(TeamImportRowResponse row) => row.Outcome switch
+    {
+        TeamImportOutcome.AddNewClubAndTeam => "Add, new club and team",
+        TeamImportOutcome.AddNewTeam => "Add, new team",
+        TeamImportOutcome.AddExistingTeam => "Add, existing team",
+        TeamImportOutcome.Move => $"Move from {row.FromDivision}",
+        TeamImportOutcome.NoChange => "No change",
+        _ => $"Rejected: {row.Message}",
+    };
+
+    private static string Count(int value, string one, string many) => $"{value} {(value == 1 ? one : many)}";
+
+    private async Task ChooseAsync(IBrowserFile file)
+    {
+        localError = null;
+        preview = null;
+        stale = false;
+        rejectedOnly = false;
+        content = null;
+
+        if (file.Size > MaxBytes)
+        {
+            localError = TooLargeMessage;
+            return;
+        }
+
+        await Feedback.RunAsync(async () =>
+        {
+            using var stream = file.OpenReadStream(MaxBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var bytes = buffer.ToArray();
+            preview = await Api.PreviewTeamImportAsync(TournamentId, file.Name, bytes);
+            fileName = file.Name;
+            content = bytes;
+        });
+    }
+
+    private async Task ImportAsync()
+    {
+        TeamImportResponse? response = null;
+        if (!await Feedback.RunAsync(async () => response = await Api.ImportTeamsAsync(TournamentId, fileName, content!)))
+            return;
+
+        if (response!.Stale is { } fresh)
+        {
+            preview = fresh;
+            stale = true;
+            rejectedOnly = false;
+            return;
+        }
+
+        Dialog.Close(DialogResult.Ok(response.Imported!.Imported));
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}

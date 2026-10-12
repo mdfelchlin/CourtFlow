@@ -13,6 +13,7 @@ namespace CourtFlow.Web.Tests;
 public class TournamentPageTests : BunitContext, IDisposable
 {
     private readonly FakeApi _api = new();
+    private readonly FakeTournamentMemory _memory = new();
     private readonly IRenderedComponent<MudPopoverProvider> _popovers;
 
     public TournamentPageTests()
@@ -20,6 +21,7 @@ public class TournamentPageTests : BunitContext, IDisposable
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddMudServices();
         Services.AddSingleton<ICourtFlowApi>(_api);
+        Services.AddSingleton<ITournamentMemory>(_memory);
         Services.AddScoped<Feedback>();
         Services.AddScoped<Confirmations>();
         _popovers = Render<MudPopoverProvider>();
@@ -47,8 +49,8 @@ public class TournamentPageTests : BunitContext, IDisposable
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("City Cup", cut.Markup);
-            Assert.Contains("2026-09-01", cut.Markup);
-            Assert.Contains("2026-09-03", cut.Markup);
+            Assert.Contains("09/01/2026", cut.Markup);
+            Assert.Contains("09/03/2026", cut.Markup);
             Assert.Contains("Central", cut.Markup);
             Assert.Contains("60 min", cut.Markup);
         });
@@ -172,11 +174,13 @@ public class TournamentPageTests : BunitContext, IDisposable
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
-        await Fill(cut, "City Cup", "2026-09-01", "2026-09-03");
+        await Fill(cut, "City Cup", "09/01/2026", "09/03/2026");
 
         cut.Find("#save-details").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(1, _api.CreateCalls));
+        Assert.Equal(new DateOnly(2026, 9, 1), _api.LastSaved!.StartDate);
+        Assert.Equal(new DateOnly(2026, 9, 3), _api.LastSaved.EndDate);
         Assert.Contains($"/tournaments/{_api.Tournaments[0].Id}", Services.GetRequiredService<NavigationManager>().Uri);
         AssertSnackbar(Feedback.SavedMessage, Severity.Success);
     }
@@ -192,7 +196,7 @@ public class TournamentPageTests : BunitContext, IDisposable
         cut.WaitForAssertion(() => Assert.Contains("City Cup", cut.Markup));
         var uri = navigation.Uri;
 
-        await Fill(cut, "Updated Cup", "2026-09-01", "2026-09-03");
+        await Fill(cut, "Updated Cup", "09/01/2026", "09/03/2026");
         cut.Find("#save-details").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(1, _api.UpdateCalls));
@@ -243,7 +247,7 @@ public class TournamentPageTests : BunitContext, IDisposable
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
 
-        await Fill(cut, "  city cup ", "2026-09-01", "2026-09-06");
+        await Fill(cut, "  city cup ", "09/01/2026", "09/06/2026");
 
         Assert.Contains("more than five calendar days", cut.Markup);
         Assert.Contains("Another tournament already has this name.", cut.Markup);
@@ -264,12 +268,23 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
+    public void Opening_an_existing_tournament_remembers_it()
+    {
+        var tournament = Sample();
+        _api.Tournaments.Add(tournament);
+
+        var cut = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, tournament.Id));
+
+        cut.WaitForAssertion(() => Assert.Equal(tournament.Id, _memory.Remembered));
+    }
+
+    [Fact]
     public async Task September_1_through_5_does_not_warn()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
 
-        await Fill(cut, "City Cup", "2026-09-01", "2026-09-05");
+        await Fill(cut, "City Cup", "09/01/2026", "09/05/2026");
 
         Assert.DoesNotContain("more than five calendar days", cut.Markup);
     }
@@ -292,7 +307,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
-        await Fill(cut, "City Cup", "2026-09-01", "2026-09-03");
+        await Fill(cut, "City Cup", "09/01/2026", "09/03/2026");
         _api.FailWith = "The server is not reachable.";
 
         cut.Find("#save-details").Click();

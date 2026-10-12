@@ -19,6 +19,7 @@ public class DivisionPageTests : BunitContext, IDisposable
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddMudServices();
         Services.AddSingleton<ICourtFlowApi>(_api);
+        Services.AddSingleton<ITournamentMemory>(new FakeTournamentMemory());
         Services.AddScoped<Feedback>();
         Services.AddScoped<Confirmations>();
         Render<MudPopoverProvider>();
@@ -251,6 +252,24 @@ public class DivisionPageTests : BunitContext, IDisposable
             Assert.Contains(TournamentEditor.EmptyDivisionsMessage, cut.Markup);
         });
         AssertSnackbar(Feedback.DeletedMessage, Severity.Success);
+    }
+
+    [Fact]
+    public void A_rejected_division_delete_keeps_the_division_and_shows_the_count()
+    {
+        var (tournament, divisionId) = WithDivision("14U Open", "Female");
+        _api.RejectDivisionDeleteWith = Division.HasTeams(3);
+        var dialogs = Render<MudDialogProvider>();
+        var cut = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, tournament.Id));
+        cut.WaitForAssertion(() => Assert.Contains("14U Open", cut.Markup));
+
+        cut.Find($"#delete-division-{divisionId}").Click();
+        dialogs.WaitForAssertion(() => Assert.Contains("Delete 14U Open (Female)?", dialogs.Markup));
+        ButtonNamed(dialogs, "Delete").Click();
+
+        cut.WaitForAssertion(() => AssertSnackbar(Division.HasTeams(3), Severity.Warning));
+        Assert.Equal(0, _api.DeleteDivisionCalls);
+        Assert.Contains("14U Open", cut.Markup);
     }
 
     [Fact]

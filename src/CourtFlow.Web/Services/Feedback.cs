@@ -13,6 +13,10 @@ public sealed class Feedback(ISnackbar snackbar)
 
     public void Deleted() => snackbar.Add(DeletedMessage, Severity.Success);
 
+    public static string ImportedMessage(int rows) => $"Imported {rows} {(rows == 1 ? "row" : "rows")}.";
+
+    public void Imported(int rows) => snackbar.Add(ImportedMessage(rows), Severity.Success);
+
     public void Rejected(string message) => snackbar.Add(message, Severity.Warning);
 
     public void Failed(string message) => snackbar.Add(message, Severity.Error);

@@ -1,0 +1,283 @@
+@* Adds teams to a tournament, or edits one entry. It calls the API itself so it can stay open on a rejected save or a failed call. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            @if (Existing is null)
+            {
+                <CfAutocomplete T="Pick"
+                                Value="club"
+                                ValueChanged="ChooseClubAsync"
+                                TextChanged="@(text => clubText = text)"
+                                Label="Club"
+                                Required="true"
+                                SearchFunc="SearchClubsAsync"
+                                ToStringFunc="NameOf"
+                                ItemTemplate="ClubOption"
+                                data-testid="team-club" />
+                <CfAutocomplete @ref="teamField"
+                                @key="teamFieldKey"
+                                T="Pick"
+                                Value="team"
+                                ValueChanged="ChooseTeam"
+                                TextChanged="@(text => teamText = text)"
+                                Label="Team"
+                                Required="true"
+                                Disabled="club is null"
+                                SearchFunc="SearchTeamsAsync"
+                                ToStringFunc="NameOf"
+                                ItemDisabledFunc="IsAlreadyEntered"
+                                ItemTemplate="TeamOption"
+                                data-testid="team-name" />
+            }
+            else
+            {
+                <CfField Label="Club" data-testid="team-club-readonly">
+                    <MudText>@Existing.ClubName</MudText>
+                </CfField>
+                <CfTextField @bind-Value="teamText" Label="Team" Required="true" data-testid="team-name" />
+            }
+            <CfSelect T="DivisionResponse"
+                      @bind-Value="division"
+                      Label="Division"
+                      Required="true"
+                      Items="Divisions"
+                      ToLabel="LabelOf"
+                      Placeholder="@DivisionPrompt"
+                      data-testid="team-division" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-team" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        @if (Existing is null)
+        {
+            <CfSaveButton id="save-team-and-add" Text="@SaveAndAddText" Icon="@Icons.Material.Filled.PlaylistAdd" OnSave="SaveAndAddAnotherAsync" />
+        }
+        <CfSaveButton id="save-team" Text="Save" OnSave="SaveAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string AddTitle = "Add team";
+    public const string EditTitle = "Edit team";
+    public const string DivisionPrompt = "Select a division";
+    public const string SaveAndAddText = "Save and add another";
+    public const string AlreadyEnteredSuffix = " (already entered)";
+
+    public static string NewClubText(string name) => $"Add new club: {name}";
+    public static string NewTeamText(string name) => $"Add new team: {name}";
+
+    /// <summary>An option in the Club or Team search: an existing record, or typed text that will create one.</summary>
+    public sealed record Pick(Guid? Id, string Name, bool IsNew, bool AlreadyEntered);
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public Guid TournamentId { get; set; }
+    [Parameter] public IReadOnlyList<DivisionResponse> Divisions { get; set; } = [];
+    [Parameter] public TournamentTeamResponse? Existing { get; set; }
+
+    private Pick? club;
+    private string clubText = "";
+    private Pick? team;
+    private string teamText = "";
+    private DivisionResponse? division;
+    private IReadOnlyList<ClubTeamOptionResponse>? clubTeams;
+    private CfAutocomplete<Pick>? teamField;
+    private int teamFieldKey;
+    private bool focusTeam;
+    private int saves;
+
+    private string ClubName => club?.Name ?? clubText;
+    private string TeamName => team?.Name ?? teamText;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is null)
+            return;
+
+        teamText = Existing.TeamName;
+        division = Divisions.FirstOrDefault(item => item.Id == Existing.DivisionId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!focusTeam || teamField is null)
+            return;
+
+        focusTeam = false;
+        await teamField.FocusAsync();
+    }
+
+    private async Task<IEnumerable<Pick>> SearchClubsAsync(string text, CancellationToken cancellationToken)
+    {
+        var typed = text?.Trim() ?? "";
+        IReadOnlyList<ClubResponse> clubs;
+        try
+        {
+            clubs = await Api.SearchClubsAsync(typed, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (HttpRequestException exception)
+        {
+            Feedback.Failed(exception.Message);
+            return [];
+        }
+
+        var picks = clubs.Select(item => new Pick(item.Id, item.Name, IsNew: false, AlreadyEntered: false)).ToList();
+        if (typed.Length > 0 && !clubs.Any(item => SameName(item.Name, typed)))
+            picks.Add(new Pick(null, typed, IsNew: true, AlreadyEntered: false));
+        return picks;
+    }
+
+    private async Task<IEnumerable<Pick>> SearchTeamsAsync(string text, CancellationToken cancellationToken)
+    {
+        if (club is null)
+            return [];
+
+        var typed = text?.Trim() ?? "";
+        IReadOnlyList<ClubTeamOptionResponse> options;
+        try
+        {
+            options = await ClubTeamsAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (HttpRequestException exception)
+        {
+            Feedback.Failed(exception.Message);
+            return [];
+        }
+
+        var picks = options
+            .Where(option => option.Name.Contains(typed, StringComparison.OrdinalIgnoreCase))
+            .Select(option => new Pick(option.Id, option.Name, IsNew: false, option.AlreadyEntered))
+            .ToList();
+        if (typed.Length > 0 && !options.Any(option => SameName(option.Name, typed)))
+            picks.Add(new Pick(null, typed, IsNew: true, AlreadyEntered: false));
+        return picks;
+    }
+
+    private async Task<IReadOnlyList<ClubTeamOptionResponse>> ClubTeamsAsync(CancellationToken cancellationToken)
+    {
+        if (club is not { Id: Guid clubId })
+            return [];
+
+        return clubTeams ??= await Api.ListClubTeamsAsync(clubId, TournamentId, cancellationToken);
+    }
+
+    private async Task ChooseClubAsync(Pick? value)
+    {
+        if (club == value)
+            return;
+
+        club = value;
+        clubTeams = null;
+        await ClearTeamAsync();
+    }
+
+    private void ChooseTeam(Pick? value) => team = value;
+
+    private async Task ClearTeamAsync()
+    {
+        team = null;
+        teamText = "";
+        if (teamField is not null)
+            await teamField.ClearAsync();
+        teamFieldKey++;
+    }
+
+    private void Cancel()
+    {
+        if (saves > 0)
+            Dialog.Close(DialogResult.Ok(saves));
+        else
+            Dialog.Cancel();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (await SubmitAsync())
+            Dialog.Close(DialogResult.Ok(saves));
+    }
+
+    private async Task SaveAndAddAnotherAsync()
+    {
+        if (!await SubmitAsync())
+            return;
+
+        if (club is { IsNew: true } created)
+            club = await FindSavedClubAsync(created.Name) ?? created;
+        clubTeams = null;
+        await ClearTeamAsync();
+        focusTeam = true;
+    }
+
+    private async Task<bool> SubmitAsync()
+    {
+        var saved = await Feedback.RunAsync(async () =>
+        {
+            if (Existing is null)
+            {
+                Club.Validate(ClubName);
+                Team.Validate(TeamName);
+                var divisionId = RequireDivision();
+                await Api.AddTournamentTeamAsync(TournamentId, new TournamentTeamRequest(ClubName, TeamName, divisionId));
+            }
+            else
+            {
+                Team.Validate(teamText);
+                var divisionId = RequireDivision();
+                await Api.UpdateTournamentTeamAsync(Existing.Id, new TournamentTeamUpdateRequest(teamText, divisionId));
+            }
+        });
+
+        if (!saved)
+            return false;
+
+        saves++;
+        Feedback.Saved();
+        return true;
+    }
+
+    private Guid RequireDivision() =>
+        division?.Id ?? throw new DomainRuleException(Division.Required);
+
+    private async Task<Pick?> FindSavedClubAsync(string name)
+    {
+        try
+        {
+            var match = (await Api.SearchClubsAsync(name)).FirstOrDefault(item => SameName(item.Name, name));
+            return match is null ? null : new Pick(match.Id, match.Name, IsNew: false, AlreadyEntered: false);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    private static bool SameName(string left, string right) =>
+        string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private static string? NameOf(Pick? pick) => pick?.Name;
+
+    private static bool IsAlreadyEntered(Pick pick) => pick.AlreadyEntered;
+
+    private static string LabelOf(DivisionResponse item) => Division.Label(item.Name, item.Gender);
+
+    public static string ClubOptionText(Pick pick) => pick.IsNew ? NewClubText(pick.Name) : pick.Name;
+
+    public static string TeamOptionText(Pick pick) =>
+        pick.IsNew ? NewTeamText(pick.Name) : pick.AlreadyEntered ? pick.Name + AlreadyEnteredSuffix : pick.Name;
+
+    private static readonly RenderFragment<Pick> ClubOption = pick => @<MudText Typo="Typo.body2">@ClubOptionText(pick)</MudText>;
+
+    private static readonly RenderFragment<Pick> TeamOption = pick => @<MudText Typo="Typo.body2">@TeamOptionText(pick)</MudText>;
+}

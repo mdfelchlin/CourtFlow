@@ -11,6 +11,22 @@ public sealed class Division
     public const string NameRequired = "Division name is required.";
     public const string GenderRequired = "Gender is required.";
     public const string DuplicateNameAndGender = "A division with this name and gender already exists.";
+    public const string Required = "Division is required.";
+
+    public static string HasTeams(int count) =>
+        $"This division has {count} team{(count == 1 ? "" : "s")}. Move or remove them on the Teams page first.";
+
+    /// <summary>How a division is shown wherever teams are listed or picked, such as "14U Open (Female)".</summary>
+    public static string Label(string name, string gender) => $"{name} ({gender})";
+
+    /// <summary>The import's gender column: M, F, Male, or Female in any case. Anything else is null.</summary>
+    public static DivisionGender? ParseImportGender(string? value) =>
+        value?.Trim().ToUpperInvariant() switch
+        {
+            "M" or "MALE" => DivisionGender.Male,
+            "F" or "FEMALE" => DivisionGender.Female,
+            _ => null,
+        };
 
     public Guid Id { get; private set; }
     public Guid OrganizationId { get; private set; }

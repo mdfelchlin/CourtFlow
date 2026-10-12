@@ -42,14 +42,16 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Drawer_lists_exactly_one_link_tournaments()
+    public void Drawer_lists_tournaments_then_teams()
     {
         var cut = RenderLayout();
 
         var links = cut.FindAll(".mud-nav-link");
-        Assert.Single(links);
+        Assert.Equal(2, links.Count);
         Assert.Equal("Tournaments", links[0].TextContent.Trim());
         Assert.Equal("/", links[0].GetAttribute("href"));
+        Assert.Equal("Teams", links[1].TextContent.Trim());
+        Assert.Equal("/teams", links[1].GetAttribute("href"));
     }
 
     [Fact]
@@ -106,6 +108,16 @@ public class LayoutTests : BunitContext, IDisposable
         Services.GetRequiredService<NavigationManager>().NavigateTo("/not-found");
 
         cut.WaitForAssertion(() => Assert.DoesNotContain("active", cut.Find(".mud-nav-link").ClassList));
+    }
+
+    [Fact]
+    public void Teams_link_is_active_on_the_teams_page()
+    {
+        var cut = RenderLayout();
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/teams");
+
+        cut.WaitForAssertion(() => Assert.Contains("active", cut.FindAll(".mud-nav-link")[1].ClassList));
     }
 
     private IRenderedComponent<MainLayout> RenderLayout() =>

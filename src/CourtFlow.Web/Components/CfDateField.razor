@@ -1,6 +1,6 @@
-@* A calendar date field over MudBlazor's date picker. Binds DateOnly and accepts typed dates as yyyy-MM-dd. *@
+@* A calendar date field over MudBlazor's date picker. Binds DateOnly and accepts typed dates as month/day/year. *@
 <CfField Label="@Label" Required="Required" LabelId="@labelId" @attributes="AdditionalAttributes">
-    <MudDatePicker Date="@ToDateTime(Value)"
+    <MudDatePicker Date="@_pickerDate"
                    DateChanged="OnDateChanged"
                    aria-labelledby="@labelId"
                    Variant="CfDefaults.FieldVariant"
@@ -8,14 +8,27 @@
                    Required="Required"
                    Disabled="Disabled"
                    Editable="true"
-                   DateFormat="@DateFormat"
-                   Placeholder="@DateFormat.ToLowerInvariant()" />
+                   Converter="@DateConverter"
+                   Culture="@CalendarDateFormat.Culture"
+                   DateFormat="@CalendarDateFormat.Pattern"
+                   Placeholder="@CalendarDateFormat.Placeholder" />
 </CfField>
 
 @code {
-    private const string DateFormat = "yyyy-MM-dd";
+    // MudBlazor parses with one format string, and MM/dd rejects a single digit. This converter
+    // accepts 9/1/2026 and still shows 09/01/2026.
+    private static readonly Converter<DateTime?> DateConverter = new()
+    {
+        SetFunc = date => date is null ? null : CalendarDateFormat.Display(DateOnly.FromDateTime(date.Value)),
+        GetFunc = text => CalendarDateFormat.TryParse(text, out var date)
+            ? date.ToDateTime(TimeOnly.MinValue)
+            : null,
+    };
 
     private readonly string labelId = CfIds.Next();
+    private DateOnly? _value;
+    private DateTime? _pickerDate;
+    private bool _publishing;
 
     [Parameter, EditorRequired] public string Label { get; set; } = "";
     [Parameter] public DateOnly? Value { get; set; }
@@ -26,9 +39,35 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
+    protected override void OnParametersSet()
+    {
+        if (Value == _value)
+            return;
+
+        _value = Value;
+        _pickerDate = ToDateTime(Value);
+    }
+
     private static DateTime? ToDateTime(DateOnly? date) =>
         date?.ToDateTime(TimeOnly.MinValue);
 
-    private Task OnDateChanged(DateTime? date) =>
-        ValueChanged.InvokeAsync(date is null ? null : DateOnly.FromDateTime(date.Value));
+    private async Task OnDateChanged(DateTime? date)
+    {
+        // Parsing raises the new date, then the picker re-renders with the previous null
+        // parameter and raises null. Ignore that echo. A real clear arrives on its own.
+        if (date is null && _publishing)
+            return;
+
+        _pickerDate = date;
+        _value = date is null ? null : DateOnly.FromDateTime(date.Value);
+        _publishing = date is not null;
+        try
+        {
+            await ValueChanged.InvokeAsync(_value);
+        }
+        finally
+        {
+            _publishing = false;
+        }
+    }
 }

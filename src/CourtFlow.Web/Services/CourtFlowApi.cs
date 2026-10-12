@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using CourtFlow.Domain;
 
@@ -91,7 +92,70 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
     public async Task DeleteDivisionAsync(Guid divisionId, CancellationToken cancellationToken = default)
     {
         var response = await http.DeleteAsync($"api/divisions/{divisionId}", cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TournamentTeamResponse>> ListTournamentTeamsAsync(Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        var items = await http.GetFromJsonAsync<List<TournamentTeamResponse>>($"api/tournaments/{tournamentId}/teams", cancellationToken);
+        return items ?? [];
+    }
+
+    public async Task<TournamentTeamResponse> AddTournamentTeamAsync(Guid tournamentId, TournamentTeamRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PostAsJsonAsync($"api/tournaments/{tournamentId}/teams", request, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<TournamentTeamResponse>(cancellationToken))!;
+    }
+
+    public async Task<TournamentTeamResponse> UpdateTournamentTeamAsync(Guid entryId, TournamentTeamUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PutAsJsonAsync($"api/tournament-teams/{entryId}", request, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<TournamentTeamResponse>(cancellationToken))!;
+    }
+
+    public async Task DeleteTournamentTeamAsync(Guid entryId, CancellationToken cancellationToken = default)
+    {
+        var response = await http.DeleteAsync($"api/tournament-teams/{entryId}", cancellationToken);
         response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<IReadOnlyList<ClubResponse>> SearchClubsAsync(string? search, CancellationToken cancellationToken = default)
+    {
+        var query = string.IsNullOrWhiteSpace(search) ? "" : $"?search={Uri.EscapeDataString(search)}";
+        var items = await http.GetFromJsonAsync<List<ClubResponse>>($"api/clubs{query}", cancellationToken);
+        return items ?? [];
+    }
+
+    public async Task<IReadOnlyList<ClubTeamOptionResponse>> ListClubTeamsAsync(Guid clubId, Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        var items = await http.GetFromJsonAsync<List<ClubTeamOptionResponse>>($"api/clubs/{clubId}/teams?tournamentId={tournamentId}", cancellationToken);
+        return items ?? [];
+    }
+
+    public async Task<TeamImportPreviewResponse> PreviewTeamImportAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PostAsync($"api/tournaments/{tournamentId}/team-imports/preview", Upload(fileName, content), cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<TeamImportPreviewResponse>(cancellationToken))!;
+    }
+
+    public async Task<TeamImportResponse> ImportTeamsAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PostAsync($"api/tournaments/{tournamentId}/team-imports", Upload(fileName, content), cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            return new TeamImportResponse(null, await response.Content.ReadFromJsonAsync<TeamImportPreviewResponse>(cancellationToken));
+
+        await ThrowIfRejected(response, cancellationToken);
+        return new TeamImportResponse(await response.Content.ReadFromJsonAsync<TeamImportResultResponse>(cancellationToken), null);
+    }
+
+    private static MultipartFormDataContent Upload(string fileName, byte[] content)
+    {
+        var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+        return new MultipartFormDataContent { { file, "file", fileName } };
     }
 
     private static async Task ThrowIfRejected(HttpResponseMessage response, CancellationToken cancellationToken)

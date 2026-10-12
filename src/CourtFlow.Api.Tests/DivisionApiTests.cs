@@ -139,6 +139,22 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Deleting_a_division_with_teams_is_rejected_and_keeps_it()
+    {
+        var client = factory.CreateClient();
+        var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
+        var division = await CreateAsync(client, tournament.Id, "14U Open", "Female");
+        for (var i = 1; i <= 3; i++)
+            await TeamApiTests.AddOkAsync(client, tournament.Id, "Club", $"Team {i}", division.Id);
+
+        var rejected = await client.DeleteAsync($"/api/divisions/{division.Id}");
+
+        Assert.Equal("This division has 3 teams. Move or remove them on the Teams page first.", await TeamApiTests.RejectionAsync(rejected));
+        var listed = await client.GetFromJsonAsync<List<DivisionDetails>>($"/api/tournaments/{tournament.Id}/divisions");
+        Assert.Equal([division.Id], listed!.Select(item => item.Id).ToArray());
+    }
+
+    [Fact]
     public async Task Deleting_a_tournament_deletes_its_divisions()
     {
         var client = factory.CreateClient();

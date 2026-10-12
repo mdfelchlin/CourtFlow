@@ -39,8 +39,9 @@ public static class DivisionEndpoints
             Guid divisionId,
             DivisionUseCases useCases,
             CancellationToken cancellationToken) =>
-            await useCases.DeleteAsync(divisionId, cancellationToken)
-                ? Results.NoContent()
-                : Results.NotFound());
+            await TournamentEndpoints.RejectRules(async () =>
+                await useCases.DeleteAsync(divisionId, cancellationToken)
+                    ? Results.NoContent()
+                    : Results.NotFound()));
     }
 }

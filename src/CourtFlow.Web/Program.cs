@@ -18,6 +18,7 @@ builder.Services.AddSingleton<IThemePreferenceStore, JsThemePreferenceStore>();
 builder.Services.AddSingleton<ThemeState>();
 builder.Services.AddScoped<Feedback>();
 builder.Services.AddScoped<Confirmations>();
+builder.Services.AddScoped<ITournamentMemory, JsTournamentMemory>();
 
 var host = builder.Build();
 

@@ -17,4 +17,14 @@ public static class CfDefaults
     public const int AppBarElevation = 1;
     public const MaxWidth ContentMaxWidth = MaxWidth.ExtraExtraLarge;
     public const MaxWidth DialogMaxWidth = MaxWidth.Small;
+    public const MaxWidth WideDialogMaxWidth = MaxWidth.Large;
+
+    /// <summary>
+    /// MudBlazor 8 has no drag-and-drop switch on <c>MudFileUpload</c>. Its documented pattern
+    /// stretches the native file input, invisible, over the drop target so a dropped file lands on it.
+    /// These are MudBlazor's own utility classes and an opacity, not a visual choice.
+    /// </summary>
+    public const string DropZoneClass = "relative";
+    public const string DropZoneInputClass = "absolute mud-width-full mud-height-full overflow-hidden z-10";
+    public const string DropZoneInputStyle = "opacity:0";
 }

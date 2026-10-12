@@ -1,0 +1,43 @@
+@* A drop target for one file, with a browse button for the keyboard. *@
+<CfField Label="@Label" Required="Required" LabelId="@labelId" @attributes="AdditionalAttributes">
+    <MudFileUpload T="IBrowserFile"
+                   FilesChanged="FileChosen"
+                   Accept="@Accept"
+                   Disabled="Disabled"
+                   Hidden="false"
+                   Class="@CfDefaults.DropZoneClass"
+                   InputClass="@CfDefaults.DropZoneInputClass"
+                   InputStyle="@CfDefaults.DropZoneInputStyle"
+                   aria-labelledby="@labelId">
+        <ActivatorContent>
+            <MudPaper Outlined="true" Class="pa-6" aria-labelledby="@labelId">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.UploadFile" Color="Color.Primary" />
+                    <MudText>@Prompt</MudText>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="CfDefaults.ButtonSize"
+                               Disabled="Disabled"
+                               data-testid="browse-file">
+                        @BrowseText
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </ActivatorContent>
+    </MudFileUpload>
+</CfField>
+
+@code {
+    private readonly string labelId = CfIds.Next();
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string Prompt { get; set; } = "Drop a file here";
+    [Parameter] public string BrowseText { get; set; } = "Browse";
+    [Parameter] public string? Accept { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<IBrowserFile> FileChosen { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

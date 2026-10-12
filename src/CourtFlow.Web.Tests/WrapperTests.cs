@@ -1,5 +1,7 @@
+using System.Globalization;
 using AngleSharp.Dom;
 using Bunit;
+using CourtFlow.Web;
 using CourtFlow.Web.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -90,19 +92,136 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_shows_its_value_and_accepts_a_typed_date()
+    public void Date_field_shows_a_us_date_and_the_placeholder_when_empty()
+    {
+        var filled = RenderDateField(new DateOnly(2026, 9, 3));
+        Assert.Equal("09/03/2026", filled.Find("input").GetAttribute("value"));
+
+        var empty = RenderDateField(null);
+        Assert.Equal(CalendarDateFormat.Placeholder, empty.Find("input").GetAttribute("placeholder"));
+    }
+
+    [Theory]
+    [InlineData("09/01/2026")]
+    [InlineData("9/1/2026")]
+    public void Date_field_accepts_a_us_date(string typed)
     {
         DateOnly? changed = null;
-        var cut = Render<CfDateField>(parameters => parameters
-            .Add(field => field.Label, "Start date")
-            .Add(field => field.Value, new DateOnly(2026, 9, 3))
-            .Add(field => field.ValueChanged, value => changed = value));
+        var cut = RenderDateField(null, value => changed = value);
 
-        Assert.Equal("2026-09-03", cut.Find("input").GetAttribute("value"));
-
-        cut.Find("input").Change("2026-09-01");
+        cut.Find("input").Change(typed);
 
         cut.WaitForAssertion(() => Assert.Equal(new DateOnly(2026, 9, 1), changed));
+        Assert.Equal("09/01/2026", cut.Find("input").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Date_field_reads_month_before_day()
+    {
+        DateOnly? changed = null;
+        var cut = RenderDateField(null, value => changed = value);
+
+        cut.Find("input").Change("02/03/2026");
+
+        cut.WaitForAssertion(() => Assert.Equal(new DateOnly(2026, 2, 3), changed));
+    }
+
+    [Theory]
+    [InlineData("13/01/2026")]
+    [InlineData("02/31/2026")]
+    [InlineData("09/01/26")]
+    [InlineData("2026-09-01")]
+    public void Date_field_rejects_a_date_that_is_not_a_real_us_date(string typed)
+    {
+        var accepted = new List<DateOnly?>();
+        var cut = RenderDateField(null, value => accepted.Add(value));
+
+        cut.Find("input").Change(typed);
+
+        Assert.DoesNotContain(accepted, value => value is not null);
+    }
+
+    [Fact]
+    public void Date_field_clears_when_the_input_is_emptied()
+    {
+        DateOnly? changed = new DateOnly(2026, 9, 3);
+        var cut = RenderDateField(changed, value => changed = value);
+
+        cut.Find("input").Change("");
+
+        cut.WaitForAssertion(() => Assert.Null(changed));
+    }
+
+    [Fact]
+    public void Date_field_keeps_us_order_when_the_culture_is_day_first()
+    {
+        var original = CultureInfo.CurrentCulture;
+        var originalUi = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
+        try
+        {
+            Assert.Equal("09/01/2026", CalendarDateFormat.Display(new DateOnly(2026, 9, 1)));
+
+            DateOnly? changed = null;
+            var cut = RenderDateField(new DateOnly(2026, 9, 1), value => changed = value);
+
+            Assert.Equal("09/01/2026", cut.Find("input").GetAttribute("value"));
+
+            cut.Find("input").Change("02/03/2026");
+
+            cut.WaitForAssertion(() => Assert.Equal(new DateOnly(2026, 2, 3), changed));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+            CultureInfo.CurrentUICulture = originalUi;
+        }
+    }
+
+    [Fact]
+    public async Task Date_field_shows_a_date_chosen_on_the_picker()
+    {
+        DateOnly? changed = null;
+        var cut = RenderDateField(null, value => changed = value);
+
+        var picker = cut.FindComponent<MudDatePicker>();
+        await cut.InvokeAsync(() => picker.Instance.DateChanged.InvokeAsync(new DateTime(2026, 9, 1)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(new DateOnly(2026, 9, 1), changed);
+            Assert.Equal("09/01/2026", cut.Find("input").GetAttribute("value"));
+        });
+    }
+
+    [Fact]
+    public void Autocomplete_renders_a_plain_label_tied_to_the_input()
+    {
+        var cut = Render<CfAutocomplete<string>>(parameters => parameters
+            .Add(field => field.Label, "Club")
+            .Add(field => field.SearchFunc, (_, _) => Task.FromResult<IEnumerable<string>>([])));
+
+        AssertLabelTiedToInput(cut.Nodes, "Club");
+    }
+
+    [Fact]
+    public void File_drop_zone_renders_a_label_and_a_browse_button()
+    {
+        var cut = Render<CfFileDropZone>(parameters => parameters
+            .Add(field => field.Label, "CSV file")
+            .Add(field => field.Required, true));
+
+        Assert.Contains("CSV file", cut.Find("label").TextContent);
+        Assert.Contains("*", cut.Find("label").TextContent);
+        Assert.NotNull(cut.Find("[data-testid=browse-file]"));
+    }
+
+    [Fact]
+    public void Switch_renders_its_label()
+    {
+        var cut = Render<CfSwitch>(parameters => parameters.Add(field => field.Label, "Rejected only"));
+
+        Assert.Contains("Rejected only", cut.Markup);
     }
 
     [Fact]
@@ -164,6 +283,11 @@ public class WrapperTests : BunitContext, IDisposable
         Assert.Equal("Tournaments", headings[0].TextContent.Trim());
         Assert.NotNull(cut.Find("[aria-label='Back to tournaments']"));
     }
+
+    private IRenderedComponent<CfDateField> RenderDateField(DateOnly? initial, Action<DateOnly?>? onChanged = null) =>
+        Render<CfDateField>(parameters => parameters
+            .Add(field => field.Label, "Start date")
+            .Bind(field => field.Value, initial, onChanged ?? (_ => { })));
 
     private IRenderedComponent<CfSelect<string>> RenderSelect() =>
         Render<CfSelect<string>>(parameters => parameters

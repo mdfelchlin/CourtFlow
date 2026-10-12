@@ -36,3 +36,59 @@ public sealed record DivisionDetails(
     string Gender);
 
 public sealed record SaveDivision(string? Name, string? Gender);
+
+public sealed record TournamentTeamDetails(
+    Guid Id,
+    Guid TournamentId,
+    Guid TeamId,
+    string TeamName,
+    Guid ClubId,
+    string ClubName,
+    Guid DivisionId,
+    string DivisionName,
+    string DivisionGender);
+
+public sealed record AddTournamentTeam(string? ClubName, string? TeamName, Guid? DivisionId);
+
+public sealed record UpdateTournamentTeam(string? TeamName, Guid? DivisionId);
+
+public sealed record ClubDetails(Guid Id, string Name);
+
+public sealed record ClubTeamOption(Guid Id, string Name, bool AlreadyEntered);
+
+public enum TeamImportOutcome
+{
+    AddNewClubAndTeam,
+    AddNewTeam,
+    AddExistingTeam,
+    Move,
+    NoChange,
+    Rejected,
+}
+
+public sealed record TeamImportRow(
+    int Line,
+    string Club,
+    string Team,
+    string Division,
+    string Gender,
+    TeamImportOutcome Outcome,
+    string? FromDivision,
+    string? Message);
+
+public sealed record TeamImportSummary(
+    int Rows,
+    int NewClubs,
+    int NewTeams,
+    int ToAdd,
+    int ToMove,
+    int Unchanged,
+    int Rejected);
+
+public sealed record TeamImportPreview(
+    string? FileError,
+    IReadOnlyList<TeamImportRow> Rows,
+    TeamImportSummary Summary,
+    bool Stale);
+
+public sealed record TeamImportResult(int Imported);

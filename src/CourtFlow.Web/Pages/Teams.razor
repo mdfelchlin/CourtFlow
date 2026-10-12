@@ -1,0 +1,260 @@
+@page "/teams"
+@inject ICourtFlowApi Api
+@inject IDialogService Dialogs
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+@inject ITournamentMemory TournamentMemory
+
+<PageTitle>Teams</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="Teams">
+        <Actions>
+            @if (tournaments is { Count: > 0 })
+            {
+                <MudButton id="import-teams"
+                           Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Size="CfDefaults.ButtonSize"
+                           StartIcon="@Icons.Material.Filled.UploadFile"
+                           Disabled="!CanAddTeams"
+                           OnClick="ImportAsync">Import CSV</MudButton>
+                <CfAddButton id="add-team" AriaLabel="Add team" Disabled="!CanAddTeams" OnClick="AddAsync" />
+            }
+        </Actions>
+    </CfPageHeader>
+
+    @if (tournaments is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (tournaments.Count == 0)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="no-tournaments">@NoTournamentsMessage</CfAlert>
+        <MudLink Href="/">Go to tournaments</MudLink>
+    }
+    else
+    {
+        <CfSelect T="TournamentResponse"
+                  Value="selected"
+                  ValueChanged="SelectAsync"
+                  Label="Tournament"
+                  Items="tournaments"
+                  ToLabel="NameOf"
+                  Placeholder="@TournamentPrompt"
+                  data-testid="tournament-picker" />
+
+        @if (selected is null)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="nothing-selected">@NothingSelectedMessage</CfAlert>
+        }
+        else if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" data-testid="teams-loading" />
+        }
+        else if (divisions.Count == 0)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="no-divisions">@NoDivisionsMessage</CfAlert>
+            <MudLink Href="@($"/tournaments/{selected.Id}")" data-testid="editor-link">Open @selected.Name</MudLink>
+        }
+        else if (teams.Count == 0)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="no-teams">@NoTeamsMessage</CfAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="5">
+                    <CfSelect T="DivisionResponse"
+                              Value="divisionFilter"
+                              ValueChanged="FilterByDivision"
+                              Label="Division"
+                              Items="DivisionFilterItems"
+                              ToLabel="FilterLabel"
+                              data-testid="division-filter" />
+                </MudItem>
+                <MudItem xs="12" sm="7">
+                    <CfTextField @bind-Value="search" Label="Search" Placeholder="Team or club" Immediate="true" data-testid="team-search" />
+                </MudItem>
+            </MudGrid>
+            <MudText Typo="Typo.body2" data-testid="team-count">@CountText(Visible.Count, teams.Count, IsFiltered)</MudText>
+            <MudTable T="TournamentTeamResponse" Items="Visible" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+                <HeaderContent>
+                    <MudTh>Club</MudTh>
+                    <MudTh>Team</MudTh>
+                    <MudTh>Division</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Club" data-testid="team-row">@context.ClubName</MudTd>
+                    <MudTd DataLabel="Team">@context.TeamName</MudTd>
+                    <MudTd DataLabel="Division">@Division.Label(context.DivisionName, context.DivisionGender)</MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                            <CfIconButton id="@($"edit-team-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Edit"
+                                          Label="@($"Edit {context.TeamName}, {context.ClubName}")"
+                                          OnClick="@(() => EditAsync(context))" />
+                            <CfIconButton id="@($"delete-team-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Delete"
+                                          Label="@($"Delete {context.TeamName}, {context.ClubName}")"
+                                          Color="Color.Error"
+                                          OnClick="@(() => DeleteAsync(context))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText data-testid="no-matches">@NoMatchesMessage</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+    }
+</MudStack>
+
+@code {
+    public const string TournamentPrompt = "Select a tournament";
+    public const string NothingSelectedMessage = "Select a tournament to see its teams.";
+    public const string NoTournamentsMessage = "No tournaments yet. Create one on the Tournaments page.";
+    public const string NoDivisionsMessage = "Add a division to this tournament before adding teams.";
+    public const string NoTeamsMessage = "No teams yet. Use Add or Import CSV.";
+    public const string NoMatchesMessage = "No teams match.";
+    public const string AllDivisions = "All divisions";
+    public const string DeleteConsequence = "The team stays available for other tournaments.";
+
+    private static readonly DivisionResponse EveryDivision = new(Guid.Empty, Guid.Empty, AllDivisions, "");
+
+    private IReadOnlyList<TournamentResponse>? tournaments;
+    private TournamentResponse? selected;
+    private bool loading;
+    private List<DivisionResponse> divisions = [];
+    private IReadOnlyList<TournamentTeamResponse> teams = [];
+    private DivisionResponse divisionFilter = EveryDivision;
+    private string search = "";
+
+    private bool CanAddTeams => selected is not null && !loading && divisions.Count > 0;
+
+    private bool IsFiltered => divisionFilter.Id != Guid.Empty || !string.IsNullOrWhiteSpace(search);
+
+    private IEnumerable<DivisionResponse> DivisionFilterItems => divisions.Prepend(EveryDivision);
+
+    private IReadOnlyList<TournamentTeamResponse> Visible =>
+        teams.Where(team => divisionFilter.Id == Guid.Empty || team.DivisionId == divisionFilter.Id)
+            .Where(team => string.IsNullOrWhiteSpace(search)
+                           || team.TeamName.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)
+                           || team.ClubName.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    public static string CountText(int shown, int total, bool filtered)
+    {
+        var noun = total == 1 ? "team" : "teams";
+        return filtered ? $"{shown} of {total} {noun}" : $"{total} {noun}";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        tournaments = await Api.ListTournamentsAsync();
+
+        var remembered = await TournamentMemory.ReadAsync();
+        if (remembered is null)
+            return;
+
+        var tournament = tournaments.FirstOrDefault(item => item.Id == remembered);
+        if (tournament is null)
+        {
+            await TournamentMemory.ForgetAsync();
+            return;
+        }
+
+        await LoadAsync(tournament);
+    }
+
+    private async Task SelectAsync(TournamentResponse tournament)
+    {
+        await TournamentMemory.RememberAsync(tournament.Id);
+        await LoadAsync(tournament);
+    }
+
+    private async Task LoadAsync(TournamentResponse tournament)
+    {
+        selected = tournament;
+        divisionFilter = EveryDivision;
+        search = "";
+        loading = true;
+        try
+        {
+            var loadedDivisions = await Api.ListDivisionsAsync(tournament.Id);
+            var loadedTeams = await Api.ListTournamentTeamsAsync(tournament.Id);
+            if (selected?.Id != tournament.Id)
+                return;
+
+            divisions = Division.OrderForList(loadedDivisions, division => division.Name, division => division.Gender).ToList();
+            teams = loadedTeams;
+        }
+        finally
+        {
+            if (selected?.Id == tournament.Id)
+                loading = false;
+        }
+    }
+
+    private async Task ReloadTeamsAsync()
+    {
+        if (selected is { } tournament)
+            teams = await Api.ListTournamentTeamsAsync(tournament.Id);
+    }
+
+    private void FilterByDivision(DivisionResponse division) => divisionFilter = division ?? EveryDivision;
+
+    private Task AddAsync() => OpenTeamDialogAsync(TeamDialog.AddTitle, existing: null);
+
+    private Task EditAsync(TournamentTeamResponse entry) => OpenTeamDialogAsync(TeamDialog.EditTitle, entry);
+
+    private async Task OpenTeamDialogAsync(string title, TournamentTeamResponse? existing)
+    {
+        var parameters = new DialogParameters<TeamDialog>
+        {
+            { dialog => dialog.TournamentId, selected!.Id },
+            { dialog => dialog.Divisions, divisions },
+            { dialog => dialog.Existing, existing },
+        };
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<TeamDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        // "Save and add another" saves while the dialog stays open, so Escape after it still has changes to show.
+        if (result is { Canceled: false } || existing is null)
+            await ReloadTeamsAsync();
+    }
+
+    private async Task ImportAsync()
+    {
+        var parameters = new DialogParameters<TeamImportDialog> { { dialog => dialog.TournamentId, selected!.Id } };
+        var options = new DialogOptions { MaxWidth = CfDefaults.WideDialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<TeamImportDialog>(TeamImportDialog.Title, parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: int imported })
+        {
+            Feedback.Imported(imported);
+            await ReloadTeamsAsync();
+        }
+    }
+
+    private async Task DeleteAsync(TournamentTeamResponse entry)
+    {
+        if (!await Confirmations.ConfirmDeleteAsync($"{entry.TeamName} ({entry.ClubName})", DeleteConsequence))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeleteTournamentTeamAsync(entry.Id)))
+        {
+            Feedback.Deleted();
+            await ReloadTeamsAsync();
+        }
+    }
+
+    private static string NameOf(TournamentResponse tournament) => tournament.Name;
+
+    private static string FilterLabel(DivisionResponse division) =>
+        division.Id == Guid.Empty ? AllDivisions : Division.Label(division.Name, division.Gender);
+}

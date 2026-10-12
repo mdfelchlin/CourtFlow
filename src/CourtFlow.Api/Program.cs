@@ -2,6 +2,8 @@ using CourtFlow.Api;
 using CourtFlow.Application;
 using CourtFlow.Application.Tournaments;
 using CourtFlow.Application.Divisions;
+using CourtFlow.Application.Teams;
+using CourtFlow.Application.Teams.Import;
 using CourtFlow.Application.Venues;
 using CourtFlow.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +15,13 @@ var connectionString = builder.Configuration.GetConnectionString("CourtFlow")
 
 builder.Services.AddDbContext<CourtFlowDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<ITournamentRepository, TournamentRepository>();
+builder.Services.AddScoped<IClubRepository, ClubRepository>();
 builder.Services.AddScoped<IOrganizationScope, TestOrganizationScope>();
 builder.Services.AddScoped<TournamentUseCases>();
 builder.Services.AddScoped<VenueUseCases>();
 builder.Services.AddScoped<DivisionUseCases>();
+builder.Services.AddScoped<TeamUseCases>();
+builder.Services.AddScoped<TeamImportUseCases>();
 
 var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
@@ -39,6 +44,7 @@ using (var scope = app.Services.CreateScope())
 app.MapTournamentEndpoints();
 app.MapVenueEndpoints();
 app.MapDivisionEndpoints();
+app.MapTeamEndpoints();
 
 app.Run();
 

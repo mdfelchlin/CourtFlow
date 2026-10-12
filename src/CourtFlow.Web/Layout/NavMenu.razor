@@ -1,8 +1,10 @@
 @* The drawer's links. It lists only pages that exist. *@
 <MudNavMenu>
     <CfNavLink Href="/" Icon="@Icons.Material.Filled.EmojiEvents" ActivePrefixes="@TournamentPaths">Tournaments</CfNavLink>
+    <CfNavLink Href="/teams" Icon="@Icons.Material.Filled.Groups" ActivePrefixes="@TeamPaths">Teams</CfNavLink>
 </MudNavMenu>
 
 @code {
     private static readonly string[] TournamentPaths = ["/", "/tournaments"];
+    private static readonly string[] TeamPaths = ["/teams"];
 }

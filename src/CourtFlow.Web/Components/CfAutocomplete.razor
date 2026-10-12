@@ -1,0 +1,84 @@
+@* A type-to-search field over options the caller looks up, with the CourtFlow look. *@
+@typeparam T
+
+<CfField Label="@Label" Required="Required" InputId="@inputId" @attributes="AdditionalAttributes">
+    <MudAutocomplete @ref="autocomplete"
+                     T="T"
+                     Value="Value"
+                     ValueChanged="ValueChanged"
+                     Text="@text"
+                     TextChanged="OnTextChanged"
+                     SearchFunc="SearchFunc"
+                     ToStringFunc="ToStringFunc"
+                     ItemDisabledFunc="ItemDisabledFunc"
+                     ItemTemplate="ItemTemplate"
+                     InputId="@inputId"
+                     Variant="CfDefaults.FieldVariant"
+                     Margin="CfDefaults.FieldMargin"
+                     Dense="true"
+                     Required="Required"
+                     Disabled="Disabled"
+                     Placeholder="@Placeholder"
+                     ResetValueOnEmptyText="true"
+                     SelectValueOnTab="true"
+                     MaxItems="null"
+                     FullWidth="true" />
+</CfField>
+
+@code {
+    private readonly string inputId = CfIds.Next();
+    private MudAutocomplete<T>? autocomplete;
+    private string text = "";
+    private T? shown;
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+
+    /// <summary>The typed text, including text that has not been matched to an option yet.</summary>
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+
+    [Parameter, EditorRequired] public Func<string, CancellationToken, Task<IEnumerable<T>>> SearchFunc { get; set; } = default!;
+    [Parameter] public Func<T?, string?> ToStringFunc { get; set; } = item => item?.ToString();
+    [Parameter] public Func<T, bool>? ItemDisabledFunc { get; set; }
+    [Parameter] public RenderFragment<T>? ItemTemplate { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (EqualityComparer<T>.Default.Equals(shown, Value))
+            return;
+
+        shown = Value;
+        text = Value is null ? "" : ToStringFunc(Value) ?? "";
+    }
+
+    private Task OnTextChanged(string value)
+    {
+        text = value;
+        return TextChanged.InvokeAsync(value);
+    }
+
+    public async Task FocusAsync()
+    {
+        if (autocomplete is not null)
+            await autocomplete.FocusAsync();
+    }
+
+    /// <summary>
+    /// Clears typed text even when <see cref="Value"/> was already empty.
+    /// The displayed text is local, so clearing the parent's copy does not reach the input.
+    /// </summary>
+    public async Task ClearAsync()
+    {
+        text = "";
+        shown = default;
+        if (autocomplete is not null)
+            await autocomplete.ClearAsync();
+    }
+}

@@ -1,5 +1,5 @@
-// The only JavaScript in the app. It reads and writes the theme cookie and reports the
-// operating system setting. It never touches the page's look, so the loading screen stays light.
+// Reads and writes the theme cookie and reports the operating system setting.
+// It never touches the page's look, so the loading screen stays light.
 window.courtflowTheme = (function () {
     const cookieName = "courtflow-theme";
 

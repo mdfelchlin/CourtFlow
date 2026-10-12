@@ -22,6 +22,30 @@ namespace CourtFlow.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("CourtFlow.Domain.Club", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("clubs", (string)null);
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Court", b =>
                 {
                     b.Property<Guid>("Id")
@@ -83,6 +107,33 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.ToTable("organizations", (string)null);
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Team", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClubId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClubId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("teams", (string)null);
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Tournament", b =>
                 {
                     b.Property<Guid>("Id")
@@ -115,6 +166,35 @@ namespace CourtFlow.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("tournaments", (string)null);
+                });
+
+            modelBuilder.Entity("CourtFlow.Domain.TournamentTeam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DivisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TournamentId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DivisionId");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("TournamentId", "TeamId")
+                        .IsUnique();
+
+                    b.ToTable("tournament_teams", (string)null);
                 });
 
             modelBuilder.Entity("CourtFlow.Domain.Venue", b =>
@@ -161,6 +241,36 @@ namespace CourtFlow.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Team", b =>
+                {
+                    b.HasOne("CourtFlow.Domain.Club", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CourtFlow.Domain.TournamentTeam", b =>
+                {
+                    b.HasOne("CourtFlow.Domain.Division", null)
+                        .WithMany()
+                        .HasForeignKey("DivisionId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.HasOne("CourtFlow.Domain.Team", null)
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CourtFlow.Domain.Tournament", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("TournamentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Venue", b =>
                 {
                     b.HasOne("CourtFlow.Domain.Tournament", null)
@@ -170,9 +280,16 @@ namespace CourtFlow.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CourtFlow.Domain.Club", b =>
+                {
+                    b.Navigation("Teams");
+                });
+
             modelBuilder.Entity("CourtFlow.Domain.Tournament", b =>
                 {
                     b.Navigation("Divisions");
+
+                    b.Navigation("Entries");
 
                     b.Navigation("Venues");
                 });

@@ -5,6 +5,7 @@
 @inject IDialogService Dialogs
 @inject Confirmations Confirmations
 @inject Feedback Feedback
+@inject ITournamentMemory TournamentMemory
 
 <PageTitle>@(IsNew ? "New tournament" : "Tournament")</PageTitle>
 
@@ -225,6 +226,7 @@
             endDate = tournament.EndDate;
             timeZoneId = tournament.TimeZoneId;
             duration = tournament.DefaultMatchDurationMinutes;
+            await TournamentMemory.RememberAsync(Id);
             await ReloadVenuesAsync();
             await ReloadDivisionsAsync();
         }
