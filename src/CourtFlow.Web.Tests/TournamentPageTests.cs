@@ -220,6 +220,25 @@ public class TournamentPageTests : BunitContext, IDisposable
 
         Assert.Contains("Page not found", cut.Find("h1").TextContent);
         Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/");
+        Assert.Empty(cut.FindComponents<CfTournamentSelect>());
+    }
+
+    [Fact]
+    public void Tournament_list_and_editor_have_no_tournament_dropdown()
+    {
+        var list = Render<TournamentList>();
+        list.WaitForAssertion(() => Assert.Contains(TournamentList.EmptyMessage, list.Markup));
+        Assert.Empty(list.FindComponents<CfTournamentSelect>());
+
+        var create = Render<TournamentEditor>();
+        create.WaitForAssertion(() => Assert.Contains("Details", create.Markup));
+        Assert.Empty(create.FindComponents<CfTournamentSelect>());
+
+        var tournament = Sample();
+        _api.Tournaments.Add(tournament);
+        var edit = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, tournament.Id));
+        edit.WaitForAssertion(() => Assert.Contains(tournament.Name, edit.Markup));
+        Assert.Empty(edit.FindComponents<CfTournamentSelect>());
     }
 
     [Fact]

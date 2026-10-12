@@ -1,4 +1,5 @@
 using Bunit;
+using CourtFlow.Web.Components;
 using CourtFlow.Web.Layout;
 using CourtFlow.Web.Theming;
 using Microsoft.AspNetCore.Components;
@@ -85,6 +86,7 @@ public class LayoutTests : BunitContext, IDisposable
 
         foreach (var text in new[] { "Sign in", "Sign out", "Login", "Logout", "Select tournament" })
             Assert.DoesNotContain(text, cut.Markup);
+        Assert.Empty(cut.FindComponents<CfTournamentSelect>());
     }
 
     [Theory]

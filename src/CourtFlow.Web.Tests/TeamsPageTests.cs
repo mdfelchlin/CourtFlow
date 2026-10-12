@@ -43,10 +43,23 @@ public class TeamsPageTests : BunitContext, IDisposable
 
         var cut = Render<Teams>();
 
-        cut.WaitForAssertion(() => Assert.Contains(Teams.TournamentPrompt, cut.Markup));
-        var picker = cut.FindComponent<CfSelect<TournamentResponse>>();
+        cut.WaitForAssertion(() => Assert.Contains(CfTournamentSelect.Prompt, cut.Markup));
+        var picker = cut.FindComponent<CfTournamentSelect>();
         Assert.Equal(["Later Cup", "Earlier Cup"], picker.Instance.Items.Select(item => item.Name).ToArray());
         Assert.Null(picker.Instance.Value);
+        Assert.False(cut.FindComponent<MudSelect<TournamentResponse>>().Instance.Clearable);
+        Assert.DoesNotContain("Select a tournament<", cut.Markup);
+
+        var add = cut.Find("#add-team");
+        var pickerRow = cut.Find("[data-testid=tournament-picker]");
+        Assert.Equal("import-teams", add.PreviousElementSibling!.Id);
+        Assert.Equal("add-team", pickerRow.PreviousElementSibling!.Id);
+
+        var label = pickerRow.QuerySelector("label")!;
+        Assert.Equal(CfTournamentSelect.Label, label.TextContent.Trim());
+        var select = label.NextElementSibling!;
+        Assert.Contains("mud-select", select.ClassName);
+        Assert.Equal(label.GetAttribute("for"), select.QuerySelector("input")!.Id);
     }
 
     [Fact]
@@ -58,7 +71,7 @@ public class TeamsPageTests : BunitContext, IDisposable
         var cut = Render<Teams>();
 
         cut.WaitForAssertion(() => Assert.Contains("Ohio St U", cut.Markup));
-        Assert.Equal(tournament.Id, cut.FindComponent<CfSelect<TournamentResponse>>().Instance.Value?.Id);
+        Assert.Equal(tournament.Id, cut.FindComponent<CfTournamentSelect>().Instance.Value?.Id);
     }
 
     [Fact]
@@ -86,7 +99,7 @@ public class TeamsPageTests : BunitContext, IDisposable
         var cut = Render<Teams>();
         cut.WaitForAssertion(() => Assert.Contains(Teams.NothingSelectedMessage, cut.Markup));
 
-        await cut.InvokeAsync(() => cut.FindComponent<CfSelect<TournamentResponse>>().Instance.ValueChanged.InvokeAsync(second));
+        await cut.InvokeAsync(() => cut.FindComponent<CfTournamentSelect>().Instance.ChooseAsync(second));
 
         cut.WaitForAssertion(() => Assert.Equal(second.Id, _memory.Remembered));
     }
@@ -96,7 +109,11 @@ public class TeamsPageTests : BunitContext, IDisposable
     {
         var cut = Render<Teams>();
 
-        cut.WaitForAssertion(() => Assert.Contains(Teams.NoTournamentsMessage, cut.Markup));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(Teams.NoTournamentsMessage, cut.Markup);
+            Assert.Contains(CfTournamentSelect.Prompt, cut.Markup);
+        });
         Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/");
         Assert.Empty(cut.FindAll("#add-team"));
     }
@@ -108,9 +125,41 @@ public class TeamsPageTests : BunitContext, IDisposable
 
         var cut = Render<Teams>();
 
-        cut.WaitForAssertion(() => Assert.Contains(Teams.NothingSelectedMessage, cut.Markup));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(CfTournamentSelect.Prompt, cut.Markup);
+            Assert.Contains(Teams.NothingSelectedMessage, cut.Markup);
+        });
         AssertDisabled(cut, "#add-team");
         AssertDisabled(cut, "#import-teams");
+    }
+
+    [Fact]
+    public void While_the_tournament_list_loads_the_bar_shows_and_the_dropdown_does_not()
+    {
+        _api.Tournaments.Add(Sample());
+        _api.ListTournamentsGate = new TaskCompletionSource();
+
+        var cut = Render<Teams>();
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find(".mud-progress-linear")));
+        Assert.Empty(cut.FindAll("label"));
+        Assert.DoesNotContain(CfTournamentSelect.Prompt, cut.Markup);
+
+        _api.ListTournamentsGate.SetResult();
+        cut.WaitForAssertion(() => Assert.Contains(CfTournamentSelect.Prompt, cut.Markup));
+    }
+
+    [Fact]
+    public void Shared_names_both_appear_in_list_order()
+    {
+        _api.Tournaments.Add(Sample(name: "City Cup"));
+        _api.Tournaments.Add(Sample(name: "City Cup"));
+
+        var cut = Render<Teams>();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindComponent<CfTournamentSelect>().Instance.Items.Count));
+        Assert.Equal(["City Cup", "City Cup"], cut.FindComponent<CfTournamentSelect>().Instance.Items.Select(item => item.Name).ToArray());
     }
 
     [Fact]
@@ -229,12 +278,10 @@ public class TeamsPageTests : BunitContext, IDisposable
         cut.WaitForAssertion(() => Assert.Contains("Ohio St U", cut.Markup));
         cut.Find("[data-testid=team-search] input").Input("ohio");
 
-        await cut.InvokeAsync(() =>
-            cut.FindComponents<CfSelect<TournamentResponse>>().First().Instance.ValueChanged.InvokeAsync(second));
+        await cut.InvokeAsync(() => cut.FindComponent<CfTournamentSelect>().Instance.ChooseAsync(second));
 
         cut.WaitForAssertion(() => Assert.Contains(Teams.NoTeamsMessage, cut.Markup));
-        await cut.InvokeAsync(() =>
-            cut.FindComponents<CfSelect<TournamentResponse>>().First().Instance.ValueChanged.InvokeAsync(first));
+        await cut.InvokeAsync(() => cut.FindComponent<CfTournamentSelect>().Instance.ChooseAsync(first));
 
         cut.WaitForAssertion(() =>
         {

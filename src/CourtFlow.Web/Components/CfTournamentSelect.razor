@@ -1,0 +1,67 @@
+@* The current tournament: a label beside a dropdown of the organization's tournaments. *@
+@inject ICourtFlowApi Api
+@inject ITournamentMemory TournamentMemory
+
+@if (_loaded)
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.NoWrap" data-testid="tournament-picker">
+        <MudText Typo="Typo.subtitle2" HtmlTag="label" for="@_inputId">@Label</MudText>
+        <MudSelect T="TournamentResponse"
+                   Value="Value"
+                   ValueChanged="ChooseAsync"
+                   InputId="@_inputId"
+                   Variant="CfDefaults.FieldVariant"
+                   Margin="CfDefaults.FieldMargin"
+                   Dense="true"
+                   Clearable="false"
+                   Placeholder="@Prompt"
+                   ToStringFunc="@NameOf"
+                   FullWidth="false">
+            @foreach (var item in Items)
+            {
+                <MudSelectItem T="TournamentResponse" Value="@item">@item.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+}
+
+@code {
+    public const string Label = "Tournament";
+    public const string Prompt = "Select tournament";
+
+    private readonly string _inputId = CfIds.Next();
+    private bool _loaded;
+
+    [Parameter] public TournamentResponse? Value { get; set; }
+    [Parameter] public EventCallback<TournamentResponse> ValueChanged { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<TournamentResponse>> ListLoaded { get; set; }
+
+    public IReadOnlyList<TournamentResponse> Items { get; private set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Items = await Api.ListTournamentsAsync();
+
+        var remembered = await TournamentMemory.ReadAsync();
+        TournamentResponse? match = null;
+        if (remembered is Guid id)
+        {
+            match = Items.FirstOrDefault(item => item.Id == id);
+            if (match is null)
+                await TournamentMemory.ForgetAsync();
+        }
+
+        _loaded = true;
+        await ListLoaded.InvokeAsync(Items);
+        if (match is not null)
+            await ValueChanged.InvokeAsync(match);
+    }
+
+    public async Task ChooseAsync(TournamentResponse tournament)
+    {
+        await TournamentMemory.RememberAsync(tournament.Id);
+        await ValueChanged.InvokeAsync(tournament);
+    }
+
+    private static string NameOf(TournamentResponse? tournament) => tournament?.Name ?? "";
+}

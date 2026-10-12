@@ -3,7 +3,6 @@
 @inject IDialogService Dialogs
 @inject Confirmations Confirmations
 @inject Feedback Feedback
-@inject ITournamentMemory TournamentMemory
 
 <PageTitle>Teams</PageTitle>
 
@@ -21,6 +20,7 @@
                            OnClick="ImportAsync">Import CSV</MudButton>
                 <CfAddButton id="add-team" AriaLabel="Add team" Disabled="!CanAddTeams" OnClick="AddAsync" />
             }
+            <CfTournamentSelect Value="selected" ValueChanged="SelectAsync" ListLoaded="OnTournaments" />
         </Actions>
     </CfPageHeader>
 
@@ -35,15 +35,6 @@
     }
     else
     {
-        <CfSelect T="TournamentResponse"
-                  Value="selected"
-                  ValueChanged="SelectAsync"
-                  Label="Tournament"
-                  Items="tournaments"
-                  ToLabel="NameOf"
-                  Placeholder="@TournamentPrompt"
-                  data-testid="tournament-picker" />
-
         @if (selected is null)
         {
             <CfAlert Severity="Severity.Info" data-testid="nothing-selected">@NothingSelectedMessage</CfAlert>
@@ -112,7 +103,6 @@
 </MudStack>
 
 @code {
-    public const string TournamentPrompt = "Select a tournament";
     public const string NothingSelectedMessage = "Select a tournament to see its teams.";
     public const string NoTournamentsMessage = "No tournaments yet. Create one on the Tournaments page.";
     public const string NoDivisionsMessage = "Add a division to this tournament before adding teams.";
@@ -150,29 +140,9 @@
         return filtered ? $"{shown} of {total} {noun}" : $"{total} {noun}";
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        tournaments = await Api.ListTournamentsAsync();
+    private void OnTournaments(IReadOnlyList<TournamentResponse> list) => tournaments = list;
 
-        var remembered = await TournamentMemory.ReadAsync();
-        if (remembered is null)
-            return;
-
-        var tournament = tournaments.FirstOrDefault(item => item.Id == remembered);
-        if (tournament is null)
-        {
-            await TournamentMemory.ForgetAsync();
-            return;
-        }
-
-        await LoadAsync(tournament);
-    }
-
-    private async Task SelectAsync(TournamentResponse tournament)
-    {
-        await TournamentMemory.RememberAsync(tournament.Id);
-        await LoadAsync(tournament);
-    }
+    private Task SelectAsync(TournamentResponse tournament) => LoadAsync(tournament);
 
     private async Task LoadAsync(TournamentResponse tournament)
     {
@@ -252,8 +222,6 @@
             await ReloadTeamsAsync();
         }
     }
-
-    private static string NameOf(TournamentResponse tournament) => tournament.Name;
 
     private static string FilterLabel(DivisionResponse division) =>
         division.Id == Guid.Empty ? AllDivisions : Division.Label(division.Name, division.Gender);

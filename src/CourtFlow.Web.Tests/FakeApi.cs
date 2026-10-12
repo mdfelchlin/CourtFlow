@@ -47,6 +47,9 @@ public sealed class FakeApi : ICourtFlowApi
     /// <summary>When set, the next team add or update is rejected with this message, then clears.</summary>
     public string? RejectTeamSaveWith { get; set; }
 
+    /// <summary>When set, <see cref="ListTournamentsAsync"/> waits on it before answering.</summary>
+    public TaskCompletionSource? ListTournamentsGate { get; set; }
+
     /// <summary>When set, <see cref="ListTournamentTeamsAsync"/> waits on it before answering.</summary>
     public TaskCompletionSource? ListTeamsGate { get; set; }
 
@@ -55,6 +58,9 @@ public sealed class FakeApi : ICourtFlowApi
 
     public async Task<IReadOnlyList<TournamentResponse>> ListTournamentsAsync(CancellationToken cancellationToken = default)
     {
+        if (ListTournamentsGate is not null)
+            await ListTournamentsGate.Task;
+
         await ThrowIfFailing();
         return Tournaments;
     }
