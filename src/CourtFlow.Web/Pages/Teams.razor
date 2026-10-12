@@ -9,18 +9,22 @@
 <MudStack Spacing="3">
     <CfPageHeader Title="Teams">
         <Actions>
-            @if (tournaments is { Count: > 0 })
-            {
-                <MudButton id="import-teams"
-                           Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           Size="CfDefaults.ButtonSize"
-                           StartIcon="@Icons.Material.Filled.UploadFile"
-                           Disabled="!CanAddTeams"
-                           OnClick="ImportAsync">Import CSV</MudButton>
-                <CfAddButton id="add-team" AriaLabel="Add team" Disabled="!CanAddTeams" OnClick="AddAsync" />
-            }
-            <CfTournamentSelect Value="selected" ValueChanged="SelectAsync" ListLoaded="OnTournaments" />
+            <MudStack AlignItems="AlignItems.End" Spacing="2">
+                <CfTournamentSelect Value="selected" ValueChanged="SelectAsync" ListLoaded="OnTournaments" />
+                @if (tournaments is { Count: > 0 })
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudButton id="import-teams"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Size="CfDefaults.ButtonSize"
+                                   StartIcon="@Icons.Material.Filled.UploadFile"
+                                   Disabled="!CanAddTeams"
+                                   OnClick="ImportAsync">Import CSV</MudButton>
+                        <CfAddButton id="add-team" AriaLabel="Add team" Disabled="!CanAddTeams" OnClick="AddAsync" />
+                    </MudStack>
+                }
+            </MudStack>
         </Actions>
     </CfPageHeader>
 

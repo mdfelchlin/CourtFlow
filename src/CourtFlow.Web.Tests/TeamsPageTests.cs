@@ -53,7 +53,7 @@ public class TeamsPageTests : BunitContext, IDisposable
         var add = cut.Find("#add-team");
         var pickerRow = cut.Find("[data-testid=tournament-picker]");
         Assert.Equal("import-teams", add.PreviousElementSibling!.Id);
-        Assert.Equal("add-team", pickerRow.PreviousElementSibling!.Id);
+        Assert.Equal("tournament-picker", add.ParentElement!.PreviousElementSibling!.GetAttribute("data-testid"));
 
         var label = pickerRow.QuerySelector("label")!;
         Assert.Equal(CfTournamentSelect.Label, label.TextContent.Trim());
