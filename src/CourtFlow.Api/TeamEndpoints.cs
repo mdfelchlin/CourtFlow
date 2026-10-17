@@ -1,3 +1,4 @@
+using CourtFlow.Api.Access;
 using CourtFlow.Application;
 using CourtFlow.Application.Teams;
 using CourtFlow.Application.Teams.Import;
@@ -11,7 +12,7 @@ public static class TeamEndpoints
     // Above the reader's 2 MB limit, so an oversized file gets the spec's message instead of a bare 413.
     private const long ImportRequestLimit = 10 * 1024 * 1024;
 
-    public static void MapTeamEndpoints(this WebApplication app)
+    public static void MapTeamEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/tournaments/{tournamentId:guid}/teams", async (
             Guid tournamentId,
@@ -29,7 +30,7 @@ public static class TeamEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.AddAsync(tournamentId, body, cancellationToken) is { } team
                     ? Results.Created($"/api/tournament-teams/{team.Id}", team)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapPut("/api/tournament-teams/{entryId:guid}", async (
             Guid entryId,
@@ -39,21 +40,23 @@ public static class TeamEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.UpdateAsync(entryId, body, cancellationToken) is { } team
                     ? Results.Ok(team)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapDelete("/api/tournament-teams/{entryId:guid}", async (
             Guid entryId,
             TeamUseCases useCases,
             CancellationToken cancellationToken) =>
-            await useCases.DeleteAsync(entryId, cancellationToken)
-                ? Results.NoContent()
-                : Results.NotFound());
+            await TournamentEndpoints.RejectRules(async () =>
+                await useCases.DeleteAsync(entryId, cancellationToken)
+                    ? Results.NoContent()
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapGet("/api/clubs", async (
             string? search,
             TeamUseCases useCases,
             CancellationToken cancellationToken) =>
-            Results.Ok(await useCases.SearchClubsAsync(search, cancellationToken)));
+            Results.Ok(await useCases.SearchClubsAsync(search, cancellationToken)))
+            .RequireAuthorization(AccessPolicies.Editor);
 
         app.MapGet("/api/clubs/{clubId:guid}/teams", async (
             Guid clubId,
@@ -62,16 +65,19 @@ public static class TeamEndpoints
             CancellationToken cancellationToken) =>
             await useCases.ListClubTeamsAsync(clubId, tournamentId, cancellationToken) is { } teams
                 ? Results.Ok(teams)
-                : Results.NotFound());
+                : Results.NotFound())
+            .RequireAuthorization(AccessPolicies.Editor);
 
         app.MapPost("/api/tournaments/{tournamentId:guid}/team-imports/preview", async (
             Guid tournamentId,
             IFormFile file,
             TeamImportUseCases useCases,
             CancellationToken cancellationToken) =>
-            await useCases.PreviewAsync(tournamentId, await ReadAsync(file, cancellationToken), cancellationToken) is { } preview
-                ? Results.Ok(preview)
-                : Results.NotFound())
+            await TournamentEndpoints.RejectRules(async () =>
+                await useCases.PreviewAsync(tournamentId, await ReadAsync(file, cancellationToken), cancellationToken) is { } preview
+                    ? Results.Ok(preview)
+                    : Results.NotFound()))
+            .RequireAuthorization(AccessPolicies.Editor)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(ImportRequestLimit));
 
@@ -87,6 +93,7 @@ public static class TeamEndpoints
                     { Imported: { } imported } => Results.Ok(imported),
                     { Stale: var stale } => Results.Conflict(stale),
                 }))
+            .RequireAuthorization(AccessPolicies.Editor)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(ImportRequestLimit));
     }

@@ -11,7 +11,7 @@ Every director page renders inside one layout.
 **App bar.** It uses the primary color and a slight elevation. From left to right:
 
 - A menu button that expands and collapses the drawer. Accessible label: "Toggle navigation".
-- The CourtFlow logo at 44 px and the word CourtFlow. Both link to the tournament list at `/`.
+- The CourtFlow logo at 32 px and the word CourtFlow. Both link to the tournament list at `/`.
 - On the right, the theme toggle. In light mode it shows the `DarkMode` icon with the label "Switch to dark theme". In dark mode it shows the `LightMode` icon with the label "Switch to light theme".
 
 The app bar shows no user name, sign-in, sign-out, or tournament selector.
@@ -71,7 +71,7 @@ Primary is lighter in dark mode than the app bar because MudBlazor also uses it 
 
 **Shape.** The default corner radius is 10 px for cards, dialogs, paper, and buttons.
 
-**Logo and icons.** The logo is the proof of concept's `CourtFlow.png` with its solid teal background made transparent, so it sits on the app bar in both modes without a visible square. The favicon and the 192 px app icon are made from that logo and keep the solid background. They replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons, using the proof of concept's choices: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
+**Logo and icons.** The logo and icons come from the [logo refresh](../logo-refresh/intent.md). The app bar shows the cream mark, `logo-mark.svg`, which sits on the teal app bar in both modes without a visible square. The favicon and the app icons are the teal tile with the cream ball. They replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons, using the proof of concept's choices: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
 
 ## Light and dark
 

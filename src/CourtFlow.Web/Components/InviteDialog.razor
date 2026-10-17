@@ -1,0 +1,66 @@
+@* Invites one person by email. An owner picks the role; the operator's "Invite owner" passes an organization and fixes the role. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <CfTextField @bind-Value="email" Label="Email" Required="true" ErrorText="@emailProblem" data-testid="invite-email" />
+            @if (OrganizationId is null)
+            {
+                <CfSelect T="OrganizationRole"
+                          @bind-Value="role"
+                          Label="Role"
+                          Required="true"
+                          Items="Roles"
+                          ToLabel="RoleLabels.Of"
+                          data-testid="invite-role" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-invite" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        <CfSaveButton id="send-invite" Text="Send invitation" Icon="@Icons.Material.Filled.Send" OnSave="SendAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string Title = "Invite";
+    public const string OwnerTitle = "Invite owner";
+    public const string SentMessage = "Invitation sent.";
+    public const string EmailRequired = "Email is required.";
+    public const string EmailInvalid = "Enter a valid email address.";
+
+    private static readonly IReadOnlyList<OrganizationRole> Roles = Enum.GetValues<OrganizationRole>();
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>Set by the operator: invites an owner into this organization.</summary>
+    [Parameter] public Guid? OrganizationId { get; set; }
+
+    private string? email;
+    private string? emailProblem;
+    private OrganizationRole role = OrganizationRole.Editor;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SendAsync()
+    {
+        emailProblem = string.IsNullOrWhiteSpace(email) ? EmailRequired : !EmailAddress.IsValid(email) ? EmailInvalid : null;
+        if (emailProblem is not null)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        var sent = await Feedback.RunAsync(() => OrganizationId is { } organizationId
+            ? Api.InviteOwnerAsync(organizationId, email!.Trim())
+            : Api.InviteMemberAsync(email!.Trim(), role));
+        if (!sent)
+            return;
+
+        Feedback.Done(SentMessage);
+        Dialog.Close(DialogResult.Ok(true));
+    }
+}

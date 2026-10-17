@@ -1,0 +1,73 @@
+@* The frame for anyone without an account: the landing page, Request Access, and the no-access page. *@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject PublicThemeState PublicTheme
+@inject SignInLinks Links
+
+<MudThemeProvider Theme="CourtFlowTheme.Theme" IsDarkMode="PublicTheme.IsDarkMode" ObserveSystemDarkModeChange="false" />
+<MudPopoverProvider />
+
+<MudLayout>
+    @* Color.Default paints the bar with the palette's AppbarBackground and AppbarText roles, matching the director bar. *@
+    <MudAppBar Elevation="CfDefaults.AppBarElevation" Color="Color.Default">
+        <CfBrandLink Href="/" />
+        <MudSpacer />
+        <CfThemeToggle State="PublicTheme" />
+        <AuthorizeView>
+            <Authorized>
+                @if (context.User.HasActiveMembership())
+                {
+                    <MudButton Href="/tournaments"
+                               Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Class="ml-2"
+                               data-testid="dashboard">@Dashboard</MudButton>
+                }
+                else
+                {
+                    <MudButton Href="@Links.Logout()"
+                               Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Class="ml-2"
+                               data-testid="sign-out">@SignOut</MudButton>
+                }
+            </Authorized>
+            <NotAuthorized>
+                @* Below the small breakpoint the label shortens, so Login and the toggle stay fully visible at 360 px. *@
+                <MudButton Href="/request-access"
+                           Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Class="ml-2"
+                           data-testid="request-access">
+                    <MudHidden Breakpoint="Breakpoint.Xs">@RequestAccess</MudHidden>
+                    <MudHidden Breakpoint="Breakpoint.Xs" Invert="true">@RequestShort</MudHidden>
+                </MudButton>
+                <MudButton Href="@Links.Login("/tournaments")"
+                           Variant="Variant.Filled"
+                           Color="Color.Secondary"
+                           Class="ml-2"
+                           data-testid="login">@Login</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudMainContent>
+        <MudContainer MaxWidth="CfDefaults.PublicContentMaxWidth" Class="py-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    public const string RequestAccess = "Request Access";
+    public const string RequestShort = "Request";
+    public const string Login = "Login";
+    public const string Dashboard = "Dashboard";
+    public const string SignOut = "Sign out";
+
+    // The theme provider above reads PublicTheme, so the frame redraws on a toggle the component owns.
+    protected override void OnInitialized() => PublicTheme.Changed += OnThemeChanged;
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => PublicTheme.Changed -= OnThemeChanged;
+}

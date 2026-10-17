@@ -52,6 +52,9 @@ terraform.rc
 **/backend.hcl
 !**/backend.hcl.example
 
+## Node (tools/logo)
+node_modules/
+
 ## OS
 Thumbs.db
 .DS_Store

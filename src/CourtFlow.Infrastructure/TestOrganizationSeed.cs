@@ -20,6 +20,7 @@ public static class TestOrganizationSeed
     }
 }
 
+/// <summary>For tests that need the fixed Test Organization. The API uses the signed-in person's organization.</summary>
 public sealed class TestOrganizationScope : IOrganizationScope
 {
     public Guid OrganizationId => TestOrganizationSeed.Id;

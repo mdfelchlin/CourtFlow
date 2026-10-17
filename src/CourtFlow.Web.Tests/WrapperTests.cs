@@ -272,11 +272,25 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
+    public void A_disabled_icon_button_keeps_its_label_and_says_why_in_the_tooltip()
+    {
+        var cut = Render<CfIconButton>(parameters => parameters
+            .Add(button => button.Icon, Icons.Material.Filled.Delete)
+            .Add(button => button.Label, "Delete City Cup")
+            .Add(button => button.Tooltip, "Unpublish or archive this tournament before deleting it.")
+            .Add(button => button.Disabled, true));
+
+        Assert.True(cut.Find("button").HasAttribute("disabled"));
+        Assert.Equal("Delete City Cup", cut.Find("button").GetAttribute("aria-label"));
+        Assert.Equal("Unpublish or archive this tournament before deleting it.", cut.FindComponent<MudTooltip>().Instance.Text);
+    }
+
+    [Fact]
     public void Page_header_renders_exactly_one_h1()
     {
         var cut = Render<CfPageHeader>(parameters => parameters
             .Add(header => header.Title, "Tournaments")
-            .Add(header => header.BackHref, "/"));
+            .Add(header => header.BackHref, "/tournaments"));
 
         var headings = cut.FindAll("h1");
         Assert.Single(headings);

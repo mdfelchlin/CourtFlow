@@ -1,4 +1,5 @@
-﻿@page "/"
+﻿@page "/tournaments"
+@attribute [Authorize(Policy = AccessPolicies.Member)]
 @inject ICourtFlowApi Api
 @inject NavigationManager Navigation
 @inject Confirmations Confirmations
@@ -9,7 +10,10 @@
 <MudStack Spacing="3">
     <CfPageHeader Title="Tournaments">
         <Actions>
-            <CfAddButton id="add-tournament" AriaLabel="Add tournament" OnClick="Add" />
+            @if (!isViewer)
+            {
+                <CfAddButton id="add-tournament" AriaLabel="Add tournament" OnClick="Add" />
+            }
         </Actions>
     </CfPageHeader>
 
@@ -19,13 +23,14 @@
     }
     else if (tournaments.Count == 0)
     {
-        <CfAlert Severity="Severity.Info" data-testid="empty-tournaments">@EmptyMessage</CfAlert>
+        <CfAlert Severity="Severity.Info" data-testid="empty-tournaments">@(isViewer ? NothingPublishedMessage : EmptyMessage)</CfAlert>
     }
     else
     {
         <MudTable T="TournamentResponse" Items="tournaments" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
             <HeaderContent>
                 <MudTh>Name</MudTh>
+                <MudTh>Status</MudTh>
                 <MudTh>Start date</MudTh>
                 <MudTh>End date</MudTh>
                 <MudTh>Time zone</MudTh>
@@ -34,22 +39,37 @@
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Status"><CfStatusBadge Status="context.Status" /></MudTd>
                 <MudTd DataLabel="Start date">@CalendarDateFormat.Display(context.StartDate)</MudTd>
                 <MudTd DataLabel="End date">@CalendarDateFormat.Display(context.EndDate)</MudTd>
                 <MudTd DataLabel="Time zone">@UsTimeZones.Label(context.TimeZoneId)</MudTd>
                 <MudTd DataLabel="Default match duration">@context.DefaultMatchDurationMinutes min</MudTd>
                 <MudTd DataLabel="Actions">
-                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
-                        <CfIconButton id="@($"edit-{context.Id}")"
-                                      Icon="@Icons.Material.Filled.Edit"
-                                      Label="@($"Edit {context.Name}")"
-                                      OnClick="@(() => Edit(context.Id))" />
-                        <CfIconButton id="@($"delete-{context.Id}")"
-                                      Icon="@Icons.Material.Filled.Delete"
-                                      Label="@($"Delete {context.Name}")"
-                                      Color="Color.Error"
-                                      OnClick="@(() => DeleteAsync(context))" />
-                    </MudStack>
+                    @if (isViewer)
+                    {
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                            <CfIconButton id="@($"view-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Visibility"
+                                          Label="@($"View {context.Name}")"
+                                          OnClick="@(() => Edit(context.Id))" />
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                            <CfIconButton id="@($"edit-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Edit"
+                                          Label="@($"Edit {context.Name}")"
+                                          OnClick="@(() => Edit(context.Id))" />
+                            <CfIconButton id="@($"delete-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Delete"
+                                          Label="@($"Delete {context.Name}")"
+                                          Tooltip="@(CanDelete(context) ? null : DeleteBlockedTooltip)"
+                                          Color="Color.Error"
+                                          Disabled="@(!CanDelete(context))"
+                                          OnClick="@(() => DeleteAsync(context))" />
+                        </MudStack>
+                    }
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -58,11 +78,23 @@
 
 @code {
     public const string EmptyMessage = "No tournaments yet. Use Add to create one.";
-    public const string DeleteConsequence = "Its venues, courts, divisions, and teams are also deleted.";
+    public const string DeleteConsequence = "Its venues, courts, divisions, and teams are also deleted. This cannot be undone.";
+    public const string DeleteBlockedTooltip = "Unpublish or archive this tournament before deleting it.";
+
+    public const string NothingPublishedMessage = "Nothing has been published yet.";
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
 
     private IReadOnlyList<TournamentResponse>? tournaments;
+    private bool isViewer;
 
-    protected override async Task OnInitializedAsync() => await Reload();
+    private static bool CanDelete(TournamentResponse tournament) => tournament.Status != TournamentStatus.Published;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isViewer = AuthenticationState is not null && (await AuthenticationState).User.IsViewer();
+        await Reload();
+    }
 
     private void Add() => Navigation.NavigateTo("/tournaments/new");
 

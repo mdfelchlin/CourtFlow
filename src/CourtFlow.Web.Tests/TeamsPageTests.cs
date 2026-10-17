@@ -114,7 +114,7 @@ public class TeamsPageTests : BunitContext, IDisposable
             Assert.Contains(Teams.NoTournamentsMessage, cut.Markup);
             Assert.Contains(CfTournamentSelect.Prompt, cut.Markup);
         });
-        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/");
+        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/tournaments");
         Assert.Empty(cut.FindAll("#add-team"));
     }
 

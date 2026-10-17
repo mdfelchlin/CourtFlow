@@ -14,6 +14,7 @@ public sealed class FakeApi : ICourtFlowApi
     public int DeleteVenueCalls { get; private set; }
     public int DeleteDivisionCalls { get; private set; }
     public int CreateCalls { get; private set; }
+    public int TransitionCalls { get; private set; }
     public int UpdateCalls { get; private set; }
     public int CreateVenueCalls { get; private set; }
     public int UpdateVenueCalls { get; private set; }
@@ -31,6 +32,12 @@ public sealed class FakeApi : ICourtFlowApi
 
     /// <summary>When set, every division delete is rejected with this message.</summary>
     public string? RejectDivisionDeleteWith { get; set; }
+
+    /// <summary>When set, the next lifecycle transition is rejected with this message, then clears.</summary>
+    public string? RejectTransitionWith { get; set; }
+
+    /// <summary>The instant a publish records, so a test can predict the dates the bar shows.</summary>
+    public static readonly DateTimeOffset PublishedAt = new(2026, 3, 1, 12, 0, 0, TimeSpan.Zero);
 
     public List<ClubResponse> Clubs { get; } = [];
     public List<FakeTeam> Teams { get; } = [];
@@ -113,8 +120,67 @@ public sealed class FakeApi : ICourtFlowApi
     public async Task DeleteTournamentAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await ThrowIfFailing();
+        var tournament = Tournaments.Single(existing => existing.Id == id);
+        if (tournament.Status == TournamentStatus.Published)
+            throw new DomainRuleException(Tournament.PublishedCannotBeDeleted);
+
         DeleteTournamentCalls++;
-        Tournaments.RemoveAll(tournament => tournament.Id == id);
+        Tournaments.Remove(tournament);
+    }
+
+    public Task<TournamentResponse> PublishTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, TournamentStatus.Unpublished, Tournament.OnlyUnpublishedCanBePublished, tournament => tournament with
+        {
+            Status = TournamentStatus.Published,
+            LastPublishedAt = PublishedAt,
+            PublishedOn = DateOnly.FromDateTime(PublishedAt.UtcDateTime),
+            ArchivesOn = DateOnly.FromDateTime((PublishedAt + Tournament.AutoArchiveAfter).UtcDateTime),
+        });
+
+    public Task<TournamentResponse> UnpublishTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, TournamentStatus.Published, Tournament.OnlyPublishedCanBeUnpublished, Unpublished);
+
+    public Task<TournamentResponse> ArchiveTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, TournamentStatus.Published, Tournament.OnlyPublishedCanBeArchived, tournament => tournament with
+        {
+            Status = TournamentStatus.Archived,
+            PublishedOn = null,
+            ArchivesOn = null,
+        });
+
+    public Task<TournamentResponse> RestoreTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, TournamentStatus.Archived, Tournament.OnlyArchivedCanBeRestored, Unpublished);
+
+    private static TournamentResponse Unpublished(TournamentResponse tournament) => tournament with
+    {
+        Status = TournamentStatus.Unpublished,
+        LastPublishedAt = null,
+        PublishedOn = null,
+        ArchivesOn = null,
+    };
+
+    private async Task<TournamentResponse> TransitionAsync(
+        Guid id,
+        TournamentStatus from,
+        string rejection,
+        Func<TournamentResponse, TournamentResponse> transition)
+    {
+        await ThrowIfFailing();
+        TransitionCalls++;
+        if (RejectTransitionWith is { } scripted)
+        {
+            RejectTransitionWith = null;
+            throw new DomainRuleException(scripted);
+        }
+
+        var index = Tournaments.FindIndex(tournament => tournament.Id == id);
+        if (index < 0)
+            throw new InvalidOperationException("Tournament was not found.");
+
+        if (Tournaments[index].Status != from)
+            throw new DomainRuleException(rejection);
+
+        return Tournaments[index] = transition(Tournaments[index]);
     }
 
     public async Task<IReadOnlyList<VenueResponse>> ListVenuesAsync(Guid tournamentId, CancellationToken cancellationToken = default)
@@ -324,6 +390,93 @@ public sealed class FakeApi : ICourtFlowApi
         await ThrowIfFailing();
         ImportCalls++;
         return ImportResponse ?? throw new InvalidOperationException("No import response is scripted.");
+    }
+
+    /// <summary>Every access call, in order, as "Name(arguments)".</summary>
+    public List<string> AccessCalls { get; } = [];
+
+    public AccessRequestForm? LastAccessRequest { get; private set; }
+    public ApproveAccessRequestRequest? LastApproval { get; private set; }
+
+    /// <summary>What <see cref="SubmitAccessRequestAsync"/> answers. Defaults to sent.</summary>
+    public AccessRequestResultResponse AccessRequestResult { get; set; } = new(AccessRequestOutcome.Sent, "Thanks — we'll email you.");
+
+    public OrganizationOverviewResponse Organization { get; set; } = new(Guid.NewGuid(), "Test Organization", [], []);
+    public List<AccessRequestResponse> AccessRequests { get; } = [];
+    public List<OperatorOrganizationResponse> Organizations { get; } = [];
+
+    /// <summary>When set, the next access write is rejected with this message, then clears.</summary>
+    public string? RejectAccessWith { get; set; }
+
+    public async Task<AccessRequestResultResponse> SubmitAccessRequestAsync(AccessRequestForm form, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        LastAccessRequest = form;
+        AccessCalls.Add($"SubmitAccessRequest({form.Email})");
+        return AccessRequestResult;
+    }
+
+    public async Task<OrganizationOverviewResponse> GetOrganizationAsync(CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        return Organization;
+    }
+
+    public Task InviteMemberAsync(string email, OrganizationRole role, CancellationToken cancellationToken = default) =>
+        RecordAsync($"InviteMember({email},{role})");
+
+    public Task ResendInvitationAsync(Guid invitationId, CancellationToken cancellationToken = default) =>
+        RecordAsync($"ResendInvitation({invitationId})");
+
+    public Task CancelInvitationAsync(Guid invitationId, CancellationToken cancellationToken = default) =>
+        RecordAsync($"CancelInvitation({invitationId})");
+
+    public Task ChangeMemberRoleAsync(Guid membershipId, OrganizationRole role, CancellationToken cancellationToken = default) =>
+        RecordAsync($"ChangeMemberRole({membershipId},{role})");
+
+    public Task RemoveMemberAsync(Guid membershipId, CancellationToken cancellationToken = default) =>
+        RecordAsync($"RemoveMember({membershipId})");
+
+    public async Task<IReadOnlyList<AccessRequestResponse>> ListAccessRequestsAsync(CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        return AccessRequests;
+    }
+
+    public Task ApproveAccessRequestAsync(Guid id, ApproveAccessRequestRequest request, CancellationToken cancellationToken = default)
+    {
+        LastApproval = request;
+        return RecordAsync($"ApproveAccessRequest({id})");
+    }
+
+    public Task DeclineAccessRequestAsync(Guid id, CancellationToken cancellationToken = default) =>
+        RecordAsync($"DeclineAccessRequest({id})");
+
+    public async Task<IReadOnlyList<OperatorOrganizationResponse>> ListOrganizationsAsync(CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        return Organizations;
+    }
+
+    public Task InviteOwnerAsync(Guid organizationId, string email, CancellationToken cancellationToken = default) =>
+        RecordAsync($"InviteOwner({organizationId},{email})");
+
+    public Task DeactivateOrganizationAsync(Guid organizationId, CancellationToken cancellationToken = default) =>
+        RecordAsync($"DeactivateOrganization({organizationId})");
+
+    public Task ReactivateOrganizationAsync(Guid organizationId, CancellationToken cancellationToken = default) =>
+        RecordAsync($"ReactivateOrganization({organizationId})");
+
+    private async Task RecordAsync(string call)
+    {
+        await ThrowIfFailing();
+        if (RejectAccessWith is { } rejection)
+        {
+            RejectAccessWith = null;
+            throw new DomainRuleException(rejection);
+        }
+
+        AccessCalls.Add(call);
     }
 
     /// <summary>Adds an entry for a new or existing club and team, without counting it as a call.</summary>

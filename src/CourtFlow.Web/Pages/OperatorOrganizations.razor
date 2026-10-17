@@ -1,0 +1,111 @@
+@page "/operator/organizations"
+@attribute [Authorize(Policy = AccessPolicies.Operator)]
+@inject ICourtFlowApi Api
+@inject IDialogService Dialogs
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<PageTitle>Organizations · CourtFlow</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="Organizations" Icon="@Icons.Material.Filled.Business" />
+
+    @if (organizations is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudTable T="OperatorOrganizationResponse" Items="organizations" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" data-testid="organizations">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Members</MudTh>
+                <MudTh>Owners</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Status">@context.Status</MudTd>
+                <MudTd DataLabel="Members">@context.MemberCount</MudTd>
+                <MudTd DataLabel="Owners">@string.Join(", ", context.OwnerNames)</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                        <CfIconButton id="@($"invite-owner-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.PersonAdd"
+                                      Label="@($"Invite owner to {context.Name}")"
+                                      Disabled="context.Status != OrganizationStatus.Active"
+                                      OnClick="@(() => InviteOwnerAsync(context))" />
+                        @if (context.Status == OrganizationStatus.Active)
+                        {
+                            <CfIconButton id="@($"deactivate-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Block"
+                                          Label="@($"Deactivate {context.Name}")"
+                                          Color="Color.Error"
+                                          OnClick="@(() => DeactivateAsync(context))" />
+                        }
+                        else
+                        {
+                            <CfIconButton id="@($"reactivate-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Restore"
+                                          Label="@($"Reactivate {context.Name}")"
+                                          OnClick="@(() => ReactivateAsync(context))" />
+                        }
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    public const string DeactivatedMessage = "Deactivated.";
+    public const string ReactivatedMessage = "Reactivated.";
+
+    private IReadOnlyList<OperatorOrganizationResponse>? organizations;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() => organizations = await Api.ListOrganizationsAsync();
+
+    private async Task InviteOwnerAsync(OperatorOrganizationResponse organization)
+    {
+        var parameters = new DialogParameters<InviteDialog> { { dialog => dialog.OrganizationId, organization.Id } };
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<InviteDialog>($"{InviteDialog.OwnerTitle} to {organization.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadAsync();
+    }
+
+    private async Task DeactivateAsync(OperatorOrganizationResponse organization)
+    {
+        if (!await Confirmations.ConfirmAsync(
+                $"Deactivate {organization.Name}?",
+                "Its members lose access, its pending invitations are cancelled, and every member is emailed.",
+                "Deactivate"))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeactivateOrganizationAsync(organization.Id)))
+        {
+            Feedback.Done(DeactivatedMessage);
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ReactivateAsync(OperatorOrganizationResponse organization)
+    {
+        if (!await Confirmations.ConfirmAsync(
+                $"Reactivate {organization.Name}?",
+                "Its members get access back and are emailed. Cancelled invitations stay cancelled.",
+                "Reactivate"))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.ReactivateOrganizationAsync(organization.Id)))
+        {
+            Feedback.Done(ReactivatedMessage);
+            await ReloadAsync();
+        }
+    }
+}

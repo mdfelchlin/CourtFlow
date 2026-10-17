@@ -1,0 +1,179 @@
+@page "/organization"
+@attribute [Authorize(Policy = AccessPolicies.Owner)]
+@inject ICourtFlowApi Api
+@inject IDialogService Dialogs
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<PageTitle>Organization · CourtFlow</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="@(overview?.Name ?? "Organization")" Icon="@Icons.Material.Filled.Business">
+        <Actions>
+            <MudButton id="invite-member"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       Disabled="overview is null"
+                       OnClick="InviteAsync">Invite</MudButton>
+        </Actions>
+    </CfPageHeader>
+
+    @if (overview is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudText Typo="Typo.h6" HtmlTag="h2">Members</MudText>
+        <MudTable T="MemberResponse" Items="overview.Members" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" data-testid="members">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name@(context.IsYou ? " (you)" : "")</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Role">
+                    <MudTooltip Text="@(context.IsLastOwner ? Domain.Organization.NeedsAnOwner : null)">
+                        <MudSelect T="OrganizationRole"
+                                   Value="context.Role"
+                                   ValueChanged="@(role => ChangeRoleAsync(context, role))"
+                                   Variant="CfDefaults.FieldVariant"
+                                   Margin="CfDefaults.FieldMargin"
+                                   Dense="true"
+                                   Disabled="context.IsLastOwner"
+                                   aria-label="@($"Role for {context.Name}")"
+                                   data-testid="@($"role-{context.Id}")">
+                            @foreach (var role in Enum.GetValues<OrganizationRole>())
+                            {
+                                <MudSelectItem T="OrganizationRole" Value="role">@RoleLabels.Of(role)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                        <CfIconButton id="@($"remove-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.PersonRemove"
+                                      Label="@($"Remove {context.Name}")"
+                                      Tooltip="@(context.IsLastOwner ? Domain.Organization.NeedsAnOwner : null)"
+                                      Color="Color.Error"
+                                      Disabled="context.IsLastOwner"
+                                      OnClick="@(() => RemoveAsync(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudText Typo="Typo.h6" HtmlTag="h2">Pending invitations</MudText>
+        @if (overview.Invitations.Count == 0)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="no-invitations">@NoInvitations</CfAlert>
+        }
+        else
+        {
+            <MudTable T="InvitationResponse" Items="overview.Invitations" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" data-testid="invitations">
+                <HeaderContent>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Role</MudTh>
+                    <MudTh>Sent</MudTh>
+                    <MudTh>Expires</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Role">@RoleLabels.Of(context.Role)</MudTd>
+                    <MudTd DataLabel="Sent">@CalendarDateFormat.Display(context.SentAt)</MudTd>
+                    <MudTd DataLabel="Expires">@(context.IsExpired ? ExpiredText : CalendarDateFormat.Display(context.ExpiresAt))</MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                            <CfIconButton id="@($"resend-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Send"
+                                          Label="@($"Resend to {context.Email}")"
+                                          OnClick="@(() => ResendAsync(context))" />
+                            <CfIconButton id="@($"cancel-{context.Id}")"
+                                          Icon="@Icons.Material.Filled.Cancel"
+                                          Label="@($"Cancel invitation to {context.Email}")"
+                                          Color="Color.Error"
+                                          OnClick="@(() => CancelAsync(context))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    }
+</MudStack>
+
+@code {
+    public const string NoInvitations = "No pending invitations.";
+    public const string ExpiredText = "Expired";
+    public const string RoleChanged = "Role changed.";
+    public const string Removed = "Removed.";
+    public const string Resent = "Invitation sent again.";
+    public const string Cancelled = "Invitation cancelled.";
+
+    private OrganizationOverviewResponse? overview;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() => overview = await Api.GetOrganizationAsync();
+
+    private async Task InviteAsync()
+    {
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+        var dialog = await Dialogs.ShowAsync<InviteDialog>(InviteDialog.Title, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadAsync();
+    }
+
+    private async Task ChangeRoleAsync(MemberResponse member, OrganizationRole role)
+    {
+        if (role == member.Role)
+            return;
+
+        if (await Feedback.RunAsync(() => Api.ChangeMemberRoleAsync(member.Id, role)))
+            Feedback.Done(RoleChanged);
+        await ReloadAsync();
+    }
+
+    private async Task RemoveAsync(MemberResponse member)
+    {
+        var consequence = member.IsYou
+            ? "You will lose access to this organization at once."
+            : $"{member.Name} will lose access to this organization. Their sign-in is kept.";
+        if (!await Confirmations.ConfirmAsync($"Remove {member.Name}?", consequence, "Remove"))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.RemoveMemberAsync(member.Id)))
+            Feedback.Done(Removed);
+        await ReloadAsync();
+    }
+
+    private async Task ResendAsync(InvitationResponse invitation)
+    {
+        if (await Feedback.RunAsync(() => Api.ResendInvitationAsync(invitation.Id)))
+        {
+            Feedback.Done(Resent);
+            await ReloadAsync();
+        }
+    }
+
+    private async Task CancelAsync(InvitationResponse invitation)
+    {
+        if (!await Confirmations.ConfirmAsync(
+                $"Cancel the invitation to {invitation.Email}?",
+                "The link in their email stops working.",
+                "Cancel invitation"))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.CancelInvitationAsync(invitation.Id)))
+        {
+            Feedback.Done(Cancelled);
+            await ReloadAsync();
+        }
+    }
+}

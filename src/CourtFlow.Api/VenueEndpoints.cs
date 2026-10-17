@@ -1,3 +1,4 @@
+using CourtFlow.Api.Access;
 using CourtFlow.Application;
 using CourtFlow.Application.Venues;
 
@@ -5,7 +6,7 @@ namespace CourtFlow.Api;
 
 public static class VenueEndpoints
 {
-    public static void MapVenueEndpoints(this WebApplication app)
+    public static void MapVenueEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/tournaments/{tournamentId:guid}/venues", async (
             Guid tournamentId,
@@ -23,7 +24,7 @@ public static class VenueEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.CreateAsync(tournamentId, body, cancellationToken) is { } venue
                     ? Results.Created($"/api/venues/{venue.Id}", venue)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapPut("/api/venues/{venueId:guid}", async (
             Guid venueId,
@@ -33,14 +34,15 @@ public static class VenueEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.UpdateAsync(venueId, body, cancellationToken) is { } venue
                     ? Results.Ok(venue)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapDelete("/api/venues/{venueId:guid}", async (
             Guid venueId,
             VenueUseCases useCases,
             CancellationToken cancellationToken) =>
-            await useCases.DeleteAsync(venueId, cancellationToken)
-                ? Results.NoContent()
-                : Results.NotFound());
+            await TournamentEndpoints.RejectRules(async () =>
+                await useCases.DeleteAsync(venueId, cancellationToken)
+                    ? Results.NoContent()
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
     }
 }

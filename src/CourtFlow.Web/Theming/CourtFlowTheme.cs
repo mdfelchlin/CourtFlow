@@ -9,8 +9,9 @@ namespace CourtFlow.Web.Theming;
 /// </summary>
 public static class CourtFlowTheme
 {
-    public const string LogoPath = "CourtFlow.png";
-    public const int LogoSize = 44;
+    /// <summary>Cream mark drawn for the brand-teal app bar, which stays teal in both modes.</summary>
+    public const string LogoPath = "logo-mark.svg";
+    public const int LogoSize = 32;
 
     private static readonly string[] FontFamily = ["Inter", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"];
 
@@ -66,6 +67,11 @@ public static class CourtFlowTheme
                 FontSize = "0.95rem",
                 FontWeight = "400",
                 LineHeight = "1.5",
+            },
+            H3 = new H3Typography
+            {
+                FontFamily = FontFamily,
+                FontWeight = "600",
             },
             H4 = new H4Typography
             {

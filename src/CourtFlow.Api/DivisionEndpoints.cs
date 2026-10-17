@@ -1,3 +1,4 @@
+using CourtFlow.Api.Access;
 using CourtFlow.Application;
 using CourtFlow.Application.Divisions;
 
@@ -5,7 +6,7 @@ namespace CourtFlow.Api;
 
 public static class DivisionEndpoints
 {
-    public static void MapDivisionEndpoints(this WebApplication app)
+    public static void MapDivisionEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/tournaments/{tournamentId:guid}/divisions", async (
             Guid tournamentId,
@@ -23,7 +24,7 @@ public static class DivisionEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.CreateAsync(tournamentId, body, cancellationToken) is { } division
                     ? Results.Created($"/api/divisions/{division.Id}", division)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapPut("/api/divisions/{divisionId:guid}", async (
             Guid divisionId,
@@ -33,7 +34,7 @@ public static class DivisionEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.UpdateAsync(divisionId, body, cancellationToken) is { } division
                     ? Results.Ok(division)
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
 
         app.MapDelete("/api/divisions/{divisionId:guid}", async (
             Guid divisionId,
@@ -42,6 +43,6 @@ public static class DivisionEndpoints
             await TournamentEndpoints.RejectRules(async () =>
                 await useCases.DeleteAsync(divisionId, cancellationToken)
                     ? Results.NoContent()
-                    : Results.NotFound()));
+                    : Results.NotFound())).RequireAuthorization(AccessPolicies.Editor);
     }
 }

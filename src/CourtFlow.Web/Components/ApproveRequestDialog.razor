@@ -1,0 +1,109 @@
+@* Approves one access request, into a new organization or an existing active one. *@
+@inject ICourtFlowApi Api
+@inject Feedback Feedback
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText>@Request.Name (@Request.Email)</MudText>
+            <MudRadioGroup T="bool" @bind-Value="intoNew" data-testid="approve-choice">
+                <MudRadio T="bool" Value="true" Color="Color.Primary" data-testid="approve-new">New organization</MudRadio>
+                <MudRadio T="bool" Value="false" Color="Color.Primary" Disabled="ActiveOrganizations.Count == 0" data-testid="approve-existing">Existing organization</MudRadio>
+            </MudRadioGroup>
+            @if (intoNew)
+            {
+                <CfTextField @bind-Value="organizationName"
+                             Label="Organization name"
+                             Required="true"
+                             ErrorText="@nameProblem"
+                             data-testid="approve-organization-name" />
+            }
+            else
+            {
+                <CfSelect T="OperatorOrganizationResponse"
+                          @bind-Value="organization"
+                          Label="Organization"
+                          Required="true"
+                          Items="ActiveOrganizations"
+                          ToLabel="@(item => item.Name)"
+                          Placeholder="Select an organization"
+                          data-testid="approve-organization" />
+                <CfSelect T="OrganizationRole"
+                          @bind-Value="role"
+                          Label="Role"
+                          Required="true"
+                          Items="Roles"
+                          ToLabel="RoleLabels.Of"
+                          data-testid="approve-role" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton id="cancel-approve" OnClick="Cancel">Cancel</MudButton>
+        <MudSpacer />
+        <CfSaveButton id="confirm-approve" Text="Approve" Icon="@Icons.Material.Filled.Check" OnSave="ApproveAsync" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string Title = "Approve request";
+    public const string ApprovedMessage = "Approved. The invitation is on its way.";
+    public const string ChooseOrganization = "Choose an organization.";
+
+    private static readonly IReadOnlyList<OrganizationRole> Roles = Enum.GetValues<OrganizationRole>();
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public AccessRequestResponse Request { get; set; } = default!;
+    [Parameter] public IReadOnlyList<OperatorOrganizationResponse> Organizations { get; set; } = [];
+
+    private bool intoNew = true;
+    private string? organizationName;
+    private string? nameProblem;
+    private OperatorOrganizationResponse? organization;
+    private OrganizationRole role = OrganizationRole.Editor;
+
+    private IReadOnlyList<OperatorOrganizationResponse> ActiveOrganizations =>
+        Organizations.Where(item => item.Status == OrganizationStatus.Active).ToList();
+
+    protected override void OnInitialized() => organizationName = Request.OrganizationName;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task ApproveAsync()
+    {
+        var approved = await Feedback.RunAsync(() =>
+        {
+            ApproveAccessRequestRequest body;
+            if (intoNew)
+            {
+                nameProblem = null;
+                try
+                {
+                    body = new ApproveAccessRequestRequest(Domain.Organization.RequireName(organizationName), null, null);
+                }
+                catch (DomainRuleException exception)
+                {
+                    nameProblem = exception.Message;
+                    throw;
+                }
+            }
+            else
+            {
+                if (organization is null)
+                    throw new DomainRuleException(ChooseOrganization);
+                body = new ApproveAccessRequestRequest(null, organization.Id, role);
+            }
+
+            return Api.ApproveAccessRequestAsync(Request.Id, body);
+        });
+        if (!approved)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        Feedback.Done(ApprovedMessage);
+        Dialog.Close(DialogResult.Ok(true));
+    }
+}

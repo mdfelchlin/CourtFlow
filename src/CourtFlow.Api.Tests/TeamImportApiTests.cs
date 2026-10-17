@@ -15,14 +15,14 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
 {
     private const string Header = "Club,Team,Division,Gender\n";
 
-    public Task InitializeAsync() => factory.ResetAsync();
+    public async ValueTask InitializeAsync() => await factory.ResetAsync();
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task Preview_writes_nothing()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
 
         var preview = await PreviewAsync(client, tournament, Header + "Ohio State University,Ohio St U,14U Open,F\nKent State,Kent A,14u gold,female\n");
@@ -35,7 +35,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task A_clean_file_writes_clubs_teams_entries_and_moves_in_one_import()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, open, gold) = await SetupAsync(client);
         var moving = await TeamApiTests.AddOkAsync(client, tournament, "Purdue University", "Purdue A", open);
         var kept = await TeamApiTests.AddOkAsync(client, tournament, "Kept Club", "Kept", open);
@@ -47,7 +47,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
             "purdue university,purdue a,14U Gold,F\n");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(3, (await response.Content.ReadFromJsonAsync<TeamImportResult>())!.Imported);
+        Assert.Equal(3, (await response.Content.ReadFromJsonAsync<TeamImportResult>(TestContext.Current.CancellationToken))!.Imported);
         var listed = await TeamApiTests.ListAsync(client, tournament);
         Assert.Equal(4, listed.Count);
         Assert.Equal(gold, listed.Single(team => team.TeamId == moving.TeamId).DivisionId);
@@ -58,13 +58,13 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task A_file_with_a_rejected_row_returns_the_preview_and_writes_nothing()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
 
         var response = await ImportAsync(client, tournament, Header + "Ohio State University,Ohio St U,14U Open,F\nKent State,Kent A,Men's Division II,M\n");
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var preview = (await response.Content.ReadFromJsonAsync<TeamImportPreview>())!;
+        var preview = (await response.Content.ReadFromJsonAsync<TeamImportPreview>(TestContext.Current.CancellationToken))!;
         Assert.True(preview.Stale);
         Assert.Equal(1, preview.Summary.Rejected);
         Assert.Equal(0, await CountAsync());
@@ -73,16 +73,16 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task Data_that_changed_since_the_preview_returns_a_fresh_preview()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, _, gold) = await SetupAsync(client);
         const string csv = Header + "Ohio State University,Ohio St U,14U Open,F\nKent State,Kent A,14U Gold,F\n";
         Assert.Equal(0, (await PreviewAsync(client, tournament, csv)).Summary.Rejected);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/divisions/{gold}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/divisions/{gold}", TestContext.Current.CancellationToken)).StatusCode);
         var response = await ImportAsync(client, tournament, csv);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var preview = (await response.Content.ReadFromJsonAsync<TeamImportPreview>())!;
+        var preview = (await response.Content.ReadFromJsonAsync<TeamImportPreview>(TestContext.Current.CancellationToken))!;
         Assert.True(preview.Stale);
         Assert.Equal(TeamImportOutcome.Rejected, preview.Rows.Single(row => row.Line == 3).Outcome);
         Assert.Equal(0, await CountAsync());
@@ -91,7 +91,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task An_oversized_file_gets_the_spec_message()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
 
         var preview = await PreviewAsync(client, tournament, Header + new string('x', TeamCsvReader.MaxBytes));
@@ -103,7 +103,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task Importing_the_same_file_twice_changes_nothing_the_second_time()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
         const string csv = Header + "Ohio State University,Ohio St U,14U Open,F\nKent State,Kent A,14U Gold,F\n";
         Assert.Equal(HttpStatusCode.OK, (await ImportAsync(client, tournament, csv)).StatusCode);
@@ -118,7 +118,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task A_missing_tournament_is_not_found()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var missing = Guid.NewGuid();
 
         Assert.Equal(HttpStatusCode.NotFound, (await Post(client, $"/api/tournaments/{missing}/team-imports/preview", Header)).StatusCode);
@@ -153,7 +153,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
 
     private async Task<int> CountAsync()
     {
-        using var scope = factory.Services.CreateScope();
+        using var scope = factory.CreateTestOrganizationScope();
         var db = scope.ServiceProvider.GetRequiredService<CourtFlowDbContext>();
         return await db.Clubs.CountAsync() + await db.Teams.CountAsync() + await db.TournamentTeams.CountAsync();
     }

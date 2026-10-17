@@ -1,0 +1,50 @@
+@* The signed-in person's menu at the right of the director app bar. *@
+@inject SignInLinks Links
+
+<AuthorizeView>
+    <Authorized Context="auth">
+        <MudMenu AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 aria-label="@auth.User.Identity?.Name"
+                 data-testid="user-menu">
+            <ActivatorContent>
+                <MudTooltip Text="@auth.User.Identity?.Name">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="ml-2" aria-label="@auth.User.Identity?.Name">
+                        @if (AccessClaims.Initials(auth.User.Identity?.Name) is { Length: > 0 } initials)
+                        {
+                            @initials
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                        }
+                    </MudAvatar>
+                </MudTooltip>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Disabled="true" data-testid="user-menu-header">
+                    <MudText Typo="Typo.subtitle2">@auth.User.Identity?.Name</MudText>
+                    <MudText Typo="Typo.body2">@auth.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value</MudText>
+                </MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Href="/" Icon="@Icons.Material.Filled.Public" data-testid="view-public-site">@ViewPublicSite</MudMenuItem>
+                @if (auth.User.IsOwner())
+                {
+                    <MudMenuItem Href="/organization" Icon="@Icons.Material.Filled.Business" data-testid="organization-link">@OrganizationText</MudMenuItem>
+                }
+                @if (auth.User.IsOperator())
+                {
+                    <MudMenuItem Href="/operator/requests" Icon="@Icons.Material.Filled.AdminPanelSettings" data-testid="operator-link">@OperatorText</MudMenuItem>
+                }
+                <MudMenuItem Href="@Links.Logout()" ForceLoad="true" Icon="@Icons.Material.Filled.Logout" data-testid="sign-out">@SignOutText</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    public const string ViewPublicSite = "View public site";
+    public const string OrganizationText = "Organization";
+    public const string OperatorText = "Operator";
+    public const string SignOutText = "Sign out";
+}

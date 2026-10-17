@@ -210,7 +210,7 @@ public class TournamentPageTests : BunitContext, IDisposable
         var cut = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, Guid.NewGuid()));
 
         cut.WaitForAssertion(() => Assert.Contains(TournamentEditor.NotFoundMessage, cut.Markup));
-        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/");
+        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/tournaments");
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class TournamentPageTests : BunitContext, IDisposable
         var cut = Render<NotFound>();
 
         Assert.Contains("Page not found", cut.Find("h1").TextContent);
-        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/");
+        Assert.Contains(cut.FindAll("a"), link => link.GetAttribute("href") == "/tournaments");
         Assert.Empty(cut.FindComponents<CfTournamentSelect>());
     }
 

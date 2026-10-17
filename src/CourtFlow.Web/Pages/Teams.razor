@@ -1,4 +1,5 @@
 @page "/teams"
+@attribute [Authorize(Policy = AccessPolicies.Member)]
 @inject ICourtFlowApi Api
 @inject IDialogService Dialogs
 @inject Confirmations Confirmations
@@ -11,7 +12,7 @@
         <Actions>
             <MudStack AlignItems="AlignItems.End" Spacing="2">
                 <CfTournamentSelect Value="selected" ValueChanged="SelectAsync" ListLoaded="OnTournaments" />
-                @if (tournaments is { Count: > 0 })
+                @if (tournaments is { Count: > 0 } && !IsReadOnly)
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudButton id="import-teams"
@@ -34,8 +35,11 @@
     }
     else if (tournaments.Count == 0)
     {
-        <CfAlert Severity="Severity.Info" data-testid="no-tournaments">@NoTournamentsMessage</CfAlert>
-        <MudLink Href="/">Go to tournaments</MudLink>
+        <CfAlert Severity="Severity.Info" data-testid="no-tournaments">@(isViewer ? TournamentList.NothingPublishedMessage : NoTournamentsMessage)</CfAlert>
+        @if (!isViewer)
+        {
+            <MudLink Href="/tournaments">Go to tournaments</MudLink>
+        }
     }
     else
     {
@@ -47,61 +51,72 @@
         {
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" data-testid="teams-loading" />
         }
-        else if (divisions.Count == 0)
-        {
-            <CfAlert Severity="Severity.Info" data-testid="no-divisions">@NoDivisionsMessage</CfAlert>
-            <MudLink Href="@($"/tournaments/{selected.Id}")" data-testid="editor-link">Open @selected.Name</MudLink>
-        }
-        else if (teams.Count == 0)
-        {
-            <CfAlert Severity="Severity.Info" data-testid="no-teams">@NoTeamsMessage</CfAlert>
-        }
         else
         {
-            <MudGrid Spacing="2">
-                <MudItem xs="12" sm="5">
-                    <CfSelect T="DivisionResponse"
-                              Value="divisionFilter"
-                              ValueChanged="FilterByDivision"
-                              Label="Division"
-                              Items="DivisionFilterItems"
-                              ToLabel="FilterLabel"
-                              data-testid="division-filter" />
-                </MudItem>
-                <MudItem xs="12" sm="7">
-                    <CfTextField @bind-Value="search" Label="Search" Placeholder="Team or club" Immediate="true" data-testid="team-search" />
-                </MudItem>
-            </MudGrid>
-            <MudText Typo="Typo.body2" data-testid="team-count">@CountText(Visible.Count, teams.Count, IsFiltered)</MudText>
-            <MudTable T="TournamentTeamResponse" Items="Visible" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
-                <HeaderContent>
-                    <MudTh>Club</MudTh>
-                    <MudTh>Team</MudTh>
-                    <MudTh>Division</MudTh>
-                    <MudTh></MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Club" data-testid="team-row">@context.ClubName</MudTd>
-                    <MudTd DataLabel="Team">@context.TeamName</MudTd>
-                    <MudTd DataLabel="Division">@Division.Label(context.DivisionName, context.DivisionGender)</MudTd>
-                    <MudTd DataLabel="Actions">
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
-                            <CfIconButton id="@($"edit-team-{context.Id}")"
-                                          Icon="@Icons.Material.Filled.Edit"
-                                          Label="@($"Edit {context.TeamName}, {context.ClubName}")"
-                                          OnClick="@(() => EditAsync(context))" />
-                            <CfIconButton id="@($"delete-team-{context.Id}")"
-                                          Icon="@Icons.Material.Filled.Delete"
-                                          Label="@($"Delete {context.TeamName}, {context.ClubName}")"
-                                          Color="Color.Error"
-                                          OnClick="@(() => DeleteAsync(context))" />
-                        </MudStack>
-                    </MudTd>
-                </RowTemplate>
-                <NoRecordsContent>
-                    <MudText data-testid="no-matches">@NoMatchesMessage</MudText>
-                </NoRecordsContent>
-            </MudTable>
+            @if (IsArchived)
+            {
+                <CfAlert Severity="Severity.Info" data-testid="archived-note">@ArchivedMessage</CfAlert>
+            }
+
+            @if (divisions.Count == 0)
+            {
+                <CfAlert Severity="Severity.Info" data-testid="no-divisions">@NoDivisionsMessage</CfAlert>
+                <MudLink Href="@($"/tournaments/{selected.Id}")" data-testid="editor-link">Open @selected.Name</MudLink>
+            }
+            else if (teams.Count == 0)
+            {
+                <CfAlert Severity="Severity.Info" data-testid="no-teams">@(isViewer ? NoTeamsReadOnlyMessage : NoTeamsMessage)</CfAlert>
+            }
+            else
+            {
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="5">
+                        <CfSelect T="DivisionResponse"
+                                  Value="divisionFilter"
+                                  ValueChanged="FilterByDivision"
+                                  Label="Division"
+                                  Items="DivisionFilterItems"
+                                  ToLabel="FilterLabel"
+                                  data-testid="division-filter" />
+                    </MudItem>
+                    <MudItem xs="12" sm="7">
+                        <CfTextField @bind-Value="search" Label="Search" Placeholder="Team or club" Immediate="true" data-testid="team-search" />
+                    </MudItem>
+                </MudGrid>
+                <MudText Typo="Typo.body2" data-testid="team-count">@CountText(Visible.Count, teams.Count, IsFiltered)</MudText>
+                <MudTable T="TournamentTeamResponse" Items="Visible" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+                    <HeaderContent>
+                        <MudTh>Club</MudTh>
+                        <MudTh>Team</MudTh>
+                        <MudTh>Division</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Club" data-testid="team-row">@context.ClubName</MudTd>
+                        <MudTd DataLabel="Team">@context.TeamName</MudTd>
+                        <MudTd DataLabel="Division">@Division.Label(context.DivisionName, context.DivisionGender)</MudTd>
+                        <MudTd DataLabel="Actions">
+                            @if (!IsReadOnly)
+                            {
+                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                                    <CfIconButton id="@($"edit-team-{context.Id}")"
+                                                  Icon="@Icons.Material.Filled.Edit"
+                                                  Label="@($"Edit {context.TeamName}, {context.ClubName}")"
+                                                  OnClick="@(() => EditAsync(context))" />
+                                    <CfIconButton id="@($"delete-team-{context.Id}")"
+                                                  Icon="@Icons.Material.Filled.Delete"
+                                                  Label="@($"Delete {context.TeamName}, {context.ClubName}")"
+                                                  Color="Color.Error"
+                                                  OnClick="@(() => DeleteAsync(context))" />
+                                </MudStack>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText data-testid="no-matches">@NoMatchesMessage</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            }
         }
     }
 </MudStack>
@@ -111,9 +126,11 @@
     public const string NoTournamentsMessage = "No tournaments yet. Create one on the Tournaments page.";
     public const string NoDivisionsMessage = "Add a division to this tournament before adding teams.";
     public const string NoTeamsMessage = "No teams yet. Use Add or Import CSV.";
+    public const string NoTeamsReadOnlyMessage = "No teams yet.";
     public const string NoMatchesMessage = "No teams match.";
     public const string AllDivisions = "All divisions";
     public const string DeleteConsequence = "The team stays available for other tournaments.";
+    public const string ArchivedMessage = "This tournament is archived. Restore it to make changes.";
 
     private static readonly DivisionResponse EveryDivision = new(Guid.Empty, Guid.Empty, AllDivisions, "");
 
@@ -125,7 +142,15 @@
     private DivisionResponse divisionFilter = EveryDivision;
     private string search = "";
 
-    private bool CanAddTeams => selected is not null && !loading && divisions.Count > 0;
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool isViewer;
+
+    private bool IsArchived => selected?.Status == TournamentStatus.Archived;
+
+    private bool IsReadOnly => IsArchived || isViewer;
+
+    private bool CanAddTeams => selected is not null && !loading && divisions.Count > 0 && !IsReadOnly;
 
     private bool IsFiltered => divisionFilter.Id != Guid.Empty || !string.IsNullOrWhiteSpace(search);
 
@@ -143,6 +168,9 @@
         var noun = total == 1 ? "team" : "teams";
         return filtered ? $"{shown} of {total} {noun}" : $"{total} {noun}";
     }
+
+    protected override async Task OnInitializedAsync() =>
+        isViewer = AuthenticationState is not null && (await AuthenticationState).User.IsViewer();
 
     private void OnTournaments(IReadOnlyList<TournamentResponse> list) => tournaments = list;
 

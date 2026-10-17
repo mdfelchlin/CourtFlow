@@ -1,0 +1,20 @@
+@* The logo and the CourtFlow name as one link. Both frames use it; only the destination differs. *@
+<MudLink Href="@Href"
+         Color="Color.Inherit"
+         Underline="Underline.None"
+         Class="@LinkClass"
+         data-testid="brand-link">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudImage Src="@CourtFlowTheme.LogoPath" Alt="" Width="CourtFlowTheme.LogoSize" Height="CourtFlowTheme.LogoSize" />
+        <MudText Typo="Typo.h6" HtmlTag="span" Class="@CfDefaults.BrandNameClass">CourtFlow</MudText>
+    </MudStack>
+</MudLink>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = "/";
+
+    /// <summary>Spacing the surrounding app bar wants, such as "ml-2" after a menu button.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string LinkClass => $"{CfDefaults.BrandLinkClass} {Class}".TrimEnd();
+}

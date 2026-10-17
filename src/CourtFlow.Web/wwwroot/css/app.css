@@ -1,7 +1,8 @@
 /*
- * Hand-written CSS is allowed here only for what renders before or outside Blazor:
- * the loading screen and the unhandled-error bar. The three hex values below must
- * equal the light palette in Theming/CourtFlowTheme.cs; StylingRulesTests checks that.
+ * Hand-written CSS is allowed here only for what renders before or outside Blazor (the loading
+ * screen and the unhandled-error bar) and for the one case MudBlazor cannot express: truncating
+ * the brand name in an app bar. The three hex values below must equal the light palette in
+ * Theming/CourtFlowTheme.cs; StylingRulesTests checks that.
  */
 
 /* The brand background applies only while the loading screen is up. Once Blazor renders, the theme owns the body. */
@@ -67,3 +68,29 @@ body:has(> #app > .loading-progress) {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+/*
+ * MudBlazor 8.13 has no truncation utility and no typed parameter for one. Without these the brand
+ * refuses to shrink in the app bar's flex row and pushes the theme toggle and Login off a phone.
+ * The mark keeps its size; only the word gives way.
+ */
+.cf-brand {
+    min-width: 0;
+    overflow: hidden;
+}
+
+    .cf-brand img {
+        flex-shrink: 0;
+    }
+
+.cf-brand-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* The drop zone's native file input sits over the target to catch drops, so it must stay hit-testable. */
+.cf-drop-zone-input {
+    opacity: 0;
+}

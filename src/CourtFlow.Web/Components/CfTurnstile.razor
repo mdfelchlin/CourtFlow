@@ -1,0 +1,60 @@
+@* Cloudflare Turnstile. Reports the token when solved and null when it expires or fails. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject TurnstileSettings Settings
+@inject PublicThemeState PublicTheme
+
+<div @ref="container" data-testid="turnstile"></div>
+
+@code {
+    private ElementReference container;
+    private DotNetObjectReference<CfTurnstile>? self;
+    private string? widgetId;
+
+    [Parameter] public EventCallback<string?> TokenChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        self = DotNetObjectReference.Create(this);
+        try
+        {
+            widgetId = await JS.InvokeAsync<string?>(
+                "courtflowTurnstile.render", container, Settings.SiteKey, PublicTheme.IsDarkMode ? "dark" : "light", self);
+        }
+        catch (JSException)
+        {
+            // Cloudflare's script did not load. The form stays, and the API refuses the submission without a token.
+        }
+    }
+
+    [JSInvokable]
+    public Task OnToken(string? token) => InvokeAsync(() => TokenChanged.InvokeAsync(token));
+
+    /// <summary>A token is good for one check, so the widget is reset after every submission.</summary>
+    public async Task ResetAsync()
+    {
+        await TokenChanged.InvokeAsync(null);
+        try
+        {
+            await JS.InvokeVoidAsync("courtflowTurnstile.reset", widgetId);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("courtflowTurnstile.remove", widgetId);
+        }
+        catch (Exception exception) when (exception is JSException or JSDisconnectedException)
+        {
+        }
+        self?.Dispose();
+    }
+}

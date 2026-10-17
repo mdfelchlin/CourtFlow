@@ -1,0 +1,12 @@
+{
+  "name": "courtflow-logo",
+  "private": true,
+  "description": "Generates the CourtFlow logo, favicon, and app icon assets.",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "png-to-ico": "^3.0.2"
+  }
+}

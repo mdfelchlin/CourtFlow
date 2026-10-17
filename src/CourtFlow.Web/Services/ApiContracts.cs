@@ -1,3 +1,5 @@
+using CourtFlow.Domain;
+
 namespace CourtFlow.Web.Services;
 
 public sealed record TournamentResponse(
@@ -7,7 +9,11 @@ public sealed record TournamentResponse(
     DateOnly StartDate,
     DateOnly EndDate,
     string TimeZoneId,
-    int DefaultMatchDurationMinutes);
+    int DefaultMatchDurationMinutes,
+    TournamentStatus Status = TournamentStatus.Unpublished,
+    DateTimeOffset? LastPublishedAt = null,
+    DateOnly? PublishedOn = null,
+    DateOnly? ArchivesOn = null);
 
 public sealed record TournamentRequest(
     string? Name,

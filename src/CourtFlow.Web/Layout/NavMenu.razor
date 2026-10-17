@@ -1,10 +1,28 @@
-@* The drawer's links. It lists only pages that exist. *@
+@* The drawer's links. It lists only pages that exist and that the person may open. *@
+@inject SignInLinks Links
+
 <MudNavMenu>
-    <CfNavLink Href="/" Icon="@Icons.Material.Filled.EmojiEvents" ActivePrefixes="@TournamentPaths">Tournaments</CfNavLink>
-    <CfNavLink Href="/teams" Icon="@Icons.Material.Filled.Groups" ActivePrefixes="@TeamPaths">Teams</CfNavLink>
+    <AuthorizeView Policy="@AccessPolicies.Member">
+        <CfNavLink Href="/tournaments" Icon="@Icons.Material.Filled.EmojiEvents" ActivePrefixes="@TournamentPaths">Tournaments</CfNavLink>
+        <CfNavLink Href="/teams" Icon="@Icons.Material.Filled.Groups" ActivePrefixes="@TeamPaths">Teams</CfNavLink>
+    </AuthorizeView>
+    <AuthorizeView Policy="@AccessPolicies.Operator">
+        <MudNavGroup Title="Operator" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true" data-testid="operator-group">
+            <CfNavLink Href="/operator/requests" Icon="@Icons.Material.Filled.Inbox" ActivePrefixes="@RequestPaths">Requests</CfNavLink>
+            <CfNavLink Href="/operator/organizations" Icon="@Icons.Material.Filled.Business" ActivePrefixes="@OrganizationPaths">Organizations</CfNavLink>
+        </MudNavGroup>
+    </AuthorizeView>
 </MudNavMenu>
+<AuthorizeView>
+    <MudNavMenu Class="mt-auto pb-2">
+        <MudDivider Class="mb-2" />
+        <MudNavLink Href="@Links.Logout()" ForceLoad="true" Icon="@Icons.Material.Filled.Logout" data-testid="nav-sign-out">@CfUserMenu.SignOutText</MudNavLink>
+    </MudNavMenu>
+</AuthorizeView>
 
 @code {
-    private static readonly string[] TournamentPaths = ["/", "/tournaments"];
+    private static readonly string[] TournamentPaths = ["/tournaments"];
     private static readonly string[] TeamPaths = ["/teams"];
+    private static readonly string[] RequestPaths = ["/operator/requests"];
+    private static readonly string[] OrganizationPaths = ["/operator/organizations"];
 }

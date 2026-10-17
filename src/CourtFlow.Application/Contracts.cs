@@ -1,3 +1,5 @@
+using CourtFlow.Domain;
+
 namespace CourtFlow.Application;
 
 public sealed record TournamentDetails(
@@ -7,7 +9,25 @@ public sealed record TournamentDetails(
     DateOnly StartDate,
     DateOnly EndDate,
     string TimeZoneId,
-    int DefaultMatchDurationMinutes);
+    int DefaultMatchDurationMinutes,
+    TournamentStatus Status,
+    DateTimeOffset? LastPublishedAt)
+{
+    /// <summary>The day the tournament went public, in its own time zone. Only a published tournament has one.</summary>
+    public DateOnly? PublishedOn => LocalDay(LastPublishedAt);
+
+    /// <summary>The day the automatic archive comes due. The archive itself may run up to a day later.</summary>
+    public DateOnly? ArchivesOn => LocalDay(LastPublishedAt + Tournament.AutoArchiveAfter);
+
+    private DateOnly? LocalDay(DateTimeOffset? instant)
+    {
+        if (Status != TournamentStatus.Published || instant is not { } moment)
+            return null;
+
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+        return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(moment, zone).DateTime);
+    }
+}
 
 public sealed record CourtDetails(Guid Id, int Number);
 

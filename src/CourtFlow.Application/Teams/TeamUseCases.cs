@@ -54,6 +54,8 @@ public sealed class TeamUseCases(ITournamentRepository tournaments, IClubReposit
         if (tournament is null)
             return null;
 
+        // The rename lands on the club, so the archived tournament must stop it before the club is touched.
+        tournament.EnsureEditable();
         var entry = tournament.Entries.Single(item => item.Id == entryId);
         var club = (await clubs.GetByTeamsAsync([entry.TeamId], cancellationToken)).Single();
         var team = club.RenameTeam(entry.TeamId, command.TeamName);

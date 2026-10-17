@@ -11,17 +11,17 @@ namespace CourtFlow.Api.Tests;
 [Collection(ApiCollection.Name)]
 public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
 {
-    public Task InitializeAsync() => factory.ResetAsync();
+    public async ValueTask InitializeAsync() => await factory.ResetAsync();
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task List_returns_the_saved_fields_for_the_test_organization()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var created = await CreateAsync(client, Sample());
 
-        var list = await client.GetFromJsonAsync<List<TournamentDetails>>("/api/tournaments");
+        var list = await client.GetFromJsonAsync<List<TournamentDetails>>("/api/tournaments", TestContext.Current.CancellationToken);
 
         var item = Assert.Single(list!);
         Assert.Equal(created.Id, item.Id);
@@ -35,44 +35,45 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     [Fact]
     public async Task Create_get_and_update_round_trip()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var created = await CreateAsync(client, Sample());
 
-        var loaded = await client.GetFromJsonAsync<TournamentDetails>($"/api/tournaments/{created.Id}");
+        var loaded = await client.GetFromJsonAsync<TournamentDetails>($"/api/tournaments/{created.Id}", TestContext.Current.CancellationToken);
         Assert.Equal("City Cup", loaded!.Name);
 
-        var updated = await client.PutAsJsonAsync($"/api/tournaments/{created.Id}", Sample(name: "Updated Cup"));
+        var updated = await client.PutAsJsonAsync($"/api/tournaments/{created.Id}", Sample(name: "Updated Cup"), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
-        var body = await updated.Content.ReadFromJsonAsync<TournamentDetails>();
+        var body = await updated.Content.ReadFromJsonAsync<TournamentDetails>(TestContext.Current.CancellationToken);
         Assert.Equal("Updated Cup", body!.Name);
 
-        var again = await client.PutAsJsonAsync($"/api/tournaments/{created.Id}", Sample(name: "Latest Cup"));
-        var latest = await again.Content.ReadFromJsonAsync<TournamentDetails>();
+        var again = await client.PutAsJsonAsync($"/api/tournaments/{created.Id}", Sample(name: "Latest Cup"), TestContext.Current.CancellationToken);
+        var latest = await again.Content.ReadFromJsonAsync<TournamentDetails>(TestContext.Current.CancellationToken);
         Assert.Equal("Latest Cup", latest!.Name);
     }
 
     [Fact]
     public async Task Missing_tournament_is_not_found()
     {
-        var client = factory.CreateClient();
-        var response = await client.GetAsync($"/api/tournaments/{Guid.NewGuid()}");
+        var client = factory.CreateMemberClient();
+        var response = await client.GetAsync($"/api/tournaments/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
     public async Task Duplicate_names_and_long_spans_are_saved()
     {
-        var client = factory.CreateClient();
-        var first = await client.PostAsJsonAsync("/api/tournaments", Sample(name: "City Cup"));
-        var second = await client.PostAsJsonAsync("/api/tournaments", Sample(name: "  city cup  "));
+        var client = factory.CreateMemberClient();
+        var first = await client.PostAsJsonAsync("/api/tournaments", Sample(name: "City Cup"), TestContext.Current.CancellationToken);
+        var second = await client.PostAsJsonAsync("/api/tournaments", Sample(name: "  city cup  "), TestContext.Current.CancellationToken);
         var longSpan = await client.PostAsJsonAsync("/api/tournaments", Sample(
             name: "Long",
-            end: new DateOnly(2026, 9, 6)));
+            end: new DateOnly(2026, 9, 6)),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         Assert.Equal(HttpStatusCode.Created, second.StatusCode);
         Assert.Equal(HttpStatusCode.Created, longSpan.StatusCode);
-        var saved = await second.Content.ReadFromJsonAsync<TournamentDetails>();
+        var saved = await second.Content.ReadFromJsonAsync<TournamentDetails>(TestContext.Current.CancellationToken);
         Assert.Equal("city cup", saved!.Name);
     }
 
@@ -85,7 +86,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     [InlineData("City Cup", "2026-09-01", "2026-09-03", "America/Chicago", 241)]
     public async Task Invalid_details_are_rejected(string name, string start, string end, string timeZoneId, int duration)
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var response = await client.PostAsJsonAsync("/api/tournaments", new
         {
             name,
@@ -94,22 +95,22 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
             endDate = end,
             timeZoneId,
             defaultMatchDurationMinutes = duration,
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
     public async Task Missing_required_details_are_rejected()
     {
-        var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/tournaments", new { description = "" });
+        var client = factory.CreateMemberClient();
+        var response = await client.PostAsJsonAsync("/api/tournaments", new { description = "" }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
     public async Task Fractional_duration_is_rejected()
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
         var response = await client.PostAsJsonAsync("/api/tournaments", new
         {
             name = "City Cup",
@@ -118,7 +119,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
             endDate = "2026-09-03",
             timeZoneId = "America/Chicago",
             defaultMatchDurationMinutes = 15.5,
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -126,18 +127,18 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     public async Task Another_organizations_tournament_is_hidden_and_cannot_be_changed()
     {
         var other = await InsertOtherOrganizationTournamentAsync();
-        var client = factory.CreateClient();
+        var client = factory.CreateMemberClient();
 
-        var list = await client.GetFromJsonAsync<List<TournamentDetails>>("/api/tournaments");
+        var list = await client.GetFromJsonAsync<List<TournamentDetails>>("/api/tournaments", TestContext.Current.CancellationToken);
         Assert.DoesNotContain(list!, item => item.Id == other.Id);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/tournaments/{other.Id}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/api/tournaments/{other.Id}", Sample(name: "Hijack"))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/tournaments/{other.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/tournaments/{other.Id}", TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/api/tournaments/{other.Id}", Sample(name: "Hijack"), TestContext.Current.CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/tournaments/{other.Id}", TestContext.Current.CancellationToken)).StatusCode);
 
-        using var scope = factory.Services.CreateScope();
+        using var scope = factory.CreateTestOrganizationScope();
         var db = scope.ServiceProvider.GetRequiredService<CourtFlowDbContext>();
-        var stillThere = await db.Tournaments.IgnoreQueryFilters().AnyAsync(tournament => tournament.Id == other.Id);
+        var stillThere = await db.Tournaments.IgnoreQueryFilters().AnyAsync(tournament => tournament.Id == other.Id, TestContext.Current.CancellationToken);
         Assert.True(stillThere);
     }
 
@@ -155,7 +156,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
 
     private async Task<Tournament> InsertOtherOrganizationTournamentAsync()
     {
-        using var scope = factory.Services.CreateScope();
+        using var scope = factory.CreateTestOrganizationScope();
         var db = scope.ServiceProvider.GetRequiredService<CourtFlowDbContext>();
         var organizationId = Guid.NewGuid();
         db.Organizations.Add(new Organization(organizationId, "Other Organization"));

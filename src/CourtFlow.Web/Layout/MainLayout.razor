@@ -2,7 +2,7 @@
 @implements IDisposable
 @inject ThemeState ThemeState
 
-<MudThemeProvider Theme="CourtFlowTheme.Theme" IsDarkMode="ThemeState.IsDarkMode" ObserveSystemThemeChange="false" />
+<MudThemeProvider Theme="CourtFlowTheme.Theme" IsDarkMode="ThemeState.IsDarkMode" ObserveSystemDarkModeChange="false" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -16,19 +16,10 @@
                        Edge="Edge.Start"
                        aria-label="Toggle navigation"
                        OnClick="ToggleDrawer" />
-        <MudLink Href="/" Color="Color.Inherit" Underline="Underline.None" Class="ml-2" data-testid="brand-link">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <MudImage Src="@CourtFlowTheme.LogoPath" Alt="" Width="CourtFlowTheme.LogoSize" Height="CourtFlowTheme.LogoSize" />
-                <MudText Typo="Typo.h6" HtmlTag="span">CourtFlow</MudText>
-            </MudStack>
-        </MudLink>
+        <CfBrandLink Href="/tournaments" Class="ml-2" />
         <MudSpacer />
-        <CfIconButton Icon="@ToggleIcon"
-                      Label="@ToggleLabel"
-                      Color="Color.Inherit"
-                      Size="Size.Medium"
-                      OnClick="ToggleThemeAsync"
-                      data-testid="theme-toggle" />
+        <CfThemeToggle State="ThemeState" />
+        <CfUserMenu />
     </MudAppBar>
     @* MudBlazor 8.13's mini drawer pushes the content aside at every width. Below the small breakpoint
        the responsive variant is used instead, so the expanded drawer covers the content. The key recreates
@@ -50,9 +41,6 @@
 </MudLayout>
 
 @code {
-    public const string SwitchToDark = "Switch to dark theme";
-    public const string SwitchToLight = "Switch to light theme";
-
     private bool drawerOpen;
     private Breakpoint breakpoint = Breakpoint.None;
 
@@ -60,14 +48,10 @@
 
     private void OnBreakpointChanged(Breakpoint value) => breakpoint = value;
 
-    private string ToggleIcon => ThemeState.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode;
-    private string ToggleLabel => ThemeState.IsDarkMode ? SwitchToLight : SwitchToDark;
-
+    // The theme provider below reads ThemeState, so the layout redraws on a toggle the component owns.
     protected override void OnInitialized() => ThemeState.Changed += OnThemeChanged;
 
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
-
-    private Task ToggleThemeAsync() => ThemeState.ToggleAsync();
 
     private void OnThemeChanged() => InvokeAsync(StateHasChanged);
 

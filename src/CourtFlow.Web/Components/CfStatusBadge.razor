@@ -1,0 +1,20 @@
+@* A tournament's lifecycle state, shown the same way in the list and on the editor. *@
+<MudChip T="string" Size="Size.Small" Color="@BadgeColor" Variant="Variant.Filled" data-testid="status-badge">@Label(Status)</MudChip>
+
+@code {
+    [Parameter, EditorRequired] public TournamentStatus Status { get; set; }
+
+    public static string Label(TournamentStatus status) => status switch
+    {
+        TournamentStatus.Published => "Published",
+        TournamentStatus.Archived => "Archived",
+        _ => "Unpublished",
+    };
+
+    private Color BadgeColor => Status switch
+    {
+        TournamentStatus.Published => Color.Success,
+        TournamentStatus.Archived => Color.Info,
+        _ => Color.Default,
+    };
+}

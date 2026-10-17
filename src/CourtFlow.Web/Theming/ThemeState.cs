@@ -3,10 +3,11 @@ using Microsoft.JSInterop;
 namespace CourtFlow.Web.Theming;
 
 /// <summary>
-/// The current light or dark mode. Registered as a singleton so <c>Program.cs</c> can
-/// initialize the same instance the layout reads before the first render.
+/// The director frame's current light or dark mode. Registered as a singleton so <c>Program.cs</c>
+/// can initialize the same instance the layout reads before the first render.
+/// <see cref="PublicThemeState"/> inherits this for the public frame's separate choice.
 /// </summary>
-public sealed class ThemeState(IThemePreferenceStore store)
+public class ThemeState(IThemePreferenceStore store)
 {
     public ThemeMode Mode { get; private set; } = ThemeMode.Light;
 

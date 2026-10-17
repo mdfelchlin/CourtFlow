@@ -1,0 +1,96 @@
+@* The tournament's lifecycle: where it stands and what the director can do about it. *@
+@inject ICourtFlowApi Api
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<MudPaper Outlined="true" Class="pa-3" data-testid="status-bar">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+            <CfStatusBadge Status="Tournament.Status" />
+            <MudText Typo="Typo.body2" data-testid="status-text">@StatusText</MudText>
+        </MudStack>
+        @if (CanChangeStatus)
+        {
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                @if (Tournament.Status == TournamentStatus.Unpublished)
+                {
+                    <CfSaveButton id="publish" Text="Publish" Icon="@Icons.Material.Filled.Public" OnSave="PublishAsync" />
+                }
+                else if (Tournament.Status == TournamentStatus.Published)
+                {
+                    <MudButton id="unpublish"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="CfDefaults.ButtonSize"
+                               StartIcon="@Icons.Material.Filled.VisibilityOff"
+                               OnClick="UnpublishAsync">Unpublish</MudButton>
+                    <MudButton id="archive"
+                               Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               Size="CfDefaults.ButtonSize"
+                               StartIcon="@Icons.Material.Filled.Archive"
+                               OnClick="ArchiveAsync">Archive</MudButton>
+                }
+                else
+                {
+                    <CfSaveButton id="restore" Text="Restore" Icon="@Icons.Material.Filled.Unarchive" OnSave="RestoreAsync" />
+                }
+            </MudStack>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    public const string UnpublishedText = "Only your organization can see this tournament.";
+    public const string ArchivedText = "This tournament is archived. Restore it to make changes.";
+    public const string UnpublishTitle = "Unpublish this tournament?";
+    public const string UnpublishWarning = "Coaches, players, and spectators will no longer see this tournament. Links you have shared will stop working.";
+    public const string UnpublishConfirmText = "Unpublish";
+    public const string ArchiveTitle = "Archive this tournament?";
+    public const string ArchiveWarning = "Archived tournaments are hidden from the public and cannot be changed. You can restore it later.";
+    public const string ArchiveConfirmText = "Archive";
+
+    [Parameter, EditorRequired] public TournamentResponse Tournament { get; set; } = default!;
+
+    /// <summary>False for viewers: the status line shows, with no Publish, Unpublish, Archive, or Restore.</summary>
+    [Parameter] public bool CanChangeStatus { get; set; } = true;
+
+    /// <summary>Raised after every action, successful or rejected, so the page reloads what the API now holds.</summary>
+    [Parameter] public EventCallback Changed { get; set; }
+
+    public static string PublishedText(DateOnly? publishedOn, DateOnly? archivesOn) =>
+        publishedOn is { } published && archivesOn is { } archives
+            ? $"Published on {CalendarDateFormat.Display(published)}. It will be archived automatically on {CalendarDateFormat.Display(archives)}."
+            : "Published.";
+
+    private string StatusText => Tournament.Status switch
+    {
+        TournamentStatus.Published => PublishedText(Tournament.PublishedOn, Tournament.ArchivesOn),
+        TournamentStatus.Archived => ArchivedText,
+        _ => UnpublishedText,
+    };
+
+    private Task PublishAsync() => RunAsync(() => Api.PublishTournamentAsync(Tournament.Id), Feedback.Published);
+
+    private Task RestoreAsync() => RunAsync(() => Api.RestoreTournamentAsync(Tournament.Id), Feedback.Restored);
+
+    private async Task UnpublishAsync()
+    {
+        if (await Confirmations.ConfirmAsync(UnpublishTitle, UnpublishWarning, UnpublishConfirmText))
+            await RunAsync(() => Api.UnpublishTournamentAsync(Tournament.Id), Feedback.Unpublished);
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (await Confirmations.ConfirmAsync(ArchiveTitle, ArchiveWarning, ArchiveConfirmText))
+            await RunAsync(() => Api.ArchiveTournamentAsync(Tournament.Id), Feedback.Archived);
+    }
+
+    private async Task RunAsync(Func<Task> action, Action announce)
+    {
+        if (await Feedback.RunAsync(action))
+            announce();
+
+        await Changed.InvokeAsync();
+    }
+}

@@ -19,8 +19,26 @@ public sealed class TournamentRepository(CourtFlowDbContext db) : ITournamentRep
                 tournament.StartDate,
                 tournament.EndDate,
                 tournament.TimeZoneId,
-                tournament.DefaultMatchDurationMinutes))
+                tournament.DefaultMatchDurationMinutes,
+                tournament.Status,
+                tournament.LastPublishedAt))
             .ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// Every organization's overdue tournaments, so the automatic archive is not limited to the signed-in one.
+    /// The cutoff only narrows the query; <see cref="Tournament.ArchiveIfDue"/> decides on the loaded row.
+    /// </summary>
+    public async Task<IReadOnlyList<Tournament>> ListDueForArchiveAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var cutoff = now - Tournament.AutoArchiveAfter;
+        return await db.Tournaments
+            .IgnoreQueryFilters()
+            .Where(tournament =>
+                tournament.Status == TournamentStatus.Published
+                && tournament.LastPublishedAt != null
+                && tournament.LastPublishedAt <= cutoff)
+            .ToListAsync(cancellationToken);
+    }
 
     public Task<Tournament?> GetAsync(Guid id, CancellationToken cancellationToken) =>
         WithChildren(db.Tournaments)

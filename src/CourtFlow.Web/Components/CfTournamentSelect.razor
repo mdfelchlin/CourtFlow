@@ -19,7 +19,7 @@
                    FullWidth="false">
             @foreach (var item in Items)
             {
-                <MudSelectItem T="TournamentResponse" Value="@item">@item.Name</MudSelectItem>
+                <MudSelectItem T="TournamentResponse" Value="@item">@NameOf(item)</MudSelectItem>
             }
         </MudSelect>
     </MudStack>
@@ -63,5 +63,11 @@
         await ValueChanged.InvokeAsync(tournament);
     }
 
-    private static string NameOf(TournamentResponse? tournament) => tournament?.Name ?? "";
+    /// <summary>An archived tournament still appears here, marked, so the director knows why its screen is read-only.</summary>
+    public static string NameOf(TournamentResponse? tournament) => tournament switch
+    {
+        null => "",
+        { Status: TournamentStatus.Archived } => $"{tournament.Name} (Archived)",
+        _ => tournament.Name,
+    };
 }

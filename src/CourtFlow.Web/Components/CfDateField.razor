@@ -11,23 +11,27 @@
                    Converter="@DateConverter"
                    Culture="@CalendarDateFormat.Culture"
                    DateFormat="@CalendarDateFormat.Pattern"
-                   Placeholder="@CalendarDateFormat.Placeholder" />
+                   Placeholder="@CalendarDateFormat.Placeholder"
+                   Text="@_text"
+                   TextChanged="OnTextChanged" />
 </CfField>
 
 @code {
     // MudBlazor parses with one format string, and MM/dd rejects a single digit. This converter
     // accepts 9/1/2026 and still shows 09/01/2026.
-    private static readonly Converter<DateTime?> DateConverter = new()
-    {
-        SetFunc = date => date is null ? null : CalendarDateFormat.Display(DateOnly.FromDateTime(date.Value)),
-        GetFunc = text => CalendarDateFormat.TryParse(text, out var date)
+    private static readonly IReversibleConverter<DateTime?, string?> DateConverter = Conversions.From<DateTime?, string?>(
+        date => date is null ? null : CalendarDateFormat.Display(DateOnly.FromDateTime(date.Value)),
+        text => CalendarDateFormat.TryParse(text, out var date)
             ? date.ToDateTime(TimeOnly.MinValue)
-            : null,
-    };
+            : null);
 
     private readonly string labelId = CfIds.Next();
     private DateOnly? _value;
     private DateTime? _pickerDate;
+    // MudBlazor keeps typed text that already parses to the current date, so 9/1/2026 would stay
+    // as typed. Owning the text lets a parsed date show as 09/01/2026. Text must follow Converter
+    // and Culture in the markup: the picker parses it as soon as it is set.
+    private string? _text;
     private bool _publishing;
 
     [Parameter, EditorRequired] public string Label { get; set; } = "";
@@ -46,10 +50,14 @@
 
         _value = Value;
         _pickerDate = ToDateTime(Value);
+        _text = DateConverter.Convert(_pickerDate);
     }
 
     private static DateTime? ToDateTime(DateOnly? date) =>
         date?.ToDateTime(TimeOnly.MinValue);
+
+    private void OnTextChanged(string? text) =>
+        _text = DateConverter.ConvertBack(text) is { } date ? DateConverter.Convert(date) : text;
 
     private async Task OnDateChanged(DateTime? date)
     {

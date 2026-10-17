@@ -40,7 +40,26 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
     public async Task DeleteTournamentAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var response = await http.DeleteAsync($"api/tournaments/{id}", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await ThrowIfRejected(response, cancellationToken);
+    }
+
+    public Task<TournamentResponse> PublishTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, "publish", cancellationToken);
+
+    public Task<TournamentResponse> UnpublishTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, "unpublish", cancellationToken);
+
+    public Task<TournamentResponse> ArchiveTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, "archive", cancellationToken);
+
+    public Task<TournamentResponse> RestoreTournamentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionAsync(id, "restore", cancellationToken);
+
+    private async Task<TournamentResponse> TransitionAsync(Guid id, string action, CancellationToken cancellationToken)
+    {
+        var response = await http.PostAsync($"api/tournaments/{id}/{action}", null, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<TournamentResponse>(cancellationToken))!;
     }
 
     public async Task<IReadOnlyList<VenueResponse>> ListVenuesAsync(Guid tournamentId, CancellationToken cancellationToken = default)
@@ -66,7 +85,7 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
     public async Task DeleteVenueAsync(Guid venueId, CancellationToken cancellationToken = default)
     {
         var response = await http.DeleteAsync($"api/venues/{venueId}", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await ThrowIfRejected(response, cancellationToken);
     }
 
     public async Task<IReadOnlyList<DivisionResponse>> ListDivisionsAsync(Guid tournamentId, CancellationToken cancellationToken = default)
@@ -118,7 +137,7 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
     public async Task DeleteTournamentTeamAsync(Guid entryId, CancellationToken cancellationToken = default)
     {
         var response = await http.DeleteAsync($"api/tournament-teams/{entryId}", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await ThrowIfRejected(response, cancellationToken);
     }
 
     public async Task<IReadOnlyList<ClubResponse>> SearchClubsAsync(string? search, CancellationToken cancellationToken = default)
@@ -137,7 +156,7 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
     public async Task<TeamImportPreviewResponse> PreviewTeamImportAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default)
     {
         var response = await http.PostAsync($"api/tournaments/{tournamentId}/team-imports/preview", Upload(fileName, content), cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await ThrowIfRejected(response, cancellationToken);
         return (await response.Content.ReadFromJsonAsync<TeamImportPreviewResponse>(cancellationToken))!;
     }
 
@@ -149,6 +168,59 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
 
         await ThrowIfRejected(response, cancellationToken);
         return new TeamImportResponse(await response.Content.ReadFromJsonAsync<TeamImportResultResponse>(cancellationToken), null);
+    }
+
+    public async Task<AccessRequestResultResponse> SubmitAccessRequestAsync(AccessRequestForm form, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PostAsJsonAsync("api/access-requests", form, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<AccessRequestResultResponse>(cancellationToken))!;
+    }
+
+    public async Task<OrganizationOverviewResponse> GetOrganizationAsync(CancellationToken cancellationToken = default) =>
+        (await http.GetFromJsonAsync<OrganizationOverviewResponse>("api/organization", cancellationToken))!;
+
+    public Task InviteMemberAsync(string email, OrganizationRole role, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, "api/organization/invitations", new { email, role }, cancellationToken);
+
+    public Task ResendInvitationAsync(Guid invitationId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/organization/invitations/{invitationId}/resend", null, cancellationToken);
+
+    public Task CancelInvitationAsync(Guid invitationId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/organization/invitations/{invitationId}", null, cancellationToken);
+
+    public Task ChangeMemberRoleAsync(Guid membershipId, OrganizationRole role, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Put, $"api/organization/members/{membershipId}/role", new { role }, cancellationToken);
+
+    public Task RemoveMemberAsync(Guid membershipId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Delete, $"api/organization/members/{membershipId}", null, cancellationToken);
+
+    public async Task<IReadOnlyList<AccessRequestResponse>> ListAccessRequestsAsync(CancellationToken cancellationToken = default) =>
+        await http.GetFromJsonAsync<List<AccessRequestResponse>>("api/operator/requests", cancellationToken) ?? [];
+
+    public Task ApproveAccessRequestAsync(Guid id, ApproveAccessRequestRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/operator/requests/{id}/approve", request, cancellationToken);
+
+    public Task DeclineAccessRequestAsync(Guid id, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/operator/requests/{id}/decline", null, cancellationToken);
+
+    public async Task<IReadOnlyList<OperatorOrganizationResponse>> ListOrganizationsAsync(CancellationToken cancellationToken = default) =>
+        await http.GetFromJsonAsync<List<OperatorOrganizationResponse>>("api/operator/organizations", cancellationToken) ?? [];
+
+    public Task InviteOwnerAsync(Guid organizationId, string email, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/operator/organizations/{organizationId}/owner-invitations", new { email }, cancellationToken);
+
+    public Task DeactivateOrganizationAsync(Guid organizationId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/operator/organizations/{organizationId}/deactivate", null, cancellationToken);
+
+    public Task ReactivateOrganizationAsync(Guid organizationId, CancellationToken cancellationToken = default) =>
+        SendAsync(HttpMethod.Post, $"api/operator/organizations/{organizationId}/reactivate", null, cancellationToken);
+
+    private async Task SendAsync(HttpMethod method, string path, object? body, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = body is null ? null : JsonContent.Create(body) };
+        var response = await http.SendAsync(request, cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
     }
 
     private static MultipartFormDataContent Upload(string fileName, byte[] content)

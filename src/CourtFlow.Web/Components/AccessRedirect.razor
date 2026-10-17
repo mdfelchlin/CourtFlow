@@ -1,0 +1,31 @@
+@* What a page shows when its policy refuses: sign-in for a stranger, the no-access page for someone without an
+   organization, and not-found for a role that may not open it. *@
+@inject NavigationManager Navigation
+@inject SignInLinks Links
+
+@if (showNotFound)
+{
+    <NotFoundContent />
+}
+
+@code {
+    private bool showNotFound;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = AuthenticationState is null ? null : (await AuthenticationState).User;
+        var path = AccessStatusHandler.CurrentPath(Navigation);
+        showNotFound = false;
+
+        if (user is null || !user.IsSignedIn())
+            Navigation.NavigateTo(Links.Login(path), forceLoad: true);
+        else if (!user.HasActiveMembership() && !IsOperatorPage(path))
+            Navigation.NavigateTo(AccessStatusHandler.NoAccessPath);
+        else
+            showNotFound = true;
+    }
+
+    private static bool IsOperatorPage(string path) => path.StartsWith("/operator", StringComparison.OrdinalIgnoreCase);
+}

@@ -1,11 +1,18 @@
 ﻿@page "/tournaments/new"
 @page "/tournaments/{Id:guid}"
+@attribute [Authorize(Policy = AccessPolicies.Member)]
 @inject ICourtFlowApi Api
 @inject NavigationManager Navigation
 @inject IDialogService Dialogs
 @inject Confirmations Confirmations
 @inject Feedback Feedback
 @inject ITournamentMemory TournamentMemory
+
+@if (IsNew && isViewer)
+{
+    <NotFoundContent />
+    return;
+}
 
 <PageTitle>@(IsNew ? "New tournament" : "Tournament")</PageTitle>
 
@@ -16,36 +23,42 @@
     }
     else if (notFound)
     {
-        <CfPageHeader Title="Tournament" BackHref="/" />
+        <CfPageHeader Title="Tournament" BackHref="/tournaments" />
         <CfAlert Severity="Severity.Error" data-testid="not-found">@NotFoundMessage</CfAlert>
-        <MudLink Href="/">Back to tournaments</MudLink>
+        <MudLink Href="/tournaments">Back to tournaments</MudLink>
     }
     else
     {
-        <CfPageHeader Title="@(IsNew ? "New tournament" : name)" BackHref="/" />
+        <CfPageHeader Title="@(IsNew ? "New tournament" : name)" BackHref="/tournaments" />
+
+        @if (loaded is { } tournament)
+        {
+            <TournamentStatusBar Tournament="tournament" CanChangeStatus="!isViewer" Changed="ReloadAsync" />
+        }
 
         <MudPaper Class="pa-4">
             <MudStack Spacing="3">
                 <MudText Typo="Typo.h6">Details</MudText>
-                <CfTextField @bind-Value="name" Label="Name" Required="true" data-testid="name" />
-                <CfTextField @bind-Value="description" Label="Description" Lines="2" data-testid="description" />
+                <CfTextField @bind-Value="name" Label="Name" Required="true" Disabled="IsReadOnly" data-testid="name" />
+                <CfTextField @bind-Value="description" Label="Description" Lines="2" Disabled="IsReadOnly" data-testid="description" />
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="6">
-                        <CfDateField @bind-Value="startDate" Label="Start date" Required="true" data-testid="start-date" />
+                        <CfDateField @bind-Value="startDate" Label="Start date" Required="true" Disabled="IsReadOnly" data-testid="start-date" />
                     </MudItem>
                     <MudItem xs="12" sm="6">
-                        <CfDateField @bind-Value="endDate" Label="End date" Required="true" data-testid="end-date" />
+                        <CfDateField @bind-Value="endDate" Label="End date" Required="true" Disabled="IsReadOnly" data-testid="end-date" />
                     </MudItem>
                 </MudGrid>
                 <CfSelect T="string"
                           @bind-Value="timeZoneId"
                           Label="Time zone"
                           Required="true"
+                          Disabled="IsReadOnly"
                           Items="TimeZoneIds"
                           ToLabel="UsTimeZones.Label"
                           Placeholder="Select a time zone"
                           data-testid="time-zone" />
-                <CfNumericField T="int?" @bind-Value="duration" Label="Default match duration (minutes)" Required="true" Min="15" Max="240" data-testid="duration" />
+                <CfNumericField T="int?" @bind-Value="duration" Label="Default match duration (minutes)" Required="true" Disabled="IsReadOnly" Min="15" Max="240" data-testid="duration" />
                 @if (longSpanWarning)
                 {
                     <CfAlert Severity="Severity.Warning" data-testid="span-warning">This tournament covers more than five calendar days.</CfAlert>
@@ -54,9 +67,12 @@
                 {
                     <CfAlert Severity="Severity.Warning" data-testid="name-warning">Another tournament already has this name.</CfAlert>
                 }
-                <MudStack Row="true" Justify="Justify.FlexEnd">
-                    <CfSaveButton id="save-details" Text="Save details" OnSave="SaveDetailsAsync" />
-                </MudStack>
+                @if (!IsReadOnly)
+                {
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <CfSaveButton id="save-details" Text="Save details" OnSave="SaveDetailsAsync" />
+                    </MudStack>
+                }
             </MudStack>
         </MudPaper>
 
@@ -70,7 +86,10 @@
                 <MudStack Spacing="3">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                         <MudText Typo="Typo.h6">Venues</MudText>
-                        <CfAddButton id="add-venue" AriaLabel="Add venue" OnClick="AddVenueAsync" />
+                        @if (!IsReadOnly)
+                        {
+                            <CfAddButton id="add-venue" AriaLabel="Add venue" OnClick="AddVenueAsync" />
+                        }
                     </MudStack>
                     @if (venues.Count == 0)
                     {
@@ -94,17 +113,20 @@
                                                 <MudText Typo="Typo.body2">@venue.CourtCount court@(venue.CourtCount == 1 ? "" : "s")</MudText>
                                             </MudStack>
                                         </MudStack>
-                                        <MudStack Row="true" Spacing="1">
-                                            <CfIconButton id="@($"edit-venue-{venue.Id}")"
-                                                          Icon="@Icons.Material.Filled.Edit"
-                                                          Label="@($"Edit {venue.Name}")"
-                                                          OnClick="@(() => EditVenueAsync(venue))" />
-                                            <CfIconButton id="@($"delete-venue-{venue.Id}")"
-                                                          Icon="@Icons.Material.Filled.Delete"
-                                                          Label="@($"Delete {venue.Name}")"
-                                                          Color="Color.Error"
-                                                          OnClick="@(() => DeleteVenueAsync(venue))" />
-                                        </MudStack>
+                                        @if (!IsReadOnly)
+                                        {
+                                            <MudStack Row="true" Spacing="1">
+                                                <CfIconButton id="@($"edit-venue-{venue.Id}")"
+                                                              Icon="@Icons.Material.Filled.Edit"
+                                                              Label="@($"Edit {venue.Name}")"
+                                                              OnClick="@(() => EditVenueAsync(venue))" />
+                                                <CfIconButton id="@($"delete-venue-{venue.Id}")"
+                                                              Icon="@Icons.Material.Filled.Delete"
+                                                              Label="@($"Delete {venue.Name}")"
+                                                              Color="Color.Error"
+                                                              OnClick="@(() => DeleteVenueAsync(venue))" />
+                                            </MudStack>
+                                        }
                                     </MudStack>
                                 </MudPaper>
                             }
@@ -117,7 +139,10 @@
                 <MudStack Spacing="3">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                         <MudText Typo="Typo.h6">Divisions</MudText>
-                        <CfAddButton id="add-division" AriaLabel="Add division" OnClick="AddDivisionAsync" />
+                        @if (!IsReadOnly)
+                        {
+                            <CfAddButton id="add-division" AriaLabel="Add division" OnClick="AddDivisionAsync" />
+                        }
                     </MudStack>
                     @if (divisions.Count == 0)
                     {
@@ -134,17 +159,20 @@
                                             <MudText Typo="Typo.subtitle1">@division.Name</MudText>
                                             <MudText Typo="Typo.body2">@division.Gender</MudText>
                                         </MudStack>
-                                        <MudStack Row="true" Spacing="1">
-                                            <CfIconButton id="@($"edit-division-{division.Id}")"
-                                                          Icon="@Icons.Material.Filled.Edit"
-                                                          Label="@($"Edit {division.Name}, {division.Gender}")"
-                                                          OnClick="@(() => EditDivisionAsync(division))" />
-                                            <CfIconButton id="@($"delete-division-{division.Id}")"
-                                                          Icon="@Icons.Material.Filled.Delete"
-                                                          Label="@($"Delete {division.Name}, {division.Gender}")"
-                                                          Color="Color.Error"
-                                                          OnClick="@(() => DeleteDivisionAsync(division))" />
-                                        </MudStack>
+                                        @if (!IsReadOnly)
+                                        {
+                                            <MudStack Row="true" Spacing="1">
+                                                <CfIconButton id="@($"edit-division-{division.Id}")"
+                                                              Icon="@Icons.Material.Filled.Edit"
+                                                              Label="@($"Edit {division.Name}, {division.Gender}")"
+                                                              OnClick="@(() => EditDivisionAsync(division))" />
+                                                <CfIconButton id="@($"delete-division-{division.Id}")"
+                                                              Icon="@Icons.Material.Filled.Delete"
+                                                              Label="@($"Delete {division.Name}, {division.Gender}")"
+                                                              Color="Color.Error"
+                                                              OnClick="@(() => DeleteDivisionAsync(division))" />
+                                            </MudStack>
+                                        }
                                     </MudStack>
                                 </MudPaper>
                             }
@@ -179,6 +207,15 @@
     private List<VenueResponse> venues = [];
     private List<DivisionResponse> divisions = [];
     private Guid loadedFor = Guid.NewGuid();
+    private TournamentResponse? loaded;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool isViewer;
+
+    private bool IsArchived => loaded?.Status == TournamentStatus.Archived;
+
+    private bool IsReadOnly => IsArchived || isViewer;
 
     private bool longSpanWarning =>
         startDate is DateOnly start && endDate is DateOnly end && end > start && TournamentWarnings.SpanExceedsFiveDays(start, end);
@@ -186,9 +223,15 @@
     private bool duplicateNameWarning =>
         TournamentWarnings.NameMatchesAnother(name, tournaments.Where(item => item.Id != Id).Select(item => item.Name));
 
+    protected override async Task OnInitializedAsync() =>
+        isViewer = AuthenticationState is not null && (await AuthenticationState).User.IsViewer();
+
     protected override async Task OnParametersSetAsync()
     {
         if (loadedFor == Id)
+            return;
+
+        if (IsNew && isViewer)
             return;
 
         loadedFor = Id;
@@ -200,6 +243,7 @@
             if (IsNew)
             {
                 notFound = false;
+                loaded = null;
                 name = "";
                 description = "";
                 startDate = null;
@@ -215,17 +259,13 @@
             if (tournament is null)
             {
                 notFound = true;
+                loaded = null;
                 divisions = [];
                 return;
             }
 
             notFound = false;
-            name = tournament.Name;
-            description = tournament.Description;
-            startDate = tournament.StartDate;
-            endDate = tournament.EndDate;
-            timeZoneId = tournament.TimeZoneId;
-            duration = tournament.DefaultMatchDurationMinutes;
+            Apply(tournament);
             await TournamentMemory.RememberAsync(Id);
             await ReloadVenuesAsync();
             await ReloadDivisionsAsync();
@@ -234,6 +274,41 @@
         {
             loading = false;
         }
+    }
+
+    /// <summary>Re-reads the tournament after a lifecycle action, or after a rejection that means the screen is out of date.</summary>
+    private async Task ReloadAsync()
+    {
+        if (IsNew)
+            return;
+
+        var tournament = await Api.GetTournamentAsync(Id);
+        if (tournament is null)
+        {
+            notFound = true;
+            loaded = null;
+            return;
+        }
+
+        Apply(tournament);
+        tournaments = await Api.ListTournamentsAsync();
+        await ReloadVenuesAsync();
+        await ReloadDivisionsAsync();
+    }
+
+    /// <summary>The tournament was archived while this screen was open, most likely automatically. Catch the screen up.</summary>
+    private Task ReloadIfArchivedAsync(string rejection) =>
+        rejection == Tournament.ArchivedMessage ? ReloadAsync() : Task.CompletedTask;
+
+    private void Apply(TournamentResponse tournament)
+    {
+        loaded = tournament;
+        name = tournament.Name;
+        description = tournament.Description;
+        startDate = tournament.StartDate;
+        endDate = tournament.EndDate;
+        timeZoneId = tournament.TimeZoneId;
+        duration = tournament.DefaultMatchDurationMinutes;
     }
 
     private async Task SaveDetailsAsync()
@@ -251,7 +326,7 @@
 
             await Api.UpdateTournamentAsync(Id, request);
             tournaments = await Api.ListTournamentsAsync();
-        });
+        }, onRejected: ReloadIfArchivedAsync);
 
         if (saved)
             Feedback.Saved();
@@ -281,7 +356,7 @@
         if (!await Confirmations.ConfirmDeleteAsync(venue.Name, DeleteVenueConsequence))
             return;
 
-        if (await Feedback.RunAsync(() => Api.DeleteVenueAsync(venue.Id)))
+        if (await Feedback.RunAsync(() => Api.DeleteVenueAsync(venue.Id), onRejected: ReloadIfArchivedAsync))
         {
             Feedback.Deleted();
             await ReloadVenuesAsync();
@@ -315,7 +390,7 @@
         if (!await Confirmations.ConfirmDeleteAsync($"{division.Name} ({division.Gender})", ""))
             return;
 
-        if (await Feedback.RunAsync(() => Api.DeleteDivisionAsync(division.Id)))
+        if (await Feedback.RunAsync(() => Api.DeleteDivisionAsync(division.Id), onRejected: ReloadIfArchivedAsync))
         {
             Feedback.Deleted();
             await ReloadDivisionsAsync();

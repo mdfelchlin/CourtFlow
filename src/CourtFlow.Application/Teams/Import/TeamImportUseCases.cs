@@ -13,6 +13,7 @@ public sealed class TeamImportUseCases(ITournamentRepository tournaments, IClubR
         if (tournament is null)
             return null;
 
+        tournament.EnsureEditable();
         var (preview, _, _) = await PlanAsync(tournament, file, cancellationToken);
         return preview;
     }
@@ -23,6 +24,7 @@ public sealed class TeamImportUseCases(ITournamentRepository tournaments, IClubR
         if (tournament is null)
             return null;
 
+        tournament.EnsureEditable();
         var (preview, accepted, loaded) = await PlanAsync(tournament, file, cancellationToken);
         if (preview.FileError is not null || preview.Summary.Rejected > 0)
             return new TeamImportAttempt(null, preview with { Stale = true });

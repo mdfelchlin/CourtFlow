@@ -1,11 +1,27 @@
 using CourtFlow.Domain;
+using CourtFlow.Infrastructure.Access;
+using CourtFlow.Infrastructure.Email;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Infrastructure;
 
-public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> options) : DbContext(options)
+/// <param name="filter">
+/// The request's organization and viewer flag. Without one, as at design time, the organization filters match nothing.
+/// </param>
+public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> options, DataFilter? filter = null)
+    : DbContext(options), IDataProtectionKeyContext
 {
+    // Read at query time, so one compiled model serves every request's organization.
+    private Guid CurrentOrganizationId => filter?.OrganizationId ?? Guid.Empty;
+    private bool PublishedOnly => filter?.PublishedOnly ?? false;
+
     public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<Membership> Memberships => Set<Membership>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
+    public DbSet<OutboxEmail> OutboxEmails => Set<OutboxEmail>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
     public DbSet<Tournament> Tournaments => Set<Tournament>();
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Court> Courts => Set<Court>();
@@ -22,7 +38,75 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.HasKey(organization => organization.Id);
             entity.Property(organization => organization.Id).ValueGeneratedNever();
             entity.Property(organization => organization.Name).IsRequired();
+            entity.Property(organization => organization.Status).HasConversion<string>().IsRequired();
+            entity.Ignore(organization => organization.IsActive);
+            entity.Ignore(organization => organization.IsVisibleToPublic);
+            entity.HasMany(organization => organization.Memberships)
+                .WithOne()
+                .HasForeignKey(membership => membership.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(organization => organization.Memberships)
+                .HasField("_memberships")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
+
+        modelBuilder.Entity<Membership>(entity =>
+        {
+            entity.ToTable("memberships");
+            entity.HasKey(membership => membership.Id);
+            entity.Property(membership => membership.Id).ValueGeneratedNever();
+            entity.Property(membership => membership.UserId).IsRequired();
+            entity.Property(membership => membership.Email).IsRequired();
+            entity.Property(membership => membership.Name).IsRequired();
+            entity.Property(membership => membership.Role).HasConversion<string>().IsRequired();
+            entity.HasIndex(membership => membership.UserId);
+            entity.HasIndex(membership => membership.Email);
+            entity.HasIndex(membership => new { membership.OrganizationId, membership.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.ToTable("invitations");
+            entity.HasKey(invitation => invitation.Id);
+            entity.Property(invitation => invitation.Id).ValueGeneratedNever();
+            entity.Property(invitation => invitation.Email).IsRequired();
+            entity.Property(invitation => invitation.Role).HasConversion<string>().IsRequired();
+            entity.Property(invitation => invitation.State).HasConversion<string>().IsRequired();
+            entity.Property(invitation => invitation.WorkOsInvitationId).IsRequired();
+            entity.HasIndex(invitation => invitation.Email);
+            entity.HasOne<Organization>()
+                .WithMany()
+                .HasForeignKey(invitation => invitation.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AccessRequest>(entity =>
+        {
+            entity.ToTable("access_requests");
+            entity.HasKey(request => request.Id);
+            entity.Property(request => request.Id).ValueGeneratedNever();
+            entity.Property(request => request.WaitlistEntryId).IsRequired();
+            entity.Property(request => request.Name).IsRequired();
+            entity.Property(request => request.Email).IsRequired();
+            entity.Property(request => request.OrganizationName).IsRequired();
+            entity.Property(request => request.Message).IsRequired();
+            entity.Property(request => request.State).HasConversion<string>().IsRequired();
+            entity.HasIndex(request => request.Email);
+        });
+
+        modelBuilder.Entity<OutboxEmail>(entity =>
+        {
+            entity.ToTable("outbox_emails");
+            entity.HasKey(email => email.Id);
+            entity.Property(email => email.Id).ValueGeneratedNever();
+            entity.Property(email => email.To).IsRequired();
+            entity.Property(email => email.Subject).IsRequired();
+            entity.Property(email => email.Text).IsRequired();
+            entity.Property(email => email.Html).IsRequired();
+            entity.HasIndex(email => email.NextAttemptAt);
+        });
+
+        modelBuilder.Entity<DataProtectionKey>().ToTable("data_protection_keys");
 
         modelBuilder.Entity<Tournament>(entity =>
         {
@@ -32,7 +116,13 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(tournament => tournament.Name).IsRequired();
             entity.Property(tournament => tournament.Description).IsRequired();
             entity.Property(tournament => tournament.TimeZoneId).IsRequired();
-            entity.HasQueryFilter(tournament => tournament.OrganizationId == TestOrganizationSeed.Id);
+            entity.Property(tournament => tournament.Status).HasConversion<string>().IsRequired();
+            entity.Property(tournament => tournament.LastPublishedAt);
+            // A viewer's unpublished and archived tournaments are simply not found, and nor are their children,
+            // because every venue, division, and team use case loads its tournament first.
+            entity.HasQueryFilter(tournament =>
+                tournament.OrganizationId == CurrentOrganizationId
+                && (!PublishedOnly || tournament.Status == TournamentStatus.Published));
             entity.HasMany(tournament => tournament.Venues)
                 .WithOne()
                 .HasForeignKey(venue => venue.TournamentId)
@@ -63,7 +153,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(venue => venue.Id).ValueGeneratedNever();
             entity.Property(venue => venue.Name).IsRequired();
             entity.Property(venue => venue.Address).IsRequired();
-            entity.HasQueryFilter(venue => venue.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(venue => venue.OrganizationId == CurrentOrganizationId);
             entity.HasMany(venue => venue.Courts)
                 .WithOne()
                 .HasForeignKey(court => court.VenueId)
@@ -80,7 +170,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(division => division.Id).ValueGeneratedNever();
             entity.Property(division => division.Name).IsRequired();
             entity.Property(division => division.Gender).HasConversion<string>().IsRequired();
-            entity.HasQueryFilter(division => division.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(division => division.OrganizationId == CurrentOrganizationId);
         });
 
         modelBuilder.Entity<Club>(entity =>
@@ -91,7 +181,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(club => club.Name).IsRequired();
             entity.Property(club => club.NormalizedName).IsRequired();
             entity.HasIndex(club => new { club.OrganizationId, club.NormalizedName }).IsUnique();
-            entity.HasQueryFilter(club => club.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(club => club.OrganizationId == CurrentOrganizationId);
             entity.HasMany(club => club.Teams)
                 .WithOne()
                 .HasForeignKey(team => team.ClubId)
@@ -109,7 +199,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Property(team => team.Name).IsRequired();
             entity.Property(team => team.NormalizedName).IsRequired();
             entity.HasIndex(team => new { team.ClubId, team.NormalizedName }).IsUnique();
-            entity.HasQueryFilter(team => team.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(team => team.OrganizationId == CurrentOrganizationId);
         });
 
         modelBuilder.Entity<TournamentTeam>(entity =>
@@ -118,7 +208,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.HasKey(entry => entry.Id);
             entity.Property(entry => entry.Id).ValueGeneratedNever();
             entity.HasIndex(entry => new { entry.TournamentId, entry.TeamId }).IsUnique();
-            entity.HasQueryFilter(entry => entry.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(entry => entry.OrganizationId == CurrentOrganizationId);
             entity.HasOne<Team>()
                 .WithMany()
                 .HasForeignKey(entry => entry.TeamId)
@@ -134,7 +224,7 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.ToTable("courts");
             entity.HasKey(court => court.Id);
             entity.Property(court => court.Id).ValueGeneratedNever();
-            entity.HasQueryFilter(court => court.OrganizationId == TestOrganizationSeed.Id);
+            entity.HasQueryFilter(court => court.OrganizationId == CurrentOrganizationId);
             entity.Ignore(court => court.Name);
         });
     }

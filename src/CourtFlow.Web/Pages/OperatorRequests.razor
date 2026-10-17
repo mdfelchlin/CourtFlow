@@ -1,0 +1,100 @@
+@page "/operator/requests"
+@attribute [Authorize(Policy = AccessPolicies.Operator)]
+@inject ICourtFlowApi Api
+@inject IDialogService Dialogs
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+
+<PageTitle>Access requests · CourtFlow</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="Access requests" Icon="@Icons.Material.Filled.Inbox" />
+
+    @if (requests is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (requests.Count == 0)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="no-requests">@EmptyMessage</CfAlert>
+    }
+    else
+    {
+        <MudTable T="AccessRequestResponse" Items="requests" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1" data-testid="requests">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Organization name</MudTh>
+                <MudTh>Message</MudTh>
+                <MudTh>Requested</MudTh>
+                <MudTh>Expires</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Organization name">@context.OrganizationName</MudTd>
+                <MudTd DataLabel="Message">@context.Message</MudTd>
+                <MudTd DataLabel="Requested">@CalendarDateFormat.Display(context.RequestedAt)</MudTd>
+                <MudTd DataLabel="Expires">@CalendarDateFormat.Display(context.ExpiresAt)</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+                        <CfIconButton id="@($"approve-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.Check"
+                                      Label="@($"Approve {context.Name}")"
+                                      Color="Color.Success"
+                                      OnClick="@(() => ApproveAsync(context))" />
+                        <CfIconButton id="@($"decline-{context.Id}")"
+                                      Icon="@Icons.Material.Filled.Block"
+                                      Label="@($"Decline {context.Name}")"
+                                      Color="Color.Error"
+                                      OnClick="@(() => DeclineAsync(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    public const string EmptyMessage = "No requests are waiting.";
+    public const string DeclinedMessage = "Declined.";
+
+    private IReadOnlyList<AccessRequestResponse>? requests;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync() =>
+        requests = (await Api.ListAccessRequestsAsync()).OrderBy(request => request.RequestedAt).ToList();
+
+    private async Task ApproveAsync(AccessRequestResponse request)
+    {
+        var organizations = await Api.ListOrganizationsAsync();
+        var parameters = new DialogParameters<ApproveRequestDialog>
+        {
+            { dialog => dialog.Request, request },
+            { dialog => dialog.Organizations, organizations },
+        };
+        var options = new DialogOptions { MaxWidth = CfDefaults.DialogMaxWidth, FullWidth = true, CloseOnEscapeKey = true };
+
+        var dialog = await Dialogs.ShowAsync<ApproveRequestDialog>(ApproveRequestDialog.Title, parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await ReloadAsync();
+    }
+
+    private async Task DeclineAsync(AccessRequestResponse request)
+    {
+        if (!await Confirmations.ConfirmAsync(
+                $"Decline {request.Name}?",
+                $"{request.Email} will be told no and cannot send another request.",
+                "Decline"))
+            return;
+
+        if (await Feedback.RunAsync(() => Api.DeclineAccessRequestAsync(request.Id)))
+        {
+            Feedback.Done(DeclinedMessage);
+            await ReloadAsync();
+        }
+    }
+}

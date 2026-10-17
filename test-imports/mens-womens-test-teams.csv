@@ -1,0 +1,33 @@
+Club,Team,Division,Gender
+Arizona State University,Arizona St M,Men's,M
+Baylor University,Baylor M,Men's,M
+Boise State University,Boise St M,Men's,M
+Clemson University,Clemson M,Men's,M
+Colorado State University,Colorado St M,Men's,M
+Georgia Institute of Technology,Georgia Tech M,Men's,M
+Indiana University,Indiana M,Men's,M
+Michigan State University,Michigan St M,Men's,M
+Ohio State University,Ohio St M,Men's,M
+Penn State University,Penn St M,Men's,M
+Purdue University,Purdue M,Men's,M
+Texas A&M University,Texas A&M M,Men's,M
+University of Florida,U Florida M,Men's,M
+University of Washington,U Washington M,Men's,M
+"University of California-Berkeley",UC-Berkeley M,Men's,M
+Utah Valley University,Utah Valley M,Men's,M
+Arizona State University,Arizona St W,Women's,F
+Baylor University,Baylor W,Women's,F
+Boise State University,Boise St W,Women's,F
+Clemson University,Clemson W,Women's,F
+Colorado State University,Colorado St W,Women's,F
+Georgia Institute of Technology,Georgia Tech W,Women's,F
+Indiana University,Indiana W,Women's,F
+Michigan State University,Michigan St W,Women's,F
+Ohio State University,Ohio St W,Women's,F
+Penn State University,Penn St W,Women's,F
+Purdue University,Purdue W,Women's,F
+Texas A&M University,Texas A&M W,Women's,F
+University of Florida,U Florida W,Women's,F
+University of Washington,U Washington W,Women's,F
+"University of California-Berkeley",UC-Berkeley W,Women's,F
+Utah Valley University,Utah Valley W,Women's,F

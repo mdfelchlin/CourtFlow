@@ -1,0 +1,126 @@
+@page "/request-access"
+@layout PublicLayout
+@inject ICourtFlowApi Api
+@inject SignInLinks Links
+
+<PageTitle>Request Access · CourtFlow</PageTitle>
+
+<MudStack Spacing="3" Class="mt-6">
+    <MudText Typo="Typo.h4" HtmlTag="h1">Request Access</MudText>
+
+    @if (sent is not null)
+    {
+        <CfAlert Severity="Severity.Success" data-testid="request-sent">@sent</CfAlert>
+    }
+    else
+    {
+        <MudText>@Intro</MudText>
+
+        @if (result is not null)
+        {
+            <CfAlert Severity="@(result.Outcome == AccessRequestOutcome.CouldNotSend ? Severity.Error : Severity.Warning)"
+                     data-testid="request-outcome">
+                @result.Message
+            </CfAlert>
+            @if (result.Outcome == AccessRequestOutcome.AlreadyHasAccess)
+            {
+                <div>
+                    <MudButton Href="@Links.Login("/tournaments")"
+                               Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               data-testid="outcome-login">Login</MudButton>
+                </div>
+            }
+        }
+
+        <CfTextField @bind-Value="name" Label="Name" Required="true" ErrorText="@nameProblem" data-testid="request-name" />
+        <CfTextField @bind-Value="email"
+                     Label="Email"
+                     Required="true"
+                     ReadOnly="signedInEmail is not null"
+                     ErrorText="@emailProblem"
+                     data-testid="request-email" />
+        <CfTextField @bind-Value="organizationName"
+                     Label="Organization name"
+                     Required="true"
+                     ErrorText="@organizationNameProblem"
+                     data-testid="request-organization" />
+        <CfTextField @bind-Value="message" Label="Message" Lines="4" ErrorText="@messageProblem" data-testid="request-message" />
+        <CfTurnstile @ref="turnstile" TokenChanged="OnTokenChanged" />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+            <MudLink Href="@Links.Login("/tournaments")" data-testid="back-to-sign-in">Back to sign in</MudLink>
+            <CfSaveButton Text="Send request" Icon="@Icons.Material.Filled.Send" OnSave="SendAsync" data-testid="send-request" />
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    public const string Intro = "CourtFlow is invite-only. Tell us about your organization, and an operator will review your request.";
+    public const string CouldNotSendMessage = "We couldn't send your request. Please try again in a few minutes.";
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private CfTurnstile? turnstile;
+    private string? name;
+    private string? email;
+    private string? organizationName;
+    private string? message;
+    private string? captchaToken;
+    private string? signedInEmail;
+
+    private string? nameProblem;
+    private string? emailProblem;
+    private string? organizationNameProblem;
+    private string? messageProblem;
+
+    private AccessRequestResultResponse? result;
+    private string? sent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = AuthenticationState is null ? null : (await AuthenticationState).User;
+        if (user?.IsSignedIn() == true && user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value is { Length: > 0 } address)
+            email = signedInEmail = address;
+    }
+
+    private void OnTokenChanged(string? token) => captchaToken = token;
+
+    private async Task SendAsync()
+    {
+        // CfSaveButton owns the click, so this page redraws itself.
+        try
+        {
+            await SubmitAsync();
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        nameProblem = AccessRequest.NameProblem(name);
+        emailProblem = AccessRequest.EmailProblem(email);
+        organizationNameProblem = AccessRequest.OrganizationNameProblem(organizationName);
+        messageProblem = AccessRequest.MessageProblem(message);
+        if ((nameProblem ?? emailProblem ?? organizationNameProblem ?? messageProblem) is not null)
+            return;
+
+        try
+        {
+            result = await Api.SubmitAccessRequestAsync(
+                new AccessRequestForm(name, signedInEmail ?? email, organizationName, message, captchaToken));
+        }
+        catch (Exception exception) when (exception is HttpRequestException or DomainRuleException)
+        {
+            result = new AccessRequestResultResponse(AccessRequestOutcome.CouldNotSend, CouldNotSendMessage);
+        }
+
+        if (result.Outcome == AccessRequestOutcome.Sent)
+            sent = result.Message;
+        else if (turnstile is not null)
+            await turnstile.ResetAsync();
+    }
+}

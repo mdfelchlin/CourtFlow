@@ -18,17 +18,18 @@ public class AppHostModelTests : IAsyncLifetime
 {
     IDistributedApplicationTestingBuilder _appHost = null!;
 
-    public async Task InitializeAsync() =>
+    public async ValueTask InitializeAsync() =>
         _appHost = await DistributedApplicationTestingBuilder.CreateAsync<Program>();
 
-    public async Task DisposeAsync() => await _appHost.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _appHost.DisposeAsync();
 
     [Fact]
-    public async Task Host_starts_only_the_api_blazor_app_and_postgres()
+    public async Task Host_starts_the_api_blazor_app_postgres_and_mailpit()
     {
         var projects = _appHost.Resources.Where(IsProject).ToList();
         var servers = _appHost.Resources.OfType<PostgresServerResource>().ToList();
         var databases = _appHost.Resources.OfType<PostgresDatabaseResource>().ToList();
+        var mailpit = Assert.Single(_appHost.Resources.OfType<MailPitContainerResource>());
 
         Assert.Equal(2, projects.Count);
         Assert.Contains(projects, IsApi);
@@ -57,6 +58,18 @@ public class AppHostModelTests : IAsyncLifetime
         Assert.False(Endpoint(api, "https").IsProxied);
         Assert.Contains(api.Annotations.OfType<WaitAnnotation>(), wait => wait.Resource.Name == "CourtFlow");
         Assert.Contains(api.Annotations.OfType<ResourceRelationshipAnnotation>(), relationship => relationship.Resource.Name == "CourtFlow");
+        Assert.Contains(api.Annotations.OfType<ResourceRelationshipAnnotation>(), relationship => relationship.Resource == mailpit);
+#pragma warning disable CS0618
+        var apiEnvironment = await ((IResourceWithEnvironment)api).GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Publish);
+#pragma warning restore CS0618
+        Assert.Contains("Email__Smtp", apiEnvironment.Keys);
+        Assert.Contains("WorkOS__ApiKey", apiEnvironment.Keys);
+        Assert.Contains("Resend__ApiKey", apiEnvironment.Keys);
+        var apiKeys = _appHost.Resources.OfType<ParameterResource>()
+            .Where(parameter => parameter.Name is "workos-api-key" or "resend-api-key")
+            .ToList();
+        Assert.Equal(2, apiKeys.Count);
+        Assert.All(apiKeys, parameter => Assert.True(parameter.Secret));
 
         var web = projects.Single(IsWeb);
         Assert.Equal(5186, Endpoint(web, "http").Port);

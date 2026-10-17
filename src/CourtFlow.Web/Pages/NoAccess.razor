@@ -1,0 +1,35 @@
+@page "/no-access"
+@layout PublicLayout
+@attribute [Authorize]
+@inject SignInLinks Links
+
+<PageTitle>You don't have access yet · CourtFlow</PageTitle>
+
+<MudStack Spacing="3" Class="mt-6">
+    <MudText Typo="Typo.h4" HtmlTag="h1">You don't have access yet</MudText>
+    <MudText data-testid="no-access-reason">@Reason</MudText>
+    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+        <MudButton Href="/request-access" Variant="Variant.Outlined" Color="Color.Primary" data-testid="no-access-request">Request Access</MudButton>
+        <MudButton Href="@Links.Logout()" Variant="Variant.Filled" Color="Color.Secondary" data-testid="no-access-sign-out">Sign out</MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    public const string NoMembership =
+        "Your account isn't part of an organization on CourtFlow yet. If you were invited, sign in with the email address the invitation was sent to.";
+
+    public static string Deactivated(string organizationName) =>
+        $"{organizationName} has been deactivated. If you think this is a mistake, contact mdfelchlin@gmail.com.";
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private string Reason { get; set; } = NoMembership;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = AuthenticationState is null ? null : (await AuthenticationState).User;
+        Reason = user is not null && user.IsDeactivated() && user.OrganizationNameOf() is { } organization
+            ? Deactivated(organization)
+            : NoMembership;
+    }
+}

@@ -22,6 +22,9 @@ public static class CalendarDateFormat
 
     public static string Display(DateOnly date) => date.ToString(Pattern, Culture);
 
+    /// <summary>The calendar date of an instant in the browser's time zone.</summary>
+    public static string Display(DateTimeOffset instant) => Display(DateOnly.FromDateTime(instant.LocalDateTime));
+
     public static bool TryParse(string? text, out DateOnly date)
     {
         if (DateTime.TryParseExact(text, TypedPattern, Culture, DateTimeStyles.None, out var parsed))

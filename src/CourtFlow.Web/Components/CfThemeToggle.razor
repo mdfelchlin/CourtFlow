@@ -1,0 +1,27 @@
+@* The light and dark switch. Each frame passes its own state, so the two choices stay independent. *@
+@implements IDisposable
+
+<CfIconButton Icon="@ToggleIcon"
+              Label="@ToggleLabel"
+              Color="Color.Inherit"
+              Size="Size.Medium"
+              OnClick="ToggleAsync"
+              data-testid="theme-toggle" />
+
+@code {
+    public const string SwitchToDark = "Switch to dark theme";
+    public const string SwitchToLight = "Switch to light theme";
+
+    [Parameter, EditorRequired] public ThemeState State { get; set; } = default!;
+
+    private string ToggleIcon => State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode;
+    private string ToggleLabel => State.IsDarkMode ? SwitchToLight : SwitchToDark;
+
+    protected override void OnInitialized() => State.Changed += OnThemeChanged;
+
+    private Task ToggleAsync() => State.ToggleAsync();
+
+    private void OnThemeChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnThemeChanged;
+}

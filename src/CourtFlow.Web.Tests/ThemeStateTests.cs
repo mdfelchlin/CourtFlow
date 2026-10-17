@@ -70,6 +70,31 @@ public class ThemeStateTests
     }
 
     [Fact]
+    public async Task The_public_and_director_choices_toggle_independently()
+    {
+        var publicStore = new FakeThemePreferenceStore { Cookie = "dark" };
+        var directorStore = new FakeThemePreferenceStore();
+        var publicTheme = new PublicThemeState(publicStore);
+        var directorTheme = new ThemeState(directorStore);
+        await publicTheme.InitializeAsync();
+        await directorTheme.InitializeAsync();
+
+        await publicTheme.ToggleAsync();
+
+        Assert.Equal(ThemeMode.Light, publicTheme.Mode);
+        Assert.Equal([ThemeMode.Light], publicStore.Writes);
+        Assert.Equal(ThemeMode.Light, directorTheme.Mode);
+        Assert.Empty(directorStore.Writes);
+
+        await directorTheme.ToggleAsync();
+
+        Assert.Equal(ThemeMode.Dark, directorTheme.Mode);
+        Assert.Equal([ThemeMode.Dark], directorStore.Writes);
+        Assert.Equal(ThemeMode.Light, publicTheme.Mode);
+        Assert.Equal([ThemeMode.Light], publicStore.Writes);
+    }
+
+    [Fact]
     public async Task A_refused_cookie_still_leaves_the_new_mode()
     {
         var store = new FakeThemePreferenceStore { RefuseWrites = true };
