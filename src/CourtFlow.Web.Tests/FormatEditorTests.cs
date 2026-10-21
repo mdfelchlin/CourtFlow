@@ -45,13 +45,24 @@ public class FormatEditorTests : BunitContext, IDisposable
         Assert.EndsWith($"/format/{division.Id}/ranking", Step(ranking, "Ranking").GetAttribute("href"));
         Assert.EndsWith($"/format/{division.Id}/pools", Step(ranking, "Pools").GetAttribute("href"));
         Assert.EndsWith($"/format/{division.Id}/brackets", Step(ranking, "Brackets").GetAttribute("href"));
+        Assert.Equal(2, ranking.FindAll("[data-testid=stage-nav]").Count);
+        Assert.All(ranking.FindAll("[data-testid=stage-nav]"), nav =>
+        {
+            Assert.Contains("Previous", nav.QuerySelector("button")!.TextContent);
+            Assert.True(nav.QuerySelector("button")!.HasAttribute("disabled"));
+            Assert.EndsWith($"/format/{division.Id}/pools", nav.QuerySelector("a[aria-label='Next, Pools']")!.GetAttribute("href"));
+        });
 
         var pools = RenderEditor(division.Id, "pools");
         pools.WaitForAssertion(() => Assert.Contains(RankingWording.PoolsLater, pools.Markup));
         Assert.DoesNotContain("Ohio St U", pools.Markup);
+        Assert.EndsWith($"/format/{division.Id}/ranking", pools.Find("[aria-label='Previous, Ranking']").GetAttribute("href"));
+        Assert.EndsWith($"/format/{division.Id}/brackets", pools.Find("[aria-label='Next, Brackets']").GetAttribute("href"));
 
         var brackets = RenderEditor(division.Id, "brackets");
         brackets.WaitForAssertion(() => Assert.Contains(RankingWording.BracketsLater, brackets.Markup));
+        Assert.EndsWith($"/format/{division.Id}/pools", brackets.Find("[aria-label='Previous, Pools']").GetAttribute("href"));
+        Assert.All(brackets.FindAll("[data-testid=stage-nav]"), nav => Assert.Contains("disabled", nav.InnerHtml));
     }
 
     [Fact]
@@ -99,6 +110,9 @@ public class FormatEditorTests : BunitContext, IDisposable
         Ready();
         var typed = RenderEditor(division.Id);
         typed.WaitForAssertion(() => Assert.Equal(["Alpha", "Bravo", "Charlie"], typed.Instance.Order));
+        Assert.Empty(typed.FindAll("label"));
+        Assert.Equal(RankingWording.RankOf("Charlie", "Zeta Club"), typed.Find($"[data-testid=rank-{teams[2].Id}] input").GetAttribute("aria-label"));
+        Assert.Contains("Zeta Club", RowText(typed, "Charlie"));
 
         typed.Find($"[data-testid=rank-{teams[2].Id}] input").Change("1");
 
@@ -313,6 +327,15 @@ public class FormatEditorTests : BunitContext, IDisposable
         return (tournament, division, entries);
     }
 
+    private static string RowText(IRenderedComponent<FormatEditor> cut, string team)
+    {
+        var name = cut.FindAll("[data-testid=ranking-team]").Single(item => item.TextContent.Trim() == team);
+        var row = name;
+        while (row.ParentElement is not null && !row.ClassList.Contains("mud-grid"))
+            row = row.ParentElement;
+        return row.TextContent;
+    }
+
     private static string[] ShownTeams(IRenderedComponent<FormatEditor> cut) =>
         cut.FindAll("[data-testid=ranking-team]").Select(team => team.TextContent.Trim()).ToArray();
 
@@ -328,7 +351,9 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     private static AngleSharp.Dom.IElement Step(IRenderedComponent<FormatEditor> cut, string label) =>
-        cut.FindAll("a").Single(link => link.TextContent.Trim() == label);
+        cut.FindAll("a").Single(link =>
+            link.TextContent.Contains(label, StringComparison.Ordinal)
+            && link.GetAttribute("href")?.EndsWith($"/{label.ToLowerInvariant()}") == true);
 
     private AngleSharp.Dom.IElement Button(string text) =>
         _dialogs.FindAll("button").Single(button => button.TextContent.Trim() == text);
