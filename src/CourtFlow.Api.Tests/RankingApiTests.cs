@@ -55,7 +55,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
 
         var before = await GetAsync(client, division.Id);
         Assert.False(before.Ranked);
-        Assert.Equal([("alpha", "Alpha Club"), ("Bravo", "Alpha Club"), ("Alpha", "Zeta Club")], before.Teams.Select(team => (team.TeamName, team.ClubName)).ToArray());
+        Assert.Equal([("alpha", "Alpha Club"), ("Alpha", "Zeta Club"), ("Bravo", "Alpha Club")], before.Teams.Select(team => (team.TeamName, team.ClubName)).ToArray());
         Assert.Equal([1, 2, 3], before.Teams.Select(team => team.Rank).ToArray());
         Assert.All(before.Teams, team => Assert.False(team.IsNew));
 
