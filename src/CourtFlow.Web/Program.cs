@@ -41,6 +41,7 @@ builder.Services.AddSingleton(services =>
 builder.Services.AddScoped<Feedback>();
 builder.Services.AddScoped<Confirmations>();
 builder.Services.AddScoped<ITournamentMemory, JsTournamentMemory>();
+builder.Services.AddSingleton<IRankingRandom, SystemRankingRandom>();
 
 var host = builder.Build();
 

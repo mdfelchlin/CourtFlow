@@ -160,6 +160,33 @@ public sealed class CourtFlowApi(HttpClient http) : ICourtFlowApi
         return (await response.Content.ReadFromJsonAsync<TeamImportPreviewResponse>(cancellationToken))!;
     }
 
+    public async Task<IReadOnlyList<FormatDivisionResponse>?> ListFormatAsync(Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        var response = await http.GetAsync($"api/tournaments/{tournamentId}/format", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<FormatDivisionResponse>>(cancellationToken) ?? [];
+    }
+
+    public async Task<DivisionRankingResponse?> GetRankingAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        var response = await http.GetAsync($"api/divisions/{divisionId}/ranking", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<DivisionRankingResponse>(cancellationToken);
+    }
+
+    public async Task<DivisionRankingResponse> SaveRankingAsync(Guid divisionId, IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PutAsJsonAsync($"api/divisions/{divisionId}/ranking", new SaveRankingRequest(entryIds), cancellationToken);
+        await ThrowIfRejected(response, cancellationToken);
+        return (await response.Content.ReadFromJsonAsync<DivisionRankingResponse>(cancellationToken))!;
+    }
+
     public async Task<TeamImportResponse> ImportTeamsAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default)
     {
         var response = await http.PostAsync($"api/tournaments/{tournamentId}/team-imports", Upload(fileName, content), cancellationToken);

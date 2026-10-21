@@ -102,3 +102,32 @@ public sealed record TeamImportResultResponse(int Imported);
 
 /// <summary>An import either was written, or came back with a fresh preview because something changed.</summary>
 public sealed record TeamImportResponse(TeamImportResultResponse? Imported, TeamImportPreviewResponse? Stale);
+
+public sealed record FormatDivisionResponse(
+    Guid Id,
+    Guid TournamentId,
+    string Name,
+    string Gender,
+    int TeamCount,
+    bool Ranked,
+    int NewTeams,
+    string Ranking);
+
+public sealed record RankingTeamResponse(
+    Guid EntryId,
+    string ClubName,
+    string TeamName,
+    int Rank,
+    bool IsNew);
+
+public sealed record DivisionRankingResponse(
+    Guid DivisionId,
+    Guid TournamentId,
+    string TournamentName,
+    TournamentStatus TournamentStatus,
+    string DivisionName,
+    string DivisionGender,
+    bool Ranked,
+    IReadOnlyList<RankingTeamResponse> Teams);
+
+public sealed record SaveRankingRequest(IReadOnlyList<Guid> EntryIds);

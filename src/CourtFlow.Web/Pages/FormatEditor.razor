@@ -1,0 +1,401 @@
+@page "/format/{DivisionId:guid}"
+@page "/format/{DivisionId:guid}/{Step}"
+@attribute [Authorize(Policy = AccessPolicies.Member)]
+@using System.Globalization
+@inject ICourtFlowApi Api
+@inject ITournamentMemory TournamentMemory
+@inject Confirmations Confirmations
+@inject Feedback Feedback
+@inject IRankingRandom Random
+
+<PageTitle>@(ranking is null ? "Format · CourtFlow" : $"{Division.Label(ranking.DivisionName, ranking.DivisionGender)} · CourtFlow")</PageTitle>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" data-testid="editor-loading" />
+}
+else if (UnknownStep || notFound || ranking is null)
+{
+    <CfPageHeader Title="Format" BackHref="/format" BackLabel="@RankingWording.BackToFormat" />
+    <CfAlert Severity="Severity.Error" data-testid="not-found">@RankingWording.DivisionNotFound</CfAlert>
+    <MudLink Href="/format">Back to format</MudLink>
+}
+else
+{
+    <NavigationLock ConfirmExternalNavigation="@HasUnsaved" OnBeforeInternalNavigation="OnLeaving" />
+    <MudStack Spacing="3">
+        <CfPageHeader Title="@Division.Label(ranking.DivisionName, ranking.DivisionGender)" BackHref="/format" BackLabel="@RankingWording.BackToFormat" />
+        <MudText Typo="Typo.body1" data-testid="tournament-name">@ranking.TournamentName</MudText>
+
+        @if (IsArchived)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="archived-note">@Tournament.ArchivedMessage</CfAlert>
+        }
+
+        <MudStack Row="true" Spacing="3" Wrap="Wrap.Wrap" data-testid="format-stepper">
+            @foreach (var step in Steps)
+            {
+                <MudLink Href="@($"/format/{DivisionId}/{step.Path}")"
+                         Color="@(Current == step.Path ? Color.Primary : Color.Inherit)"
+                         Underline="Underline.None"
+                         aria-current="@(Current == step.Path ? "page" : null)">@step.Label</MudLink>
+            }
+        </MudStack>
+
+        @if (Current == "pools")
+        {
+            <CfAlert Severity="Severity.Info" data-testid="pools-placeholder">@RankingWording.PoolsLater</CfAlert>
+        }
+        else if (Current == "brackets")
+        {
+            <CfAlert Severity="Severity.Info" data-testid="brackets-placeholder">@RankingWording.BracketsLater</CfAlert>
+        }
+        else if (rows.Count == 0)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="add-teams-first">@RankingWording.AddTeamsFirst</CfAlert>
+        }
+        else
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.body1" data-testid="ranking-status">@StatusText</MudText>
+                @if (!IsReadOnly)
+                {
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        <MudButton id="randomize-ranking" Variant="Variant.Outlined" Size="@CfDefaults.ButtonSize" Disabled="@(!CanRandomize)" OnClick="Randomize">Randomize</MudButton>
+                        <MudButton id="discard-ranking" Variant="Variant.Outlined" Size="@CfDefaults.ButtonSize" Disabled="@(!CanDiscard)" OnClick="DiscardAsync">Discard</MudButton>
+                        <CfSaveButton id="save-ranking" Disabled="@(!CanSave)" OnSave="SaveAsync" />
+                    </MudStack>
+                }
+            </MudStack>
+
+            @if (!IsReadOnly && !ranking.Ranked)
+            {
+                <CfAlert Severity="Severity.Info" data-testid="name-order">@RankingWording.NameOrderAlert</CfAlert>
+            }
+
+            <MudText Typo="Typo.body2" aria-live="polite" data-testid="ranking-live">@announcement</MudText>
+
+            @if (IsReadOnly)
+            {
+                <MudStack Spacing="2">
+                    @foreach (var row in rows)
+                    {
+                        @Row(row, editable: false)
+                    }
+                </MudStack>
+            }
+            else
+            {
+                <MudDropContainer @key="rankEpoch" T="RankingRow" @ref="drop" Items="rows" ItemsSelector="@SelectsRanking" ItemDropped="OnDropped">
+                    <ChildContent>
+                        <MudDropZone T="RankingRow" Identifier="ranking" />
+                    </ChildContent>
+                    <ItemRenderer>
+                        @Row(context, editable: true)
+                    </ItemRenderer>
+                </MudDropContainer>
+            }
+        }
+    </MudStack>
+}
+
+@code {
+    private static readonly (string Path, string Label)[] Steps =
+    [
+        ("ranking", "Ranking"),
+        ("pools", "Pools"),
+        ("brackets", "Brackets"),
+    ];
+
+    private DivisionRankingResponse? ranking;
+    private List<RankingRow> rows = [];
+    private List<RankingRow> loaded = [];
+    private bool loading = true;
+    private bool notFound;
+    private bool isViewer;
+    private Guid seenDivision;
+    private int rankEpoch;
+    private string announcement = "";
+    private readonly Dictionary<Guid, string> rankDraft = [];
+    private MudDropContainer<RankingRow>? drop;
+
+    [Parameter] public Guid DivisionId { get; set; }
+    [Parameter] public string? Step { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool UnknownStep => Step is not (null or "ranking" or "pools" or "brackets");
+
+    private string Current => Step is "pools" or "brackets" ? Step : "ranking";
+
+    private bool IsArchived => ranking?.TournamentStatus == TournamentStatus.Archived;
+
+    private bool IsReadOnly => IsArchived || isViewer;
+
+    private bool HasUnsaved => !IsReadOnly && !RankingOrder.Same(Ids(rows), Ids(loaded));
+
+    private bool CanDiscard => HasUnsaved;
+
+    private bool CanRandomize => rows.Count > 1;
+
+    private bool CanSave => rows.Count > 0 && (HasUnsaved || ranking is { Ranked: false } || loaded.Any(row => row.IsNew));
+
+    private string StatusText =>
+        RankingWording.Status(loaded.Count, ranking?.Ranked == true, loaded.Count(row => row.IsNew));
+
+    public IReadOnlyList<string> Order => rows.Select(row => row.TeamName).ToList();
+
+    protected override async Task OnInitializedAsync() =>
+        isViewer = AuthenticationState is not null && (await AuthenticationState).User.IsViewer();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (UnknownStep)
+        {
+            loading = false;
+            notFound = true;
+            return;
+        }
+
+        if (seenDivision == DivisionId && ranking is not null)
+            return;
+
+        seenDivision = DivisionId;
+        await LoadAsync();
+    }
+
+    public void MoveEntryTo(Guid entryId, int index)
+    {
+        var from = rows.FindIndex(row => row.EntryId == entryId);
+        if (from < 0 || IsReadOnly)
+            return;
+
+        var next = RankingOrder.Move(rows, from, index);
+        if (RankingOrder.Same(next, rows))
+            return;
+
+        var moved = rows[from];
+        rows = next;
+        rankDraft.Remove(entryId);
+        var landed = rows.FindIndex(row => row.EntryId == entryId);
+        announcement = RankingWording.Moved(moved.TeamName, landed + 1, rows.Count);
+        drop?.Refresh();
+        StateHasChanged();
+    }
+
+    private RenderFragment Row(RankingRow row, bool editable) => @<MudGrid Spacing="1">
+        <MudItem xs="2" sm="1">
+            @if (editable)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.DragIndicator" aria-label="@RankingWording.DragOf(row.TeamName, row.ClubName)" />
+            }
+        </MudItem>
+        <MudItem xs="4" sm="3">
+            @if (editable)
+            {
+                <CfTextField @key="@($"{row.EntryId}:{rankEpoch}")"
+                             Label="@RankingWording.RankOf(row.TeamName, row.ClubName)"
+                             Value="@ShownRank(row)"
+                             ValueChanged="@(value => CommitRankAsync(row, value))"
+                             data-testid="@($"rank-{row.EntryId}")" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" data-testid="@($"rank-{row.EntryId}")">@RankText(row)</MudText>
+            }
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudText Typo="Typo.body2">@row.ClubName</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="5">
+            <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.body1">@row.TeamName</MudText>
+                @if (row.IsNew)
+                {
+                    <MudText Typo="Typo.body2" data-testid="new-team">New</MudText>
+                }
+            </MudStack>
+        </MudItem>
+    </MudGrid>;
+
+    private static bool SelectsRanking(RankingRow row, string zone) => zone == "ranking";
+
+    private void OnDropped(MudItemDropInfo<RankingRow> info)
+    {
+        if (info.Item is null)
+            return;
+
+        MoveEntryTo(info.Item.EntryId, DropIndex(info.Item, info.IndexInZone));
+    }
+
+    /// <summary>
+    /// MudBlazor reports the index in the zone while the dragged row is still in the list.
+    /// The landing index after the row is removed is one lower when the row moves down.
+    /// </summary>
+    private int DropIndex(RankingRow row, int indexInZone)
+    {
+        var from = rows.FindIndex(item => item.EntryId == row.EntryId);
+        if (from < 0)
+            return indexInZone;
+
+        return indexInZone > from ? indexInZone - 1 : indexInZone;
+    }
+
+    private async Task CommitRankAsync(RankingRow row, string? value)
+    {
+        var index = rows.FindIndex(item => item.EntryId == row.EntryId);
+        if (index < 0)
+            return;
+
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var typed) || typed < 1 || typed > rows.Count)
+        {
+            rankDraft.Remove(row.EntryId);
+            rankEpoch++;
+            Feedback.Rejected(RankingWording.RankRejected(rows.Count));
+            StateHasChanged();
+            return;
+        }
+
+        rankDraft.Remove(row.EntryId);
+        MoveEntryTo(row.EntryId, typed - 1);
+    }
+
+    private void Randomize()
+    {
+        if (!CanRandomize)
+            return;
+
+        rows = RankingOrder.Shuffle(rows, Random);
+        announcement = RankingWording.RankingRandomized;
+        rankEpoch++;
+        drop?.Refresh();
+    }
+
+    private async Task DiscardAsync()
+    {
+        var fresh = await Api.GetRankingAsync(DivisionId);
+        if (fresh is null)
+        {
+            notFound = true;
+            ranking = null;
+            return;
+        }
+
+        Apply(fresh);
+    }
+
+    private async Task SaveAsync()
+    {
+        var order = rows.Select(row => row.EntryId).ToList();
+        DivisionRankingResponse? saved = null;
+        var ok = await Feedback.RunAsync(
+            async () => saved = await Api.SaveRankingAsync(DivisionId, order),
+            onRejected: async message =>
+            {
+                if (message == Tournament.TeamsChanged)
+                    await MergeChangedTeamsAsync();
+            });
+        if (!ok || saved is null)
+            return;
+
+        Apply(saved);
+        Feedback.Saved();
+    }
+
+    private async Task OnLeaving(LocationChangingContext context)
+    {
+        if (!HasUnsaved)
+            return;
+
+        // Yield so a test, or a second click, can answer the dialog before this handler resumes.
+        await Task.Yield();
+        var discard = await Confirmations.ConfirmAsync(
+            RankingWording.DiscardTitle,
+            RankingWording.DiscardBody,
+            RankingWording.DiscardConfirm,
+            RankingWording.KeepEditing);
+        if (!discard)
+        {
+            context.PreventNavigation();
+            return;
+        }
+
+        rows = loaded.Select(Clone).ToList();
+        announcement = "";
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        notFound = false;
+        try
+        {
+            var loadedRanking = await Api.GetRankingAsync(DivisionId);
+            if (loadedRanking is null)
+            {
+                notFound = true;
+                ranking = null;
+                return;
+            }
+
+            Apply(loadedRanking);
+            await TournamentMemory.RememberAsync(loadedRanking.TournamentId);
+        }
+        catch (HttpRequestException exception)
+        {
+            Feedback.Failed(exception.Message);
+            notFound = true;
+            ranking = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task MergeChangedTeamsAsync()
+    {
+        var fresh = await Api.GetRankingAsync(DivisionId);
+        if (fresh is null)
+            return;
+
+        var freshIds = fresh.Teams.Select(team => team.EntryId).ToHashSet();
+        var kept = rows.Where(row => freshIds.Contains(row.EntryId)).ToList();
+        var keptIds = kept.Select(row => row.EntryId).ToHashSet();
+        var added = fresh.Teams
+            .Where(team => !keptIds.Contains(team.EntryId))
+            .Select(team => new RankingRow(team.EntryId, team.ClubName, team.TeamName, isNew: true));
+        rows = [.. kept, .. added];
+        ranking = fresh;
+        loaded = fresh.Teams.Select(team => new RankingRow(team.EntryId, team.ClubName, team.TeamName, team.IsNew)).ToList();
+        rankDraft.Clear();
+        rankEpoch++;
+        drop?.Refresh();
+        StateHasChanged();
+    }
+
+    private void Apply(DivisionRankingResponse next)
+    {
+        ranking = next;
+        rows = next.Teams.Select(team => new RankingRow(team.EntryId, team.ClubName, team.TeamName, team.IsNew)).ToList();
+        loaded = rows.Select(Clone).ToList();
+        rankDraft.Clear();
+        announcement = "";
+        rankEpoch++;
+        drop?.Refresh();
+        StateHasChanged();
+    }
+
+    private string ShownRank(RankingRow row) =>
+        rankDraft.TryGetValue(row.EntryId, out var draft) ? draft : RankText(row);
+
+    private string RankText(RankingRow row)
+    {
+        var index = rows.FindIndex(item => item.EntryId == row.EntryId);
+        return (index + 1).ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static List<Guid> Ids(IReadOnlyList<RankingRow> items) => items.Select(row => row.EntryId).ToList();
+
+    private static RankingRow Clone(RankingRow row) => new(row.EntryId, row.ClubName, row.TeamName, row.IsNew);
+}

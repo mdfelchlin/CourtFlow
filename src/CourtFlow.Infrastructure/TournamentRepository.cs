@@ -68,6 +68,7 @@ public sealed class TournamentRepository(CourtFlowDbContext db) : ITournamentRep
             .ThenInclude(venue => venue.Courts)
             .Include(tournament => tournament.Divisions)
             .Include(tournament => tournament.Entries)
+            .Include(tournament => tournament.Rankings)
             .AsSplitQuery();
 
     public async Task AddAsync(Tournament tournament, CancellationToken cancellationToken) =>

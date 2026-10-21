@@ -112,3 +112,32 @@ public sealed record TeamImportPreview(
     bool Stale);
 
 public sealed record TeamImportResult(int Imported);
+
+public sealed record FormatDivisionDetails(
+    Guid Id,
+    Guid TournamentId,
+    string Name,
+    string Gender,
+    int TeamCount,
+    bool Ranked,
+    int NewTeams,
+    string Ranking);
+
+public sealed record RankingTeamDetails(
+    Guid EntryId,
+    string ClubName,
+    string TeamName,
+    int Rank,
+    bool IsNew);
+
+public sealed record DivisionRankingDetails(
+    Guid DivisionId,
+    Guid TournamentId,
+    string TournamentName,
+    TournamentStatus TournamentStatus,
+    string DivisionName,
+    string DivisionGender,
+    bool Ranked,
+    IReadOnlyList<RankingTeamDetails> Teams);
+
+public sealed record SaveRanking(IReadOnlyList<Guid>? EntryIds);

@@ -4,6 +4,7 @@ public sealed class Tournament
 {
     public const string TeamAlreadyEntered = "This team is already entered in this tournament.";
     public const string EntryNotFound = "Team entry was not found.";
+    public const string TeamsChanged = "The teams in this division changed. Review the ranking and save again.";
     public const string ArchivedMessage = "This tournament is archived. Restore it to make changes.";
     public const string OnlyUnpublishedCanBePublished = "Only an unpublished tournament can be published.";
     public const string OnlyPublishedCanBeUnpublished = "Only a published tournament can be unpublished.";
@@ -34,10 +35,12 @@ public sealed class Tournament
     private readonly List<Venue> _venues = [];
     private readonly List<Division> _divisions = [];
     private readonly List<TournamentTeam> _entries = [];
+    private readonly List<RankingPlace> _rankings = [];
 
     public IReadOnlyCollection<Venue> Venues => _venues;
     public IReadOnlyCollection<Division> Divisions => _divisions;
     public IReadOnlyCollection<TournamentTeam> Entries => _entries;
+    public IReadOnlyCollection<RankingPlace> Rankings => _rankings;
 
     private Tournament()
     {
@@ -226,6 +229,7 @@ public sealed class Tournament
         if (teamCount > 0)
             throw new DomainRuleException(Division.HasTeams(teamCount));
 
+        ClearRanking(divisionId);
         _divisions.Remove(division);
     }
 
@@ -240,6 +244,7 @@ public sealed class Tournament
 
         var entry = new TournamentTeam(OrganizationId, Id, teamId, division);
         _entries.Add(entry);
+        AppendIfRanked(division, entry.Id);
         return entry;
     }
 
@@ -247,14 +252,58 @@ public sealed class Tournament
     {
         EnsureEditable();
         var entry = FindEntry(entryId);
-        entry.MoveTo(RequireOwnDivision(divisionId));
+        var target = RequireOwnDivision(divisionId);
+        if (entry.DivisionId != target)
+        {
+            RelocateRanking(entry, target);
+            entry.MoveTo(target);
+        }
+
         return entry;
     }
 
     public void RemoveEntry(Guid entryId)
     {
         EnsureEditable();
-        _entries.Remove(FindEntry(entryId));
+        var entry = FindEntry(entryId);
+        RemoveFromRanking(entry);
+        _entries.Remove(entry);
+    }
+
+    /// <summary>A division is ranked only after a director saves an order. Adding teams before that stores nothing.</summary>
+    public bool IsRanked(Guid divisionId) => _rankings.Any(place => place.DivisionId == divisionId);
+
+    public int NewTeamCount(Guid divisionId) =>
+        _rankings.Count(place => place.DivisionId == divisionId && place.IsNew);
+
+    public IReadOnlyList<RankingPlace> RankingOf(Guid divisionId) => Places(divisionId);
+
+    public void SaveRanking(Guid divisionId, IReadOnlyList<Guid> entryIds)
+    {
+        EnsureEditable();
+        if (_divisions.All(division => division.Id != divisionId))
+            throw new DomainRuleException("Division was not found.");
+
+        var current = _entries.Where(entry => entry.DivisionId == divisionId).Select(entry => entry.Id).ToHashSet();
+        if (entryIds.Count != current.Count
+            || entryIds.Distinct().Count() != entryIds.Count
+            || entryIds.Any(id => !current.Contains(id)))
+            throw new DomainRuleException(TeamsChanged);
+
+        var existing = Places(divisionId).ToDictionary(place => place.EntryId);
+        if (existing.Count == 0)
+        {
+            for (var index = 0; index < entryIds.Count; index++)
+                _rankings.Add(new RankingPlace(OrganizationId, Id, divisionId, entryIds[index], index + 1, isNew: false));
+            return;
+        }
+
+        for (var index = 0; index < entryIds.Count; index++)
+        {
+            var place = existing[entryIds[index]];
+            place.SetRank(index + 1);
+            place.Accept();
+        }
     }
 
     private TournamentTeam FindEntry(Guid entryId) =>
@@ -265,6 +314,64 @@ public sealed class Tournament
         divisionId is { } id && _divisions.Any(division => division.Id == id)
             ? id
             : throw new DomainRuleException(Division.Required);
+
+    private void AppendIfRanked(Guid divisionId, Guid entryId)
+    {
+        if (!IsRanked(divisionId))
+            return;
+
+        _rankings.Add(new RankingPlace(OrganizationId, Id, divisionId, entryId, Places(divisionId).Count + 1, isNew: true));
+    }
+
+    private void RelocateRanking(TournamentTeam entry, Guid targetDivisionId)
+    {
+        var place = _rankings.FirstOrDefault(item => item.EntryId == entry.Id);
+        if (place is null)
+        {
+            AppendIfRanked(targetDivisionId, entry.Id);
+            return;
+        }
+
+        var sourceDivisionId = place.DivisionId;
+        if (!IsRanked(targetDivisionId))
+        {
+            _rankings.Remove(place);
+            Renumber(sourceDivisionId);
+            return;
+        }
+
+        // Rank 0 keeps this place out of the source order while the source closes up, then it takes the bottom of the target.
+        place.MoveTo(targetDivisionId, rank: 0, isNew: true);
+        Renumber(sourceDivisionId);
+        place.SetRank(Places(targetDivisionId).Count);
+    }
+
+    private void RemoveFromRanking(TournamentTeam entry)
+    {
+        var place = _rankings.FirstOrDefault(item => item.EntryId == entry.Id);
+        if (place is null)
+            return;
+
+        var divisionId = place.DivisionId;
+        _rankings.Remove(place);
+        Renumber(divisionId);
+    }
+
+    private void ClearRanking(Guid divisionId)
+    {
+        foreach (var place in Places(divisionId))
+            _rankings.Remove(place);
+    }
+
+    private void Renumber(Guid divisionId)
+    {
+        var places = Places(divisionId);
+        for (var index = 0; index < places.Count; index++)
+            places[index].SetRank(index + 1);
+    }
+
+    private List<RankingPlace> Places(Guid divisionId) =>
+        _rankings.Where(place => place.DivisionId == divisionId).OrderBy(place => place.Rank).ThenBy(place => place.Id).ToList();
 
     private IEnumerable<(Guid Id, string Name, string Gender)> ListedDivisions() =>
         _divisions.Select(division => (division.Id, division.Name, division.Gender.ToString()));
