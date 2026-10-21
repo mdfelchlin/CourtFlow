@@ -60,6 +60,18 @@ public sealed class FakeApi : ICourtFlowApi
     /// <summary>When set, <see cref="ListTournamentTeamsAsync"/> waits on it before answering.</summary>
     public TaskCompletionSource? ListTeamsGate { get; set; }
 
+    /// <summary>When set, <see cref="ListFormatAsync"/> waits on it before answering.</summary>
+    public TaskCompletionSource? ListFormatGate { get; set; }
+
+    /// <summary>When set, the next ranking save is rejected with this message, then clears.</summary>
+    public string? RejectRankingSaveWith { get; set; }
+
+    public int SaveRankingCalls { get; private set; }
+
+    public IReadOnlyList<Guid>? LastRankingSaved { get; private set; }
+
+    private readonly Dictionary<Guid, (List<Guid> Order, HashSet<Guid> NewIds)> _rankings = [];
+
     public TeamImportPreviewResponse? ImportPreview { get; set; }
     public TeamImportResponse? ImportResponse { get; set; }
 
@@ -479,6 +491,91 @@ public sealed class FakeApi : ICourtFlowApi
         AccessCalls.Add(call);
     }
 
+    public async Task<IReadOnlyList<FormatDivisionResponse>?> ListFormatAsync(Guid tournamentId, CancellationToken cancellationToken = default)
+    {
+        if (ListFormatGate is not null)
+            await ListFormatGate.Task;
+
+        await ThrowIfFailing();
+        if (Tournaments.All(tournament => tournament.Id != tournamentId))
+            return null;
+
+        var divisions = Divisions.GetValueOrDefault(tournamentId) ?? [];
+        return Division.OrderForList(divisions, division => division.Name, division => division.Gender)
+            .Select(division =>
+            {
+                var count = EntriesFor(tournamentId).Count(entry => entry.DivisionId == division.Id);
+                var ranked = _rankings.TryGetValue(division.Id, out var saved);
+                var newTeams = ranked ? saved.NewIds.Count : 0;
+                return new FormatDivisionResponse(
+                    division.Id,
+                    division.TournamentId,
+                    division.Name,
+                    division.Gender,
+                    count,
+                    ranked,
+                    newTeams,
+                    RankingWording.Status(count, ranked, newTeams));
+            })
+            .ToList();
+    }
+
+    public async Task<DivisionRankingResponse?> GetRankingAsync(Guid divisionId, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        var tournament = TournamentForDivision(divisionId);
+        var division = tournament is null
+            ? null
+            : Divisions[tournament.Id].FirstOrDefault(item => item.Id == divisionId);
+        if (tournament is null || division is null)
+            return null;
+
+        var entries = EntriesFor(tournament.Id).Where(entry => entry.DivisionId == divisionId).ToList();
+        var ranked = _rankings.TryGetValue(divisionId, out var saved);
+        IEnumerable<TournamentTeamResponse> ordered = ranked
+            ? saved.Order.Select(id => entries.First(entry => entry.Id == id))
+                .Concat(entries.Where(entry => !saved.Order.Contains(entry.Id)))
+            : entries
+                .OrderBy(entry => entry.TeamName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(entry => entry.ClubName, StringComparer.OrdinalIgnoreCase);
+
+        var teams = ordered.Select((entry, index) => new RankingTeamResponse(
+            entry.Id,
+            entry.ClubName,
+            entry.TeamName,
+            index + 1,
+            ranked && saved.NewIds.Contains(entry.Id))).ToList();
+
+        return new DivisionRankingResponse(
+            division.Id,
+            tournament.Id,
+            tournament.Name,
+            tournament.Status,
+            division.Name,
+            division.Gender,
+            ranked,
+            teams);
+    }
+
+    public async Task<DivisionRankingResponse> SaveRankingAsync(Guid divisionId, IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken = default)
+    {
+        await ThrowIfFailing();
+        SaveRankingCalls++;
+        if (RejectRankingSaveWith is { } rejection)
+        {
+            RejectRankingSaveWith = null;
+            throw new DomainRuleException(rejection);
+        }
+
+        LastRankingSaved = entryIds.ToList();
+        _rankings[divisionId] = (entryIds.ToList(), []);
+        return (await GetRankingAsync(divisionId, cancellationToken))!;
+    }
+
+    /// <summary>Stores a saved ranking. Teams in <paramref name="newIds"/> count as new.</summary>
+    public void Rank(Guid divisionId, IReadOnlyList<Guid> entryIds, IEnumerable<Guid>? newIds = null) =>
+        _rankings[divisionId] = (entryIds.ToList(), newIds?.ToHashSet() ?? []);
+
     /// <summary>Adds an entry for a new or existing club and team, without counting it as a call.</summary>
     public TournamentTeamResponse SeedEntry(Guid tournamentId, string clubName, string teamName, Guid divisionId)
     {
@@ -499,6 +596,17 @@ public sealed class FakeApi : ICourtFlowApi
         var entry = Entry(tournamentId, team, divisionId);
         EntriesFor(tournamentId).Add(entry);
         return entry;
+    }
+
+    private TournamentResponse? TournamentForDivision(Guid divisionId)
+    {
+        foreach (var (tournamentId, divisions) in Divisions)
+        {
+            if (divisions.Any(division => division.Id == divisionId))
+                return Tournaments.FirstOrDefault(tournament => tournament.Id == tournamentId);
+        }
+
+        return null;
     }
 
     private List<TournamentTeamResponse> EntriesFor(Guid tournamentId)

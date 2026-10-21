@@ -1,6 +1,6 @@
 # Sign-in and access plan
 
-Follows the spec in [spec.md](spec.md). [poc/](../../poc/) stays untouched. This slice touches every project: the domain gains organizations with members, invitations, and access requests. The API gains a session, roles, and email. The Blazor app gains sign-in state, new pages, and role-aware frames. Aspire gains Mailpit.
+Follows the spec in [spec.md](spec.md). This slice touches every project: the domain gains organizations with members, invitations, and access requests. The API gains a session, roles, and email. The Blazor app gains sign-in state, new pages, and role-aware frames. Aspire gains Mailpit.
 
 ```mermaid
 flowchart LR
@@ -553,12 +553,10 @@ These spec items are checked by hand, or by configuration, rather than by automa
 - **Keyboard order** in the public top bar and the user menu.
 - **Forced navigation** on 401 and on Sign out. The tests check the URL, not the full page load.
 
-## Proof of concept left behind
+## Not in this slice
 
-The proof of concept's choices that do not carry forward:
-
-- **Clerk.** It had Clerk's restricted mode, Clerk organizations and webhooks mirrored into `organization_memberships`, and JavaScript interop for `redirectToSignIn`.
-- **Its routes.** It had Blazor routes `/login` and `/logout` and a `RedirectToLogin` component. This slice signs in through the API's `/auth/*` instead, and has no Blazor sign-in page.
-- **Personal workspaces.** It created them automatically on first login.
-- **Its access request states.** It used a "provisioned" state for access requests and an optional contact name.
+- **Clerk.** Restricted mode, organizations and webhooks mirrored into `organization_memberships`, and JavaScript interop for `redirectToSignIn`.
+- **Blazor routes `/login` and `/logout`, and a `RedirectToLogin` component.** This slice signs in through the API's `/auth/*` and has no Blazor sign-in page.
+- **Personal workspaces** created automatically on first login.
+- **A "provisioned" state** for access requests, and an optional contact name.
 - **Operators reading any organization's data.**

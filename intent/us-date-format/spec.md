@@ -2,8 +2,6 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only how the Blazor WebAssembly app shows and accepts calendar dates. The API, the domain, and the database do not change. The rules in [../tournament-setup/spec.md](../tournament-setup/spec.md) stay the same. Only the date text changes.
 
-The proof of concept's [tournaments](../../poc/docs/features/tournaments.md) page and [design system](../../poc/docs/ui/design-system.md) are evidence of past behavior. The tournaments list there used the browser's default date formatting. The date field used month, day, then year. Where they disagree with this spec, this spec wins.
-
 ## The pattern
 
 Every calendar date a director sees uses one pattern: two-digit month, two-digit day, four-digit year, separated by slashes.

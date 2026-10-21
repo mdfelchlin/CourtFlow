@@ -144,6 +144,13 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
             entity.Navigation(tournament => tournament.Entries)
                 .HasField("_entries")
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.HasMany(tournament => tournament.Rankings)
+                .WithOne()
+                .HasForeignKey(place => place.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.Navigation(tournament => tournament.Rankings)
+                .HasField("_rankings")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<Venue>(entity =>
@@ -217,6 +224,24 @@ public sealed class CourtFlowDbContext(DbContextOptions<CourtFlowDbContext> opti
                 .WithMany()
                 .HasForeignKey(entry => entry.DivisionId)
                 .OnDelete(DeleteBehavior.ClientCascade);
+        });
+
+        modelBuilder.Entity<RankingPlace>(entity =>
+        {
+            entity.ToTable("ranking_places");
+            entity.HasKey(place => place.Id);
+            entity.Property(place => place.Id).ValueGeneratedNever();
+            entity.HasIndex(place => place.EntryId).IsUnique();
+            entity.HasIndex(place => new { place.DivisionId, place.Rank }).IsUnique();
+            entity.HasQueryFilter(place => place.OrganizationId == CurrentOrganizationId);
+            entity.HasOne<Division>()
+                .WithMany()
+                .HasForeignKey(place => place.DivisionId)
+                .OnDelete(DeleteBehavior.ClientCascade);
+            entity.HasOne<TournamentTeam>()
+                .WithMany()
+                .HasForeignKey(place => place.EntryId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Court>(entity =>

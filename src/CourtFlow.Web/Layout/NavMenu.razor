@@ -5,6 +5,7 @@
     <AuthorizeView Policy="@AccessPolicies.Member">
         <CfNavLink Href="/tournaments" Icon="@Icons.Material.Filled.EmojiEvents" ActivePrefixes="@TournamentPaths">Tournaments</CfNavLink>
         <CfNavLink Href="/teams" Icon="@Icons.Material.Filled.Groups" ActivePrefixes="@TeamPaths">Teams</CfNavLink>
+        <CfNavLink Href="/format" Icon="@Icons.Material.Filled.AccountTree" ActivePrefixes="@FormatPaths">Format</CfNavLink>
     </AuthorizeView>
     <AuthorizeView Policy="@AccessPolicies.Operator">
         <MudNavGroup Title="Operator" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true" data-testid="operator-group">
@@ -23,6 +24,7 @@
 @code {
     private static readonly string[] TournamentPaths = ["/tournaments"];
     private static readonly string[] TeamPaths = ["/teams"];
+    private static readonly string[] FormatPaths = ["/format"];
     private static readonly string[] RequestPaths = ["/operator/requests"];
     private static readonly string[] OrganizationPaths = ["/operator/organizations"];
 }

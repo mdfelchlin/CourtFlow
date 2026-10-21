@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the domain-driven design constraint in [../product/intent.md](../product/intent.md).
 
-New code is a greenfield solution under [src/](../../src/). [poc/](../../poc/) stays untouched. The slice uses a .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not add WorkOS, OR-Tools, Supabase, MediatR, or the proof-of-concept project tree. The solution, application projects, and test projects all live under `src/`. The repo root keeps [docker-compose.yml](../../docker-compose.yml) for local Postgres and the existing `intent/` and `poc/` folders.
+New code is a greenfield solution under [src/](../../src/). The slice uses a .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not add WorkOS, OR-Tools, Supabase, or MediatR. The solution, application projects, and test projects all live under `src/`. The repo root keeps [docker-compose.yml](../../docker-compose.yml) for local Postgres and the existing `intent/` folder.
 
 Dependencies point inward. Domain references nothing else in the solution. Application references Domain and defines the persistence ports. Infrastructure implements those ports with Entity Framework Core. The API is the composition root: it references Application and Infrastructure, and its endpoints call application use cases only. The Blazor app references Domain so the editor can run the same save rules and the editor-only warnings, and it reads and writes only through the API.
 
@@ -88,8 +88,8 @@ Web tests:
 - Address text is not looked up.
 - Simultaneous edits are not detected. A normal update test already shows the latest save is what remains; there is no concurrency-token test.
 
-## Proof of concept left behind
+## Not in this slice
 
-The editor in [poc/docs/features/tournaments.md](../../poc/docs/features/tournaments.md) also did sign-in and organization choice, publish, unpublish, archive, a public link, clone, shared venues, waves and start times, divisions, clubs, teams, rankings, CSV import, and Google Places. This slice does not.
+This slice does not include sign-in and organization choice, publish, unpublish, archive, a public link, clone, shared venues, waves and start times, divisions, clubs, teams, rankings, CSV import, or Google Places.
 
-Where the proof of concept disagrees with the spec, the spec wins: a same-day tournament is rejected, duration is 15 through 240, the time zone list has no `UTC`, and lowering a court count is not blocked by matches. Court numbers stay `1` through `N`, and the numbers that remain are the same courts.
+A same-day tournament is rejected. Duration is 15 through 240. The time zone list has no `UTC`. Lowering a court count is not blocked by matches. Court numbers stay `1` through `N`, and the numbers that remain are the same courts.

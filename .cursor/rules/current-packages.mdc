@@ -1,0 +1,30 @@
+---
+description: NuGet packages are added only when instructed, at the latest stable version, declared once in src/Directory.Packages.props.
+alwaysApply: true
+---
+
+# Current packages
+
+Add a NuGet package only when the user specifically instructed this task to add that package. If the task needs a library the user did not name, stop and ask. Do not pick one.
+
+When adding, use the latest stable version and write it only in `src/Directory.Packages.props`. If that package id is already declared, move the single declared version to the latest stable. Do not add a second version.
+
+Refuse a prerelease, including preview, rc, alpha, and beta.
+
+A `PackageReference` under `src/` does not set `Version`.
+
+```xml
+<!-- Wrong -->
+<PackageReference Include="MudBlazor" Version="9.11.0" />
+
+<!-- Right -->
+<PackageReference Include="MudBlazor" />
+```
+
+Updating MudBlazor, Entity Framework Core, Npgsql, Aspire, or the test packages to a newer stable version is allowed. Replacing one of them with a different product is not.
+
+When the latest stable version has a known vulnerability, stop and let the developer decide. Do not swap the package, pin an older version, or add a suppression instead.
+
+A deprecation notice is not a reason to replace a library.
+
+A full bring-up of packages already declared is the `update-packages` skill.

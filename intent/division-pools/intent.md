@@ -10,7 +10,7 @@ On the Pools step of a division's format editor, the director sets the constrain
 Pools are not a fixed size. How many teams a pool holds depends on how many teams the division has and on the constraints the director sets, so pools in the same division can differ in size.
 
 ## Affected users and systems
-Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's pools with Entity Framework Core in Postgres. This builds on the division ranking slice, which supplies the ordered teams, and on the tournament teams slice, which supplies the teams entered in each division. The later brackets and schedule slices will read the pools. Coaches, players, and spectators are not affected. The proof of concept is reference only. Its glossary uses **Pool** for one round-robin group and **Seed** for a team's position within a pool.
+Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's pools with Entity Framework Core in Postgres. This builds on the division ranking slice, which supplies the ordered teams, and on the tournament teams slice, which supplies the teams entered in each division. The later brackets and schedule slices will read the pools. Coaches, players, and spectators are not affected. This slice uses **Pool** for one round-robin group and **Seed** for a team's position within a pool.
 
 ## Constraints
 - Pools belong to one division. Teams in different divisions are never in the same pool.
@@ -22,7 +22,6 @@ Directors and organizers (owners and editors) use the Blazor WebAssembly app. Vi
 - Owners and editors can change pools. Viewers can see them but cannot change them. An archived tournament's pools are read-only.
 - Each organization's pools stay separate from every other organization's.
 - Scheduling pool matches onto courts and times is not part of this slice. That belongs to the Schedule page.
-- New work stays outside the proof of concept.
 
 ## Open questions
 - **Constraints.** Which constraints can the director set? For example: number of pools, smallest and largest pool size, keeping teams from the same club apart, and keeping a team in a chosen pool.

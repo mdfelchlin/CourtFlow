@@ -1,26 +1,50 @@
 @* A single- or multi-line text field with the CourtFlow look. *@
-<CfField Label="@Label" Required="Required" InputId="@inputId" @attributes="AdditionalAttributes">
-    <MudTextField T="string"
-                  Value="@Value"
-                  ValueChanged="ValueChanged"
-                  InputId="@inputId"
-                  Variant="CfDefaults.FieldVariant"
-                  Margin="CfDefaults.FieldMargin"
-                  Required="Required"
-                  Disabled="Disabled"
-                  ReadOnly="ReadOnly"
-                  Error="ErrorText is not null"
-                  ErrorText="@ErrorText"
-                  Lines="Lines"
-                  Immediate="Immediate"
-                  Placeholder="@Placeholder"
-                  FullWidth="true" />
-</CfField>
+@if (ShowLabel)
+{
+    <CfField Label="@Label" Required="Required" InputId="@inputId" @attributes="AdditionalAttributes">
+        @Input
+    </CfField>
+}
+else
+{
+    <div class="@FieldClass" @attributes="AdditionalAttributes">
+        @Input
+    </div>
+}
 
 @code {
     private readonly string inputId = CfIds.Next();
 
     [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    /// <summary>The name a screen reader announces. When set, it replaces the visible label.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>When false, the label is not shown. <see cref="AriaLabel"/> still names the field.</summary>
+    [Parameter] public bool ShowLabel { get; set; } = true;
+
+    /// <summary>Centers the text in the field.</summary>
+    [Parameter] public bool CenterText { get; set; }
+
+    private string? FieldClass => CenterText ? CfDefaults.CenterTextClass : null;
+
+    private RenderFragment Input => @<MudTextField T="string"
+                                                    Value="@Value"
+                                                    ValueChanged="ValueChanged"
+                                                    InputId="@inputId"
+                                                    aria-label="@AriaLabel"
+                                                    Variant="CfDefaults.FieldVariant"
+                                                    Margin="CfDefaults.FieldMargin"
+                                                    Required="Required"
+                                                    Disabled="Disabled"
+                                                    ReadOnly="ReadOnly"
+                                                    Error="ErrorText is not null"
+                                                    ErrorText="@ErrorText"
+                                                    Lines="Lines"
+                                                    Immediate="Immediate"
+                                                    Placeholder="@Placeholder"
+                                                    FullWidth="true" />;
+
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public bool Required { get; set; }

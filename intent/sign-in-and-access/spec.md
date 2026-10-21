@@ -1,8 +1,6 @@
 # Spec: Sign-in and access
 
-Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack: .NET API, Blazor WebAssembly with MudBlazor, WorkOS for sign-in, EF Core on Postgres, domain-driven design. The public frame and landing page from [../public-landing-page/spec.md](../public-landing-page/spec.md) and the conventions in [../look-and-feel/spec.md](../look-and-feel/spec.md) stay the same except where this spec says otherwise.
-
-The proof of concept's [auth](../../poc/docs/features/auth.md) page and [ADR 0008](../../poc/docs/adr/0008-personal-organizations-and-team-upgrade.md) are evidence of past behavior. They used Clerk, and their routes and tables are not requirements.
+Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack: .NET API, Blazor WebAssembly with MudBlazor, WorkOS for sign-in, EF Core on Postgres, domain-driven design. The public frame and landing page from [../public-landing-page/spec.md](../public-landing-page/spec.md) and the conventions in [../look-and-feel/spec.md](../look-and-feel/spec.md) stay the same except where this spec says otherwise. This slice does not use Clerk.
 
 ## Who does what
 

@@ -1,4 +1,0 @@
-resource_group_name  = "courtflow-tfstate-rg"
-storage_account_name = "courtflowtfxxxxxx"
-container_name       = "tfstate"
-key                  = "dev.terraform.tfstate"

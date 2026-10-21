@@ -16,4 +16,4 @@ Write `intent/<slice>/intent.md`. Stop there.
 4. Fill the template in the originator's terms. Status stays `draft` until the user accepts it.
 5. Put technology choices in **Open questions**, not **Constraints**, unless the user called one non-negotiable.
 
-Do not write `spec.md`, `plan.md`, or application code. Do not change [`poc/`](../../../poc/).
+Do not write `spec.md`, `plan.md`, or application code.

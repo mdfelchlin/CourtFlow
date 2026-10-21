@@ -152,6 +152,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<CourtFlowDbContext>();
         await db.Database.ExecuteSqlRawAsync(
             """
+            DELETE FROM ranking_places;
             DELETE FROM tournament_teams;
             DELETE FROM teams;
             DELETE FROM clubs;

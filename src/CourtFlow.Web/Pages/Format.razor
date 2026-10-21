@@ -1,0 +1,127 @@
+@page "/format"
+@attribute [Authorize(Policy = AccessPolicies.Member)]
+@inject NavigationManager Navigation
+
+<PageTitle>Format · CourtFlow</PageTitle>
+
+<MudStack Spacing="3">
+    <CfPageHeader Title="Format">
+        <Actions>
+            <CfTournamentSelect Value="selected" ValueChanged="SelectAsync" ListLoaded="OnTournaments" />
+        </Actions>
+    </CfPageHeader>
+
+    @if (tournaments is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (tournaments.Count == 0)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="no-tournaments">@(isViewer ? TournamentList.NothingPublishedMessage : Teams.NoTournamentsMessage)</CfAlert>
+        @if (!isViewer)
+        {
+            <MudLink Href="/tournaments">Go to tournaments</MudLink>
+        }
+    }
+    else if (selected is null)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="nothing-selected">@RankingWording.SelectTournament</CfAlert>
+    }
+    else if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" data-testid="format-loading" />
+    }
+    else if (missing)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="nothing-selected">@RankingWording.SelectTournament</CfAlert>
+    }
+    else if (divisions.Count == 0)
+    {
+        <CfAlert Severity="Severity.Info" data-testid="no-divisions">@RankingWording.AddDivisionFirst</CfAlert>
+        <MudLink Href="@($"/tournaments/{selected.Id}")" data-testid="editor-link">Open @selected.Name</MudLink>
+    }
+    else
+    {
+        @if (IsArchived)
+        {
+            <CfAlert Severity="Severity.Info" data-testid="archived-note">@Tournament.ArchivedMessage</CfAlert>
+        }
+
+        <MudTable T="FormatDivisionResponse" Items="divisions" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+            <HeaderContent>
+                <MudTh>Division</MudTh>
+                <MudTh>Teams</MudTh>
+                <MudTh>Ranking</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Division" data-testid="format-row">@Division.Label(context.Name, context.Gender)</MudTd>
+                <MudTd DataLabel="Teams" data-testid="format-team-count">@context.TeamCount</MudTd>
+                <MudTd DataLabel="Ranking">@context.Ranking</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <CfIconButton id="@($"edit-format-{context.Id}")"
+                                      Icon="@(IsReadOnly ? Icons.Material.Filled.Visibility : Icons.Material.Filled.Edit)"
+                                      Label="@(IsReadOnly ? RankingWording.ViewLabel(Division.Label(context.Name, context.Gender)) : RankingWording.EditLabel(Division.Label(context.Name, context.Gender)))"
+                                      Tooltip="@(context.TeamCount == 0 ? RankingWording.AddTeamsFirst : null)"
+                                      Disabled="context.TeamCount == 0"
+                                      OnClick="@(() => Open(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    private IReadOnlyList<TournamentResponse>? tournaments;
+    private TournamentResponse? selected;
+    private bool loading;
+    private bool missing;
+    private List<FormatDivisionResponse> divisions = [];
+    private bool isViewer;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [Inject] private ICourtFlowApi Api { get; set; } = default!;
+
+    private bool IsArchived => selected?.Status == TournamentStatus.Archived;
+
+    private bool IsReadOnly => IsArchived || isViewer;
+
+    protected override async Task OnInitializedAsync() =>
+        isViewer = AuthenticationState is not null && (await AuthenticationState).User.IsViewer();
+
+    private void OnTournaments(IReadOnlyList<TournamentResponse> list) => tournaments = list;
+
+    private Task SelectAsync(TournamentResponse tournament) => LoadAsync(tournament);
+
+    private async Task LoadAsync(TournamentResponse tournament)
+    {
+        selected = tournament;
+        loading = true;
+        missing = false;
+        try
+        {
+            var loaded = await Api.ListFormatAsync(tournament.Id);
+            if (selected?.Id != tournament.Id)
+                return;
+
+            if (loaded is null)
+            {
+                missing = true;
+                divisions = [];
+                return;
+            }
+
+            divisions = Division.OrderForList(loaded, division => division.Name, division => division.Gender).ToList();
+        }
+        finally
+        {
+            if (selected?.Id == tournament.Id)
+                loading = false;
+        }
+    }
+
+    private void Open(FormatDivisionResponse division) => Navigation.NavigateTo($"/format/{division.Id}/ranking");
+}

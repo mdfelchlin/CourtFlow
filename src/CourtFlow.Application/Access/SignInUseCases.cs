@@ -73,7 +73,9 @@ public sealed class SignInUseCases(IAccessRepository repository, TimeProvider cl
             return access.IsOwner();
         if (bare == "/tournaments/new")
             return access.CanEdit();
-        if (bare.StartsWith("/tournaments", StringComparison.Ordinal) || bare.StartsWith("/teams", StringComparison.Ordinal))
+        if (bare.StartsWith("/tournaments", StringComparison.Ordinal)
+            || bare.StartsWith("/teams", StringComparison.Ordinal)
+            || bare.StartsWith("/format", StringComparison.Ordinal))
             return access.HasActiveMembership();
         return true;
     }

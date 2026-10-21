@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the domain-driven design constraint in [../product/intent.md](../product/intent.md).
 
-Two aggregates own the new rules. **Club** is an organization-level root that owns its **Teams**, so team-name uniqueness within a club and renames live in one place. **Tournament** stays the root for everything inside one tournament and gains its **TournamentTeam** entries, so "one entry per team," "division belongs to this tournament," and "a division with entries cannot be deleted" stay beside the division rules. Use cases load both roots and save once, so an add or an import is one transaction. CSV reading and import matching are pure application code with their own tests. The Blazor app calls the same domain checks before the API. [poc/](../../poc/) stays untouched.
+Two aggregates own the new rules. **Club** is an organization-level root that owns its **Teams**, so team-name uniqueness within a club and renames live in one place. **Tournament** stays the root for everything inside one tournament and gains its **TournamentTeam** entries, so "one entry per team," "division belongs to this tournament," and "a division with entries cannot be deleted" stay beside the division rules. Use cases load both roots and save once, so an add or an import is one transaction. CSV reading and import matching are pure application code with their own tests. The Blazor app calls the same domain checks before the API.
 
 ```mermaid
 flowchart LR
@@ -274,14 +274,12 @@ Web changes to existing tests:
 - **Import status code.** The spec does not say how a stale import is signaled. This plan uses `409` with the preview body.
 - **New test project.** `CourtFlow.Application.Tests` is a new project. The alternative is putting the pure reader and planner tests in `CourtFlow.Api.Tests`, which would make them wait on the Postgres container fixture.
 
-## Proof of concept left behind
-
-[poc/docs/features/teams.md](../../poc/docs/features/teams.md) and [poc/docs/features/imports.md](../../poc/docs/features/imports.md) had these, and this slice does not carry them forward:
+## Not in this slice
 
 - A header tournament selector, and a Refresh button.
 - Withdraw as a repair, and the seeded-stage routing in the team dialog.
 - A separate `/imports` page with format detection between the predefined-pools and ranked-teams layouts, and a format help dialog.
 - Waves and pool names on import, and writing rankings from `Rank` or `SeedHint`.
 - Client-side preview with a separate confirmation box before import.
-
-The proof of concept never renamed a master team on import. This slice has no rename on import either, because there is no team code. The proof of concept's 200-character club cap is also not carried forward; club names have no maximum length here, as the spec says.
+- Renaming a master team on import. There is no team code.
+- A maximum length on club names. Club names have no maximum length, as the spec says.

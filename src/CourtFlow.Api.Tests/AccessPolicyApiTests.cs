@@ -25,6 +25,8 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
         ("venues", client => client.GetAsync($"/api/tournaments/{AnyId}/venues")),
         ("divisions", client => client.GetAsync($"/api/tournaments/{AnyId}/divisions")),
         ("teams", client => client.GetAsync($"/api/tournaments/{AnyId}/teams")),
+        ("format", client => client.GetAsync($"/api/tournaments/{AnyId}/format")),
+        ("ranking", client => client.GetAsync($"/api/divisions/{AnyId}/ranking")),
         ("create tournament", client => client.PostAsJsonAsync("/api/tournaments", TournamentApiTests.Sample())),
         ("organization", client => client.GetAsync("/api/organization")),
     ];
@@ -77,14 +79,14 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
 
         foreach (var hidden in new[] { unpublished.Id, archived.Id })
         {
-            foreach (var path in new[] { "", "/venues", "/divisions", "/teams" })
+            foreach (var path in new[] { "", "/venues", "/divisions", "/teams", "/format" })
             {
                 var response = await viewer.GetAsync($"/api/tournaments/{hidden}{path}", TestContext.Current.CancellationToken);
                 Assert.True(response.StatusCode == HttpStatusCode.NotFound, $"{path} of a hidden tournament returned {response.StatusCode}.");
             }
         }
 
-        foreach (var path in new[] { "", "/venues", "/divisions", "/teams" })
+        foreach (var path in new[] { "", "/venues", "/divisions", "/teams", "/format" })
         {
             var response = await viewer.GetAsync($"/api/tournaments/{published.Id}{path}", TestContext.Current.CancellationToken);
             Assert.True(response.StatusCode == HttpStatusCode.OK, $"{path} of the published tournament returned {response.StatusCode}.");
@@ -124,6 +126,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
             ("club teams", () => viewer.GetAsync($"/api/clubs/{entry.ClubId}/teams")),
             ("import preview", () => viewer.PostAsync($"/api/tournaments/{tournament.Id}/team-imports/preview", CsvForm())),
             ("import", () => viewer.PostAsync($"/api/tournaments/{tournament.Id}/team-imports", CsvForm())),
+            ("save ranking", () => viewer.PutAsJsonAsync($"/api/divisions/{division.Id}/ranking", new SaveRanking([entry.Id]))),
         ];
 
         foreach (var (name, send) in writes)

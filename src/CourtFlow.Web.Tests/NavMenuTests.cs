@@ -17,7 +17,7 @@ public class NavMenuTests : AccessTestContext
 
         var cut = Render<NavMenu>();
 
-        Assert.Equal(["/tournaments", "/teams"], PageLinks(cut));
+        Assert.Equal(["/tournaments", "/teams", "/format"], PageLinks(cut));
         Assert.Empty(cut.FindAll("[data-testid=operator-group]"));
     }
 
@@ -28,7 +28,7 @@ public class NavMenuTests : AccessTestContext
 
         var cut = Render<NavMenu>();
 
-        Assert.Equal(["/tournaments", "/teams", "/operator/requests", "/operator/organizations"], PageLinks(cut));
+        Assert.Equal(["/tournaments", "/teams", "/format", "/operator/requests", "/operator/organizations"], PageLinks(cut));
     }
 
     [Fact]

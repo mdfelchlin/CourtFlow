@@ -118,11 +118,13 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
         Assert.Equal(SignInUseCases.NoAccess, SignInUseCases.LandingFor(nobody, null));
         Assert.Equal("/request-access", SignInUseCases.LandingFor(nobody, "/request-access"));
         Assert.Equal(SignInUseCases.NoAccess, SignInUseCases.LandingFor(nobody, "/tournaments/abc"));
+        Assert.Equal(SignInUseCases.NoAccess, SignInUseCases.LandingFor(nobody, "/format"));
 
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("viewer"), OrganizationRole.Viewer);
         var viewer = await AccessForAsync("user_viewer", "viewer@courtflow.test");
         Assert.Equal(SignInUseCases.Tournaments, SignInUseCases.LandingFor(viewer, null));
         Assert.Equal("/teams?t=1", SignInUseCases.LandingFor(viewer, "/teams?t=1"));
+        Assert.Equal("/format/abc/ranking", SignInUseCases.LandingFor(viewer, "/format/abc/ranking"));
         Assert.Equal(SignInUseCases.Tournaments, SignInUseCases.LandingFor(viewer, "/organization"));
         Assert.Equal(SignInUseCases.Tournaments, SignInUseCases.LandingFor(viewer, "/tournaments/new"));
         Assert.Equal(SignInUseCases.Tournaments, SignInUseCases.LandingFor(viewer, "https://evil.example/"));

@@ -8,7 +8,7 @@ A director has created a tournament, but cannot create the divisions they will a
 For one tournament they already created, a director edits that tournament, scrolls to the Divisions section, and creates, updates, and deletes divisions. Each division has a name, such as 14U Open, and a required gender of Male or Female. Wave and further division details come in a later slice.
 
 ## Affected users and systems
-Directors use the Blazor WebAssembly app. The .NET API persists the result with Entity Framework Core to local Postgres. Coaches, players, and spectators do not do this. The proof of concept is reference only.
+Directors use the Blazor WebAssembly app. The .NET API persists the result with Entity Framework Core to local Postgres. Coaches, players, and spectators do not do this.
 
 ## Constraints
 - The tournament already exists. This slice does not create tournaments, venues, or courts.
@@ -22,7 +22,6 @@ Directors use the Blazor WebAssembly app. The .NET API persists the result with 
 - This slice does not add teams. Team entry stays with the tournament teams slice.
 - One fixed local organization owns the data. There is no sign-in and no organization picker.
 - No waves, pools, brackets, schedule generation, rankings, withdrawals, or public site.
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

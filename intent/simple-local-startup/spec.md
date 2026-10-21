@@ -2,11 +2,9 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice adds .NET Aspire only as the way a developer starts local CourtFlow. The running applications stay the .NET API, the Blazor WebAssembly app, and local Postgres. It does not call WorkOS, OR-Tools, or Supabase.
 
-The proof of concept's [local development](../../poc/docs/local-development.md) notes are evidence of past behavior. Where they disagree with this spec, this spec wins. In particular, the proof of concept started SQLite, a separate database migrator, and a Blazor host plus a WASM client, on different ports. This slice does none of that.
-
 ## What the developer can do
 
-A developer starts local CourtFlow with one command. That command runs the Aspire app host in the current solution. It does not run anything under the proof of concept.
+A developer starts local CourtFlow with one command. That command runs the Aspire app host in the current solution.
 
 The command starts only these three:
 
@@ -54,11 +52,9 @@ Tournament setup behavior does not change. A director still opens the Blazor app
 
 ## Deliberately not in this slice
 
-The proof of concept did these for local startup. This slice does not.
-
 - SQLite, Turso, or a hosted database.
 - A separate migrator project. The API applies its own migrations.
-- Starting the proof of concept AppHost, its service defaults, or its ports (`7028`, `5033`, `7247`, `5111`, `17200`, `17201`).
+- A service-defaults project, or ports other than the ones in this spec.
 - Clerk, user secrets, or a demo login.
 - Google Maps keys.
 - Launching test projects, or any project other than the API, the Blazor app, and Postgres.

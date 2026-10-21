@@ -49,18 +49,20 @@ public class LayoutTests : BunitContext, IDisposable
     [InlineData(OrganizationRole.Owner)]
     [InlineData(OrganizationRole.Editor)]
     [InlineData(OrganizationRole.Viewer)]
-    public void Drawer_lists_tournaments_then_teams_then_sign_out(OrganizationRole role)
+    public void Drawer_lists_tournaments_then_teams_then_format_then_sign_out(OrganizationRole role)
     {
         var cut = RenderLayout(TestAccess.Member(role));
 
         var links = cut.FindAll(".mud-nav-link");
-        Assert.Equal(3, links.Count);
+        Assert.Equal(4, links.Count);
         Assert.Equal("Tournaments", links[0].TextContent.Trim());
         Assert.Equal("/tournaments", links[0].GetAttribute("href"));
         Assert.Equal("Teams", links[1].TextContent.Trim());
         Assert.Equal("/teams", links[1].GetAttribute("href"));
-        Assert.Equal(CfUserMenu.SignOutText, links[2].TextContent.Trim());
-        Assert.Equal(TestAccess.Logout, links[2].GetAttribute("href"));
+        Assert.Equal("Format", links[2].TextContent.Trim());
+        Assert.Equal("/format", links[2].GetAttribute("href"));
+        Assert.Equal(CfUserMenu.SignOutText, links[3].TextContent.Trim());
+        Assert.Equal(TestAccess.Logout, links[3].GetAttribute("href"));
     }
 
     [Fact]
@@ -140,6 +142,19 @@ public class LayoutTests : BunitContext, IDisposable
         Services.GetRequiredService<NavigationManager>().NavigateTo("/teams");
 
         cut.WaitForAssertion(() => Assert.Contains("active", cut.FindAll(".mud-nav-link")[1].ClassList));
+    }
+
+    [Theory]
+    [InlineData("/format")]
+    [InlineData("/format/00000000-0000-0000-0000-000000000001/ranking")]
+    public void Format_link_is_active_on_format_and_below_it(string path)
+    {
+        var cut = RenderLayout();
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo(path);
+
+        cut.WaitForAssertion(() => Assert.Contains("active", cut.FindAll(".mud-nav-link")[2].ClassList));
+        Assert.DoesNotContain("active", cut.FindAll(".mud-nav-link")[1].ClassList);
     }
 
     private IRenderedComponent<MainLayout> RenderLayout(MeResponse? me = null)

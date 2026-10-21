@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice uses the .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not call WorkOS, OR-Tools, or Supabase.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md). A **Club** is a long-lived organization record that owns teams. A **Team** is a long-lived record owned by one club. A **TournamentTeam** is one team's entry in one tournament and one division. Inside the Teams page, "team" in UI copy means the TournamentTeam, as the proof of concept's shorthand rule allows. Data, domain code, and API contracts use the precise terms. This slice does not use Wave, Stage, Pool, Bracket, Ranking, or Seed.
-
-The proof of concept is evidence of past behavior. Where it disagrees with this spec, this spec wins.
+A **Club** is a long-lived organization record that owns teams. A **Team** is a long-lived record owned by one club. A **TournamentTeam** is one team's entry in one tournament and one division. Inside the Teams page, "team" in UI copy means the TournamentTeam. Data, domain code, and API contracts use the precise terms. This slice does not use Wave, Stage, Pool, Bracket, Ranking, or Seed.
 
 Presentation follows [../look-and-feel/spec.md](../look-and-feel/spec.md). Division behavior follows [../tournament-divisions/spec.md](../tournament-divisions/spec.md) except where this spec changes division and tournament delete.
 
@@ -250,8 +248,6 @@ The intent left these to the spec. Change any of them before a plan is written.
 - **Tables.** MudBlazor's simple table, not a data grid.
 
 ## Deliberately not in this slice
-
-The proof of concept did these. This slice does not.
 
 - A tournament selector in the app bar. The picker lives on the Teams page.
 - Team codes, the AES import layout, predefined-pools and ranked-teams CSV formats, format detection, and a format help dialog.

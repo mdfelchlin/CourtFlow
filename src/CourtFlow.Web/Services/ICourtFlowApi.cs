@@ -29,6 +29,9 @@ public interface ICourtFlowApi
     Task<IReadOnlyList<ClubTeamOptionResponse>> ListClubTeamsAsync(Guid clubId, Guid tournamentId, CancellationToken cancellationToken = default);
     Task<TeamImportPreviewResponse> PreviewTeamImportAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default);
     Task<TeamImportResponse> ImportTeamsAsync(Guid tournamentId, string fileName, byte[] content, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FormatDivisionResponse>?> ListFormatAsync(Guid tournamentId, CancellationToken cancellationToken = default);
+    Task<DivisionRankingResponse?> GetRankingAsync(Guid divisionId, CancellationToken cancellationToken = default);
+    Task<DivisionRankingResponse> SaveRankingAsync(Guid divisionId, IReadOnlyList<Guid> entryIds, CancellationToken cancellationToken = default);
 
     Task<AccessRequestResultResponse> SubmitAccessRequestAsync(AccessRequestForm form, CancellationToken cancellationToken = default);
 

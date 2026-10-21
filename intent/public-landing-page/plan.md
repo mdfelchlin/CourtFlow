@@ -1,6 +1,6 @@
 # Public landing page plan
 
-Follows the spec in [spec.md](spec.md). [poc/](../../poc/) stays untouched. This slice changes only the Blazor app and its tests. The API, the domain, and Postgres stay as they are.
+Follows the spec in [spec.md](spec.md). This slice changes only the Blazor app and its tests. The API, the domain, and Postgres stay as they are.
 
 The landing page takes `/` in a new public frame. The tournament list moves to `/tournaments`, and every director link that pointed at the old root follows it. The public frame gets its own light or dark choice in its own cookie, so the two frames can differ.
 
@@ -106,6 +106,6 @@ Unchanged and still required to pass:
 - **Keyboard order.** Brand, toggle, then Login. The tests check markup order, not focus.
 - **The loading screen.** It stays light. `app.css` is unchanged, and the existing palette test guards it.
 
-## Proof of concept left behind
+## Not in this slice
 
-The proof of concept's `PublicLayout` used a dense app bar and a "Sign in" button that went to `/login?returnUrl=/tournaments`. When signed in, it showed "Admin", the user's name, and "Logout". Its landing page had a gradient hero, an events grid from `GET /public/events`, a Refresh button, and a Past events section. It also had an `/admin` redirect. None of these carry forward. This slice uses a full-height bar, a plain "Login" link to `/tournaments`, and a page with only "Welcome" and "Coming soon".
+A dense app bar, a Sign in button to `/login?returnUrl=/tournaments`, an Admin label, the signed-in person's name, and Logout. A gradient hero, an events grid from `GET /public/events`, a Refresh button, a Past events section, and an `/admin` redirect. This slice uses a full-height bar, a plain "Login" link to `/tournaments`, and a page with only "Welcome" and "Coming soon".

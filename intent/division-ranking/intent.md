@@ -14,7 +14,7 @@ Pools are filled from the ranking. When the Pools step is built in a later slice
 On the Ranking step the director orders the division's teams in one of three ways. They drag teams into place, type a team's rank number, or press Randomize for a random order. Then they save.
 
 ## Affected users and systems
-Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's ranking with Entity Framework Core in Postgres. It reads the division's team entries from the tournament teams slice and respects the tournament lifecycle and the sign-in and access rules. Coaches, players, and spectators are not affected. The proof of concept is reference only. Its glossary already uses **Ranking** for this ordered list and **Seed** for a team's later position in a pool.
+Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's ranking with Entity Framework Core in Postgres. It reads the division's team entries from the tournament teams slice and respects the tournament lifecycle and the sign-in and access rules. Coaches, players, and spectators are not affected. This slice uses **Ranking** for this ordered list and **Seed** for a team's later position in a pool.
 
 ## Constraints
 
@@ -59,7 +59,6 @@ Directors and organizers (owners and editors) use the Blazor WebAssembly app. Vi
 - Copying a ranking from another tournament or division.
 - Showing rankings on the public site.
 - Ranking history, or a record of who changed a ranking.
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

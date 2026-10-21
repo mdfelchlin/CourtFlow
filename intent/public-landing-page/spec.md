@@ -1,8 +1,6 @@
 # Spec: Public landing page
 
-Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only the Blazor WebAssembly app. The API, the domain, and the database do not change. The director frame, brand, and conventions in [../look-and-feel/spec.md](../look-and-feel/spec.md) stay the same except where this spec says otherwise.
-
-The proof of concept's [public landing](../../poc/docs/features/public-landing.md) and [shell](../../poc/docs/ui/shell.md) docs are evidence of past behavior. Their events grid, hero panel, real sign-in, and "Admin" button are not part of this slice.
+Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only the Blazor WebAssembly app. The API, the domain, and the database do not change. The director frame, brand, and conventions in [../look-and-feel/spec.md](../look-and-feel/spec.md) stay the same except where this spec says otherwise. This slice has no events grid, hero panel, real sign-in, or Admin button.
 
 ## Routes
 

@@ -12,7 +12,10 @@ public sealed class Confirmations(IDialogService dialogs)
     public Task<bool> ConfirmDeleteAsync(string itemName, string consequence) =>
         ConfirmAsync($"Delete {itemName}?", consequence, DeleteText);
 
-    public async Task<bool> ConfirmAsync(string title, string message, string confirmText)
+    public Task<bool> ConfirmAsync(string title, string message, string confirmText) =>
+        ConfirmAsync(title, message, confirmText, CancelText);
+
+    public async Task<bool> ConfirmAsync(string title, string message, string confirmText, string cancelText)
     {
         var options = new DialogOptions
         {
@@ -25,7 +28,7 @@ public sealed class Confirmations(IDialogService dialogs)
             title: title,
             message: message,
             yesText: confirmText,
-            cancelText: CancelText,
+            cancelText: cancelText,
             options: options);
 
         return answer == true;

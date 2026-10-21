@@ -18,7 +18,7 @@ The tournament list moves from the site root to `/tournaments`. The director app
 The public top bar has its own light/dark toggle. The public choice is separate from the director's choice, so the landing page can be dark while the director app is light, or the other way around. Each is remembered on its own. Without a saved choice, each follows the operating system, as the director app does today.
 
 ## Affected users and systems
-Anyone who opens the site sees the landing page first: directors, coaches, players, and spectators. Directors use "Login" to reach the tournament list. This slice touches the Blazor WebAssembly app: it adds the public frame and the landing page, moves the tournament list to `/tournaments`, and points the director app bar's logo and any links to the tournament list at the new address. The API and the database do not change. The proof of concept is reference only.
+Anyone who opens the site sees the landing page first: directors, coaches, players, and spectators. Directors use "Login" to reach the tournament list. This slice touches the Blazor WebAssembly app: it adds the public frame and the landing page, moves the tournament list to `/tournaments`, and points the director app bar's logo and any links to the tournament list at the new address. The API and the database do not change.
 
 ## Constraints
 - The landing page is at the site root. The tournament list is at `/tournaments`.
@@ -29,7 +29,6 @@ Anyone who opens the site sees the landing page first: directors, coaches, playe
 - "Login" goes straight to the tournament list. There is no real sign-in in this slice.
 - The landing page shows no tournament data and allows no changes.
 - The public top bar has its own light/dark toggle. The public and director choices are remembered separately and can differ.
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

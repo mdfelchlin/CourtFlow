@@ -1,8 +1,6 @@
 # Spec: Look and feel
 
-Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only the Blazor WebAssembly app and its MudBlazor theme. The API, the domain, and the database do not change. The behavior in [../tournament-setup/spec.md](../tournament-setup/spec.md) stays the same. Only its presentation changes.
-
-The proof of concept's [design system](../../poc/docs/ui/design-system.md), [shell](../../poc/docs/ui/shell.md), and [dialogs](../../poc/docs/ui/dialogs.md) docs are evidence of past behavior. Where they disagree with this spec, this spec wins. In particular, this spec replaces the proof of concept's `--cf-*` CSS token layer and its [styling decision record](../../poc/docs/adr/0002-styling-strategy.md) with typed C#.
+Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only the Blazor WebAssembly app and its MudBlazor theme. The API, the domain, and the database do not change. The behavior in [../tournament-setup/spec.md](../tournament-setup/spec.md) stays the same. Only its presentation changes. Theme values are typed C#.
 
 ## The frame
 
@@ -30,7 +28,7 @@ The drawer lists one link: **Tournaments**, with the `EmojiEvents` icon, going t
 
 ## Brand
 
-The brand values below carry over from the proof of concept. They are defined once, in C#.
+The brand values below are defined once, in C#.
 
 **Light palette**
 
@@ -71,7 +69,7 @@ Primary is lighter in dark mode than the app bar because MudBlazor also uses it 
 
 **Shape.** The default corner radius is 10 px for cards, dialogs, paper, and buttons.
 
-**Logo and icons.** The logo and icons come from the [logo refresh](../logo-refresh/intent.md). The app bar shows the cream mark, `logo-mark.svg`, which sits on the teal app bar in both modes without a visible square. The favicon and the app icons are the teal tile with the cream ball. They replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons, using the proof of concept's choices: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
+**Logo and icons.** The logo and icons come from the [logo refresh](../logo-refresh/intent.md). The app bar shows the cream mark, `logo-mark.svg`, which sits on the teal app bar in both modes without a visible square. The favicon and the app icons are the teal tile with the cream ball. They replace Blazor's defaults. The same logo is used in both modes. Icons come from MudBlazor's filled Material icons: `EmojiEvents` for tournaments, `SportsVolleyball` for courts, `Add`, `Edit`, `Delete`, `Save`, `ArrowBack`, `LightMode`, `DarkMode`, `SearchOff`, and `Info`.
 
 ## Light and dark
 
@@ -118,7 +116,7 @@ The existing screens need these field wrappers:
 - **Icon button for row actions.** Small, with a tooltip and an accessible label that names the item, such as "Edit Spring Classic". Delete uses the error color.
 - **Save button.** Primary and filled, with the `Save` icon. It is disabled while its save is running, so a double click saves once.
 
-Names use a `Cf` prefix, following the proof of concept.
+Names use a `Cf` prefix.
 
 ## Shared feedback
 
@@ -176,12 +174,12 @@ The inline red alerts for errors on the editor and the venue form are replaced b
 
 The intent left these to the spec. Change any of them before a plan is written.
 
-- **Modal dialogs.** The venue form and the delete confirmations become modal dialogs, matching the proof of concept, instead of inline panels.
+- **Modal dialogs.** The venue form and the delete confirmations are modal dialogs.
 - **Date picker.** Start and end date use MudBlazor's date picker instead of the browser's native date input.
 - **Snackbars for rejected saves.** Rejected saves show in a snackbar, as the intent says, rather than as inline alerts. Warnings that do not block a save stay inline.
 - **Spacing classes.** Spacing in markup uses MudBlazor's typed spacing parameters, such as `MudStack Spacing`, where they exist. Elsewhere it uses MudBlazor's spacing utility classes, such as `pa-4`, which follow MudBlazor's spacing scale. These are the only class names allowed in markup. Raw pixel or rem values are not.
 - **Font source.** Inter loads from Google Fonts, the way Roboto does today, rather than being bundled with the app.
-- **Tournament list route.** The tournament list stays at `/`. The proof of concept used `/tournaments`.
+- **Tournament list route.** The tournament list stays at `/`.
 
 ## Deliberately not in this slice
 

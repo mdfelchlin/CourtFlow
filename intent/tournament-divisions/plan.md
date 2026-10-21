@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the domain-driven design constraint in [../product/intent.md](../product/intent.md).
 
-Tournament stays the aggregate root. A division changes only through it, the same way a venue does. The Blazor editor keeps calling the same domain rules before the API. [poc/](../../poc/) stays untouched.
+Tournament stays the aggregate root. A division changes only through it, the same way a venue does. The Blazor editor keeps calling the same domain rules before the API.
 
 ```mermaid
 flowchart LR
@@ -72,6 +72,6 @@ Web tests in [src/CourtFlow.Web.Tests/DivisionPageTests.cs](../../src/CourtFlow.
 - Teams in different divisions never play each other. This slice has no teams.
 - The tournament-teams intent still asks whether a team must belong to a division. This plan does not answer that.
 
-## Proof of concept left behind
+## Not in this slice
 
-[poc/docs/features/divisions.md](../../poc/docs/features/divisions.md) had a separate Divisions page, format and max-teams columns, a Manage action into stages, and delete blocked once a stage had teams or matches. Its create dialog asked for a name only, and its uniqueness rule was the name alone. This slice does not carry those forward. Gender is stored here. Wave is not.
+A separate Divisions page, format and max-teams columns, a Manage action into stages, and delete blocked once a stage had teams or matches. A create dialog that asks for a name only, and a uniqueness rule on the name alone. Gender is stored here. Wave is not.

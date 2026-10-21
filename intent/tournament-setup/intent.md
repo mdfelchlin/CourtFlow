@@ -2,7 +2,7 @@
 Author: product owner. Status: accepted.
 
 ## Problem
-A director cannot record a tournament and the courts it will use without a vendor or the proof of concept.
+A director cannot record a tournament and the courts it will use without a vendor.
 
 ## Proposed outcome
 A director opens a list of tournaments for one local organization and can create, edit, and delete a tournament.
@@ -12,7 +12,7 @@ They save a required name, start date, end date, time zone, default match durati
 Deleting a tournament deletes its venues and courts. Changing a court count rewrites that venue's courts to 1 through N.
 
 ## Affected users and systems
-Directors use the Blazor WebAssembly app. The .NET API uses Entity Framework Core to persist tournaments, venues, and courts to local Postgres. The proof of concept is reference only.
+Directors use the Blazor WebAssembly app. The .NET API uses Entity Framework Core to persist tournaments, venues, and courts to local Postgres.
 
 ## Constraints
 - No sign-in. One fixed local organization, named Test Organization, owns every tournament. The director never picks an organization and never sees that name.

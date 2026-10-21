@@ -1,6 +1,6 @@
 # US date format plan
 
-Follows the spec in [spec.md](spec.md). [poc/](../../poc/) stays untouched. This slice changes only how the Blazor app shows and accepts calendar dates. The API, the domain, and Postgres stay as they are.
+Follows the spec in [spec.md](spec.md). This slice changes only how the Blazor app shows and accepts calendar dates. The API, the domain, and Postgres stay as they are.
 
 One shared pattern formats and parses every director-facing calendar date: `MM'/'dd'/'yyyy` with `CultureInfo.InvariantCulture`. The quotes keep the slashes literal. An unquoted `/` in a .NET format string is the current culture's date separator, so a locale that uses `.` would show `09.01.2026`. Invariant culture plus the quoted pattern keeps `09/01/2026` as September 1, 2026, and `02/03/2026` as February 3, even when the current culture is day-first.
 
@@ -58,6 +58,6 @@ Existing API tests that send `yyyy-MM-dd` are not edited and must still pass.
 - A new API or database test. Storage and the wire format do not change; current API tests remain the check.
 - Any later director screen. None shows a calendar date today. The shared `CalendarDateFormat` is what keeps the next one on this pattern.
 
-## Proof of concept left behind
+## Not in this slice
 
-The proof of concept's date field used a `DateMask` of `MM/dd/yyyy`. This slice does not add that mask, because the spec accepts a single-digit month or day while typing. Its tournament list used the browser's default date formatting. This slice does not. Schedule times, public event dates, the clone dialog, and print headers also showed dates there. Those screens are not in this slice.
+A `DateMask` of `MM/dd/yyyy`. The spec accepts a single-digit month or day while typing. Dates use the pattern in the spec, including on the tournament list. Schedule times, public event dates, the clone dialog, and print headers are not in this slice.

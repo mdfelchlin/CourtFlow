@@ -45,7 +45,6 @@ Directors and organizers publish, unpublish, archive, restore, and delete tourna
 - Only directors and organizers change a tournament's state. Public visitors cannot.
 - Each organization's tournaments stay separate. Publishing, archiving, or deleting one organization's tournament never affects another's.
 - The database is wiped for this change. Existing tournaments are not migrated.
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

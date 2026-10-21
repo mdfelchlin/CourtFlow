@@ -8,7 +8,7 @@ A director can rank a division's teams and put them into pools, but cannot set u
 On the Brackets step of a division's format editor, the director sets up the division's brackets and how teams get into them. The director sees the bracket shape before any pool match is played. Teams are filled into it once pool play decides them.
 
 ## Affected users and systems
-Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's brackets with Entity Framework Core in Postgres. This builds on the division pools slice, which decides who advances, and on the division ranking slice. The later schedule and tournament day slices will read the brackets. Coaches, players, and spectators are not affected by this slice. The proof of concept is reference only. Its glossary uses **Bracket** for one elimination tree, **Advancement rule** for how a pool finish feeds a bracket slot, and **BracketSeed** for a team's slot in a bracket.
+Directors and organizers (owners and editors) use the Blazor WebAssembly app. Viewers can look but cannot change anything. The .NET API stores each division's brackets with Entity Framework Core in Postgres. This builds on the division pools slice, which decides who advances, and on the division ranking slice. The later schedule and tournament day slices will read the brackets. Coaches, players, and spectators are not affected by this slice. This slice uses **Bracket** for one elimination tree, **Advancement rule** for how a pool finish feeds a bracket slot, and **BracketSeed** for a team's slot in a bracket.
 
 ## Constraints
 - Brackets belong to one division. Teams in different divisions never meet in a bracket.
@@ -18,7 +18,6 @@ Directors and organizers (owners and editors) use the Blazor WebAssembly app. Vi
 - Each organization's brackets stay separate from every other organization's.
 - Scheduling bracket matches onto courts and times is not part of this slice. That belongs to the Schedule page.
 - Running bracket play on the day (scoring, advancing winners) is not part of this slice. That belongs to the Tournament day page.
-- New work stays outside the proof of concept.
 
 ## Open questions
 - **Bracket types.** Which types are supported: single elimination, double elimination, or both? Are a third-place match and consolation matches options?
