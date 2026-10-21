@@ -1,0 +1,30 @@
+---
+description: Product code under src/ follows current Microsoft guidance, except where an accepted CourtFlow intent already differs.
+alwaysApply: true
+---
+
+# Engineering practices
+
+Write product code under `src/` to current Microsoft guidance for .NET, ASP.NET Core, Blazor, Entity Framework Core, Aspire, and xUnit.
+
+These accepted decisions stay as they are:
+
+- **Styling.** Theme and layout live in typed C# and MudBlazor parameters. Do not add `*.razor.css`. Hand-written CSS is only what the look-and-feel spec names.
+- **Aspire.** Do not add a service-defaults project. The API, the Blazor app, and Postgres keep their fixed ports.
+- **Sign-in.** The session stays in the `HttpOnly` cookie `courtflow-session`. Page code does not read a WorkOS token.
+- **Dates.** A calendar date a director sees uses `MM/dd/yyyy`. The API keeps `yyyy-MM-dd`.
+
+Do not change director-facing behavior, an API contract, or behavior an accepted intent specifies. When Microsoft guidance would change one of those, keep the accepted behavior.
+
+Every project under `src/` sets `AnalysisLevel` to latest, `AnalysisMode` to Recommended, `TreatWarningsAsErrors` to true, and `EnforceCodeStyleInBuild` to true. Leave info-level suggestions off. Generated Entity Framework migration files stay generated. A suppression needs a reason beside it. Do not add one to make the build pass.
+
+Google OR-Tools, hosted Postgres, and `tools/logo/` are outside this rule. Package versions belong to the current-packages rule.
+
+Checking a branch against this rule is the `verify-engineering-practices` skill.
+
+```razor
+@* Wrong: a scoped stylesheet for a component *@
+
+@* Right: a CourtFlow wrapper and MudBlazor parameters *@
+<CfTextField Label="Name" Required="true" />
+```
