@@ -88,7 +88,7 @@ else
             {
                 <MudDropContainer @key="rankEpoch" T="RankingRow" @ref="drop" Items="rows" ItemsSelector="@SelectsRanking" ItemDropped="OnDropped">
                     <ChildContent>
-                        <MudDropZone T="RankingRow" Identifier="ranking" />
+                        <MudDropZone T="RankingRow" Identifier="ranking" AllowReorder="true" />
                     </ChildContent>
                     <ItemRenderer>
                         @Row(context, editable: true)
@@ -179,7 +179,8 @@ else
         rankDraft.Remove(entryId);
         var landed = rows.FindIndex(row => row.EntryId == entryId);
         announcement = RankingWording.Moved(moved.TeamName, landed + 1, rows.Count);
-        drop?.Refresh();
+        // A new container draws the new order. Refreshing the one that handled the drop rebuilds the old order.
+        rankEpoch++;
         StateHasChanged();
     }
 
@@ -187,7 +188,9 @@ else
         <MudItem xs="2" sm="1">
             @if (editable)
             {
-                <MudIcon Icon="@Icons.Material.Filled.DragIndicator" aria-label="@RankingWording.DragOf(row.TeamName, row.ClubName)" />
+                <MudDragHandle T="RankingRow" aria-label="@RankingWording.DragOf(row.TeamName, row.ClubName)">
+                    <MudIcon Icon="@Icons.Material.Filled.DragIndicator" aria-hidden="true" />
+                </MudDragHandle>
             }
         </MudItem>
         <MudItem xs="4" sm="3">
@@ -209,7 +212,7 @@ else
         </MudItem>
         <MudItem xs="12" sm="5">
             <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
-                <MudText Typo="Typo.body1">@row.TeamName</MudText>
+                <MudText Typo="Typo.body1" data-testid="ranking-team">@row.TeamName</MudText>
                 @if (row.IsNew)
                 {
                     <MudText Typo="Typo.body2" data-testid="new-team">New</MudText>
@@ -220,25 +223,17 @@ else
 
     private static bool SelectsRanking(RankingRow row, string zone) => zone == "ranking";
 
+    /// <summary>
+    /// <see cref="MudItemDropInfo{T}.IndexInZone"/> is the team's place after the drop.
+    /// A drop that does not reorder reports a negative index, and the row stays.
+    /// </summary>
     private void OnDropped(MudItemDropInfo<RankingRow> info)
     {
-        if (info.Item is null)
+        if (info.Item is null || info.IndexInZone < 0 || rows.Count == 0)
             return;
 
-        MoveEntryTo(info.Item.EntryId, DropIndex(info.Item, info.IndexInZone));
-    }
-
-    /// <summary>
-    /// MudBlazor reports the index in the zone while the dragged row is still in the list.
-    /// The landing index after the row is removed is one lower when the row moves down.
-    /// </summary>
-    private int DropIndex(RankingRow row, int indexInZone)
-    {
-        var from = rows.FindIndex(item => item.EntryId == row.EntryId);
-        if (from < 0)
-            return indexInZone;
-
-        return indexInZone > from ? indexInZone - 1 : indexInZone;
+        var to = info.IndexInZone >= rows.Count ? rows.Count - 1 : info.IndexInZone;
+        MoveEntryTo(info.Item.EntryId, to);
     }
 
     private async Task CommitRankAsync(RankingRow row, string? value)

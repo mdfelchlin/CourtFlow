@@ -1,8 +1,10 @@
 using Bunit;
 using CourtFlow.Domain;
+using CourtFlow.Web;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -100,13 +102,20 @@ public class FormatEditorTests : BunitContext, IDisposable
 
         typed.Find($"[data-testid=rank-{teams[2].Id}] input").Change("1");
 
-        typed.WaitForAssertion(() => Assert.Equal(["Charlie", "Alpha", "Bravo"], typed.Instance.Order));
+        typed.WaitForAssertion(() => Assert.Equal(["Charlie", "Alpha", "Bravo"], ShownTeams(typed)));
         Assert.Contains("Charlie moved to rank 1 of 3.", typed.Find("[data-testid=ranking-live]").TextContent);
 
         var dragged = RenderEditor(division.Id);
         dragged.WaitForAssertion(() => Assert.Equal(["Alpha", "Bravo", "Charlie"], dragged.Instance.Order));
-        dragged.InvokeAsync(() => dragged.Instance.MoveEntryTo(teams[2].Id, 0));
-        Assert.Equal(["Charlie", "Alpha", "Bravo"], dragged.Instance.Order);
+        Assert.True(dragged.FindComponent<MudDropZone<RankingRow>>().Instance.AllowReorder);
+
+        Drag(dragged, fromHandle: 2, ontoItem: -1);
+        Assert.Equal(["Charlie", "Alpha", "Bravo"], ShownTeams(dragged));
+        Assert.Contains("Charlie moved to rank 1 of 3.", dragged.Find("[data-testid=ranking-live]").TextContent);
+
+        Drag(dragged, fromHandle: 1, ontoItem: 2);
+        Assert.Equal(["Charlie", "Bravo", "Alpha"], ShownTeams(dragged));
+        Assert.Contains("Alpha moved to rank 3 of 3.", dragged.Find("[data-testid=ranking-live]").TextContent);
     }
 
     [Fact]
@@ -253,6 +262,7 @@ public class FormatEditorTests : BunitContext, IDisposable
         Assert.Empty(viewer.FindAll("#discard-ranking"));
         Assert.Empty(viewer.FindAll("input"));
         Assert.DoesNotContain(RankingWording.DragOf("Ohio St U", "Ohio State University"), viewer.Markup);
+        Assert.Empty(viewer.FindAll(".mud-drag-handle"));
         Assert.DoesNotContain(RankingWording.NameOrderAlert, viewer.Markup);
         Assert.Empty(viewer.FindAll($"[data-testid=rank-{teams[0].Id}] input"));
     }
@@ -301,6 +311,20 @@ public class FormatEditorTests : BunitContext, IDisposable
         _api.Divisions[tournament.Id] = [division];
         var entries = teams.Select(team => _api.SeedEntry(tournament.Id, team.Club, team.Team, division.Id)).ToArray();
         return (tournament, division, entries);
+    }
+
+    private static string[] ShownTeams(IRenderedComponent<FormatEditor> cut) =>
+        cut.FindAll("[data-testid=ranking-team]").Select(team => team.TextContent.Trim()).ToArray();
+
+    /// <summary>A negative <paramref name="ontoItem"/> drops on the slot above the first team.</summary>
+    private static void Drag(IRenderedComponent<FormatEditor> cut, int fromHandle, int ontoItem)
+    {
+        cut.FindAll(".mud-drag-handle")[fromHandle].TriggerEvent("ondragstart", new DragEventArgs());
+        var target = ontoItem < 0
+            ? cut.Find(".mud-drop-item-preview-start")
+            : cut.FindAll(".mud-drop-item").Where(item => !item.ClassList.Contains("mud-drop-item-preview-start")).ElementAt(ontoItem);
+        target.TriggerEvent("ondragenter", new DragEventArgs());
+        cut.Find(".mud-drop-zone").TriggerEvent("ondrop", new DragEventArgs());
     }
 
     private static AngleSharp.Dom.IElement Step(IRenderedComponent<FormatEditor> cut, string label) =>
