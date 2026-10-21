@@ -1,6 +1,6 @@
 # Current tournament plan
 
-Follows the spec in [spec.md](spec.md). [poc/](../../poc/) stays untouched. This slice changes only the Blazor app. The API, the domain, and Postgres stay as they are. The browser memory in [src/CourtFlow.Web/Services/ITournamentMemory.cs](../../src/CourtFlow.Web/Services/ITournamentMemory.cs) stays the one current tournament; the dropdown does not add a second store.
+Follows the spec in [spec.md](spec.md). This slice changes only the Blazor app. The API, the domain, and Postgres stay as they are. The browser memory in [src/CourtFlow.Web/Services/ITournamentMemory.cs](../../src/CourtFlow.Web/Services/ITournamentMemory.cs) stays the one current tournament; the dropdown does not add a second store.
 
 The new control loads the tournament list, resolves that memory, and renders a **Tournament** label immediately to the left of a dropdown. Teams places it in the page header and deletes the select that sits under the title. Choosing a tournament still reloads that page's teams.
 
@@ -61,6 +61,6 @@ Absence, in the layout and tournament page tests:
 - A second page using the dropdown. Only Teams adopts it in this slice.
 - A new API or database test. The list endpoint and the stored tournaments do not change.
 
-## Proof of concept left behind
+## Not in this slice
 
-The proof of concept put `HeaderTournamentSelect` in the app bar, hid it on `/tournaments` routes, and selected the most recent tournament when nothing was stored. This slice does none of those. It also remounted the routed page from the layout when the selection changed, and stored the id in `localStorage` under `courtflow.selectedTournamentId`. This slice keeps the existing `ITournamentMemory` and reloads the Teams data in place.
+The selector stays off the app bar. With nothing stored, this slice does not select the most recent tournament. It keeps the existing `ITournamentMemory` and reloads the Teams data in place.

@@ -1,6 +1,6 @@
 # Simple local startup plan
 
-Follows the spec in [spec.md](spec.md). [poc/](../../poc/) stays untouched. This slice adds an Aspire app host under [src/](../../src/) and removes root [docker-compose.yml](../../docker-compose.yml) as the way Postgres starts. It does not add WorkOS, OR-Tools, Supabase, a migrator, or the proof-of-concept service defaults.
+Follows the spec in [spec.md](spec.md). This slice adds an Aspire app host under [src/](../../src/) and removes root [docker-compose.yml](../../docker-compose.yml) as the way Postgres starts. It does not add WorkOS, OR-Tools, Supabase, a migrator, or a service-defaults project.
 
 The host starts only the API, the Blazor app, and Postgres. The API still applies migrations and seeds Test Organization in [src/CourtFlow.Api/Program.cs](../../src/CourtFlow.Api/Program.cs). Tournament screens do not change.
 
@@ -22,11 +22,11 @@ flowchart LR
 
 ## Files
 
-- [src/CourtFlow.AppHost/CourtFlow.AppHost.csproj](../../src/CourtFlow.AppHost/CourtFlow.AppHost.csproj) — Aspire 13 app host. Use `Aspire.Hosting.AppHost` 13.4.6, the same AppHost package version the proof of concept compiled, and `Aspire.Hosting.PostgreSQL` at that same version. Do not reference any project under `poc/`.
+- [src/CourtFlow.AppHost/CourtFlow.AppHost.csproj](../../src/CourtFlow.AppHost/CourtFlow.AppHost.csproj) — Aspire 13 app host. Use `Aspire.Hosting.AppHost` 13.4.6 and `Aspire.Hosting.PostgreSQL` at that same version. The host references only the API and the Blazor app.
 - [src/CourtFlow.AppHost/Program.cs](../../src/CourtFlow.AppHost/Program.cs) — the only startup composition.
 - [src/CourtFlow.AppHost/PostgresDataVolume.cs](../../src/CourtFlow.AppHost/PostgresDataVolume.cs) — decides whether to keep the existing Docker volume, and copies it before Postgres starts.
 - [src/CourtFlow.AppHost/appsettings.json](../../src/CourtFlow.AppHost/appsettings.json) — local parameter values `courtflow` / `courtflow`. These match the password already in the API settings. No user secrets.
-- [src/CourtFlow.AppHost/Properties/launchSettings.json](../../src/CourtFlow.AppHost/Properties/launchSettings.json) — the Aspire template's dashboard profile, with `launchBrowser` true so the command opens the dashboard and prints its URL. Do not copy the proof of concept's dashboard ports.
+- [src/CourtFlow.AppHost/Properties/launchSettings.json](../../src/CourtFlow.AppHost/Properties/launchSettings.json) — the Aspire template's dashboard profile, with `launchBrowser` true so the command opens the dashboard and prints its URL.
 - [src/CourtFlow.AppHost.Tests/CourtFlow.AppHost.Tests.csproj](../../src/CourtFlow.AppHost.Tests/CourtFlow.AppHost.Tests.csproj) — xunit and `Aspire.Hosting.Testing` 13.4.6.
 - [README.md](../../README.md) — `dotnet run --project src/CourtFlow.AppHost` from the repo root.
 - Delete [docker-compose.yml](../../docker-compose.yml).
@@ -83,6 +83,6 @@ Existing domain, API, and web tests stay as they are and still pass. They prove 
 - A director never sees Aspire or Postgres. No screen changes.
 - Test runs are not part of startup. The host simply does not reference the test projects.
 
-## Proof of concept left behind
+## Not in this slice
 
-[poc/docs/local-development.md](../../poc/docs/local-development.md) started SQLite, a DbMigrator, a Blazor server plus a separate WASM client, Clerk user secrets, and Google Maps configuration. Its API ports were `7028` and `5033`, its web ports were `7247` and `5111`, and its dashboard ports were `17200` and `17201`. This slice does not copy those, the service defaults project, or the `Api__BaseUrl` injection. The Blazor app keeps calling `http://localhost:5009/`.
+SQLite, a database migrator, a Blazor server beside the WebAssembly client, Clerk, Google Maps configuration, a service-defaults project, and `Api__BaseUrl` injection. The Blazor app keeps calling `http://localhost:5009/`.

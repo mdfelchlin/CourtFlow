@@ -10,7 +10,7 @@ A Teams item in the navigation drawer opens a Teams page. The director picks a t
 Each team entered in a tournament has a club, a team name, and a division. The team's gender is its division's gender.
 
 ## Affected users and systems
-Directors use the Blazor WebAssembly app. The .NET API persists the result with Entity Framework Core to local Postgres. Coaches, players, and spectators do not do this. The tournament editor's division delete changes. The proof of concept is reference only.
+Directors use the Blazor WebAssembly app. The .NET API persists the result with Entity Framework Core to local Postgres. Coaches, players, and spectators do not do this. The tournament editor's division delete changes.
 
 ## Constraints
 
@@ -58,7 +58,6 @@ Directors use the Blazor WebAssembly app. The .NET API persists the result with 
 - Players and rosters, rankings and seeding, waves, pools, brackets, schedule generation, withdrawals as repairs, and the public site.
 - A club management page, a team history page, and export.
 - One fixed local organization owns the data. There is no sign-in and no organization picker.
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

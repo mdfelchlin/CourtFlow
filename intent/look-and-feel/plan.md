@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the accepted intent in [intent.md](intent.md).
 
-All changes are in [src/CourtFlow.Web](../../src/CourtFlow.Web) and [src/CourtFlow.Web.Tests](../../src/CourtFlow.Web.Tests). The domain, application, infrastructure, and API projects do not change. [poc/](../../poc/) stays untouched. The proof of concept's `CourtFlow.png` is copied, not moved.
+All changes are in [src/CourtFlow.Web](../../src/CourtFlow.Web) and [src/CourtFlow.Web.Tests](../../src/CourtFlow.Web.Tests). The domain, application, infrastructure, and API projects do not change.
 
 Typed values live in a new `Theming/` folder. Pages and dialogs reach MudBlazor through `Cf*` wrappers in `Components/` and through two small services for snackbars and confirmations. The only JavaScript is one script that reads and writes the theme cookie and reports the operating system setting. The only hand-written CSS is the loading screen and the error bar.
 
@@ -24,7 +24,7 @@ flowchart LR
    - Delete `wwwroot/lib/bootstrap` and `Layout/MainLayout.razor.css`.
    - Cut `wwwroot/css/app.css` down to the loading screen and `#blazor-error-ui`. Remove the Bootstrap, form-validation, `code`, and `.blazor-error-boundary` rules. The app has no `ErrorBoundary`, so nothing renders that last class.
    - In `index.html`, swap the Roboto link for Inter.
-2. **Add brand assets.** Copy `poc/src/CourtFlow.Web/wwwroot/CourtFlow.png` to `wwwroot/CourtFlow.png`, keying its solid teal background to transparent. Replace `favicon.png` and `icon-192.png` with versions made from the original logo, keeping the solid background. This is a one-time image step with any image tool.
+2. **Add brand assets.** Place `wwwroot/CourtFlow.png` with its solid teal background keyed to transparent. Replace `favicon.png` and `icon-192.png` with versions made from that logo, keeping the solid background. This is a one-time image step with any image tool.
 3. **Build the typed theme and theme mode.** Add the `Theming/` files. Add `wwwroot/js/theme.js` and load it in `index.html` before the Blazor script. Register the services in `Program.cs` and resolve the mode before `RunAsync`.
 4. **Add the stylistic guard tests** (`StylingRulesTests`, `ThemeContrastTests`). Adding them early keeps every later step honest.
 5. **Build the layout.** Rewrite `MainLayout`, add `NavMenu`, and bring `NotFound` inside the frame.
@@ -249,19 +249,16 @@ These spec items have no automated test. bUnit does not lay out or paint pages. 
 - The favicon, the app icon, and the logo look right in both modes.
 - Inter actually loads from Google Fonts.
 
-## Proof of concept left behind
+## Not in this slice
 
-The proof of concept's [design system](../../poc/docs/ui/design-system.md) and [shell](../../poc/docs/ui/shell.md) also had these. This slice does not carry them forward:
-- The `--cf-*` CSS token layer, its TV-mode and print overrides, and [ADR 0002](../../poc/docs/adr/0002-styling-strategy.md). Typed C# replaces them.
+- A `--cf-*` CSS token layer, or TV-mode and print overrides. Typed C# replaces them.
 - The `cf-select--*`, `cf-field--*`, and `cf-form-details*` CSS classes. Wrappers and MudBlazor layout components replace them.
 - Server-side reading of the theme cookie through `IHttpContextAccessor`. This app has no server rendering. JS reads the cookie before the first render instead.
 - The public layout, the auth chrome (user name, Login, Logout), the header tournament selector, and the tournament-context remount.
 - Drawer links for divisions, teams, imports, schedule, brackets, matches, standings, repairs, and court status.
 - `MudDataGrid`, the autocomplete and time wrappers, `CfDateTimeRow`, and division color derivation.
 - Google Places on the venue address.
-
-Where the proof of concept differs from the spec, the spec wins:
-- The tournament list stays at `/`.
-- The add button is `CfAddButton`, not `CfToolbarAddButton`.
-- The theme follows the operating system when there is no cookie, instead of always starting light.
-- The loading screen stays light.
+- A tournament list route other than `/`.
+- An add button named `CfToolbarAddButton`. The add button is `CfAddButton`.
+- A theme that always starts light. With no cookie, the theme follows the operating system.
+- A loading screen that follows the saved theme. The loading screen stays light.

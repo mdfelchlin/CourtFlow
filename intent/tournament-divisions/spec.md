@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice uses the .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not call WorkOS, OR-Tools, or Supabase. Supabase is the hosted Postgres when deployment is in scope.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md) where this slice uses them. **Tournament** is one competitive event. **Organization** is the boundary that owns tournaments. A **Division** is a competitive grouping inside one tournament. Teams in different divisions never play each other. This slice does not enter teams, so that rule is not exercised here. This slice does not use Event, Club, Team, Wave, Stage, Pool, or Bracket.
-
-The proof of concept is evidence of past behavior. Where it disagrees with this spec, this spec wins.
+**Tournament** is one competitive event. **Organization** is the boundary that owns tournaments. A **Division** is a competitive grouping inside one tournament. Teams in different divisions never play each other. This slice does not enter teams, so that rule is not exercised here. This slice does not use Event, Club, Team, Wave, Stage, Pool, or Bracket.
 
 Presentation follows [../look-and-feel/spec.md](../look-and-feel/spec.md). Tournament and venue behavior follows [../tournament-setup/spec.md](../tournament-setup/spec.md) except where this spec changes tournament delete.
 
@@ -74,11 +72,9 @@ The intent left these to the spec. Change any of them before a plan is written.
 
 ## Deliberately not in this slice
 
-The proof of concept did these for divisions. This slice does not.
-
 - A separate Divisions page, a tournament selector, or a Manage action into stages, pools, and brackets.
-- Format, max teams, tiebreaker, age group, skill, wave, and match start times. The proof of concept's division table showed format and max teams, and its create dialog asked for a name only. Its data model did not store gender on the division and assigned AM/PM on teams and matches later. This spec stores gender and does not store a wave.
-- A uniqueness rule on name alone. The proof of concept rejected a repeated name regardless of any other field. This spec rejects only a repeated name and gender.
+- Format, max teams, tiebreaker, age group, skill, wave, and match start times. This spec stores gender and does not store a wave.
+- A uniqueness rule on name alone. This spec rejects only a repeated name and gender.
 - Blocking delete because teams are placed or matches exist. This slice has no teams and no matches.
 - Clubs, team entry, rankings, CSV import, pools, brackets, schedule generation, withdrawals, publish, and the public site.
 - Sign-in and choosing an organization.

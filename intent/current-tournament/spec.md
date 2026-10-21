@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice changes only the Blazor WebAssembly app. The API, the domain, and the database do not change.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md). A **Tournament** is one competitive event. The dropdown lists tournaments. It does not list Events.
-
-The proof of concept's [shell](../../poc/docs/ui/shell.md) is evidence of past behavior. That shell put a tournament selector in the app bar and, when nothing was remembered, selected the most recent tournament. Where it disagrees with this spec, this spec wins.
+A **Tournament** is one competitive event. The dropdown lists tournaments. It does not list Events.
 
 Presentation follows [../look-and-feel/spec.md](../look-and-feel/spec.md). Team behavior follows [../tournament-teams/spec.md](../tournament-teams/spec.md) except where this spec moves the Teams tournament picker.
 
@@ -78,8 +76,6 @@ The intent left these to the spec. Change any of them before a plan is written.
 - **Wraps on a narrow screen.** The dropdown stays in the header and the page does not scroll sideways at 360 px.
 
 ## Deliberately not in this slice
-
-The proof of concept did the first two. This slice does not.
 
 - A tournament selector in the app bar.
 - Selecting the most recent tournament when nothing is remembered.

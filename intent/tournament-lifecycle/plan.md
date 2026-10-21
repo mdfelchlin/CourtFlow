@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the domain-driven design constraint in [../product/intent.md](../product/intent.md).
 
-The **Tournament** aggregate owns the state, the last-published moment, every transition, the delete rule, and the archived lock. Every mutating method on the aggregate checks the lock first, so venue, division, entry, and import use cases need no new branches beyond one up-front check where a second aggregate (the club) is touched. Time comes from `TimeProvider`, so tests control the clock. The automatic archive is one application use case, called by a background worker in the API host. [poc/](../../poc/) stays untouched.
+The **Tournament** aggregate owns the state, the last-published moment, every transition, the delete rule, and the archived lock. Every mutating method on the aggregate checks the lock first, so venue, division, entry, and import use cases need no new branches beyond one up-front check where a second aggregate (the club) is touched. Time comes from `TimeProvider`, so tests control the clock. The automatic archive is one application use case, called by a background worker in the API host.
 
 ```mermaid
 flowchart LR
@@ -152,14 +152,12 @@ Web changes to existing tests:
 ## Flags
 
 - **Disabled instead of read-only.** The text, date, select, and numeric wrappers have `Disabled` but no `ReadOnly`. This plan uses `Disabled` for archived detail fields. The spec says "read-only." Adding `ReadOnly` to four wrappers is the alternative.
-- **Rejection status code.** Illegal transitions and archived writes return `400`, as every other rule does today. The proof of concept used a conflict response.
+- **Rejection status code.** Illegal transitions and archived writes return `400`, as every other rule does today.
 - **Hourly check.** The spec only requires within one day. Hourly is this plan's choice.
 - **New test package.** `Microsoft.Extensions.TimeProvider.Testing` is added to the API tests only.
 - **Cross-organization query.** `ListDueForArchiveAsync` is the first code to bypass the Test Organization query filter. Sign-in will replace that filter, and this method must keep bypassing it.
 
-## Proof of concept left behind
-
-[poc/docs/features/tournaments.md](../../poc/docs/features/tournaments.md) had these, and this slice does not carry them forward:
+## Not in this slice
 
 - The `draft` name, and moving an Archived tournament straight to draft.
 - Un-archive restoring to Published.

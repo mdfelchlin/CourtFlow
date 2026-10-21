@@ -14,7 +14,7 @@ The logo still says "volleyball tournament" and still reads as CourtFlow. It is 
 The mark comes in three forms. A cream mark sits on the brand-teal app bar, which stays teal in both themes. A teal mark sits on light surfaces. A teal rounded tile with the cream ball is the favicon and app icon, so it reads in both light and dark browser chrome. The favicon has its own simpler drawing at 16 pixels, with only the three main seams.
 
 ## Affected users and systems
-Directors see the logo in the director app bar. Coaches, players, and spectators will see it in the public top bar and browser tab. The slice touches the Blazor WebAssembly app's logo and icon assets, the brand definition that names the logo and its size, and the page head that declares the favicon. The API and the database do not change. The proof of concept keeps its own assets and is reference only.
+Directors see the logo in the director app bar. Coaches, players, and spectators will see it in the public top bar and browser tab. The slice touches the Blazor WebAssembly app's logo and icon assets, the brand definition that names the logo and its size, and the page head that declares the favicon. The API and the database do not change.
 
 ## Constraints
 - Every logo asset in the app is replaced. No old asset stays in use.
@@ -24,7 +24,6 @@ Directors see the logo in the director app bar. Coaches, players, and spectators
 - The brand palettes do not change. The logo uses the brand teal and cream. Its one extra color is a clay accent, a lighter version of the rust Secondary so it reads on teal.
 - The asset set is: scalable vector marks for dark and light surfaces, a vector favicon, a multi-size favicon file (16, 32, and 48 pixels), a 180-pixel Apple touch icon, and 192- and 512-pixel install icons plus a 512-pixel maskable icon, all declared in a web app manifest.
 - The artwork is redrawn in-house and generated from code so it can be regenerated. The product owner reviews it.
-- New work stays outside the proof of concept.
 
 ## Open questions
 - Should this land before or with the public landing page, since that page puts the logo in a new top bar?

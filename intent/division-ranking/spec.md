@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice uses the .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not call OR-Tools. The ranking rules live in the domain model. The application layer holds the use cases that load a tournament, change a ranking, and save.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md). A **Ranking** is the ordered list of a division's **TournamentTeams**, strongest first. A team's **rank** is its position in that list. This slice does not use **Seed**, which means a team's later position inside a pool. It does not use Stage, Pool, Bracket, or Wave. In UI copy, "team" means the TournamentTeam, as the shorthand rule allows.
-
-The proof of concept is evidence of past behavior. Its [division detail](../../poc/docs/features/division-detail.md) page kept Rankings in a panel pinned beside every step, saved a source and a manual-override flag with each rank, randomized with a fixed seed so later steps could be repeated, and locked the ranking once play began. Where it disagrees with this spec, this spec wins.
+A **Ranking** is the ordered list of a division's **TournamentTeams**, strongest first. A team's **rank** is its position in that list. This slice does not use **Seed**, which means a team's later position inside a pool. It does not use Stage, Pool, Bracket, or Wave. In UI copy, "team" means the TournamentTeam.
 
 Presentation follows [../look-and-feel/spec.md](../look-and-feel/spec.md). The tournament dropdown follows [../current-tournament/spec.md](../current-tournament/spec.md). Entries and import follow [../tournament-teams/spec.md](../tournament-teams/spec.md). Archived tournaments follow [../tournament-lifecycle/spec.md](../tournament-lifecycle/spec.md). Roles follow [../sign-in-and-access/spec.md](../sign-in-and-access/spec.md). This spec adds to each of them only what is written here.
 
@@ -207,8 +205,8 @@ The intent left these open, or did not mention them. Change any of them before a
 
 ## Flagged for the owner
 
-- **Ranking layout may change with pools.** The [division pools intent](../division-pools/intent.md) asks whether the ranking stays its own step or becomes a panel beside every step, as the proof of concept had it. This spec builds it as a step, as this intent says. The pools spec may move it.
-- **Rankings never lock.** Here a ranking stays editable until the tournament is archived. The proof of concept locked it once play began. Later slices that build pools and run play will need to say whether, and when, a ranking stops changing, and what a late change does to pools.
+- **Ranking layout may change with pools.** The [division pools intent](../division-pools/intent.md) asks whether the ranking stays its own step or becomes a panel beside every step. This spec builds it as a step, as this intent says. The pools spec may move it.
+- **Rankings never lock.** Here a ranking stays editable until the tournament is archived. Later slices that build pools and run play will need to say whether, and when, a ranking stops changing, and what a late change does to pools.
 - **What "not ranked" means downstream.** A division can have teams and no saved ranking. The pools slice must decide whether it can fill pools from a division that is not ranked.
 - **Dragging by touch.** Whether MudBlazor's drop container drags reliably on phones and tablets is unconfirmed. The plan should check it. Typing a rank works either way.
 - **Leaving the app.** The browser's prompt on reload or close cannot carry CourtFlow's wording, and some browsers skip it unless the person has interacted with the page.
@@ -225,4 +223,4 @@ The intent left these open, or did not mention them. Change any of them before a
 - Ranking history, or who changed a ranking.
 - Recording that a ranking was randomized, or a repeatable random seed.
 - Locking a ranking once play starts.
-- Changing [poc/](../../poc/).
+- A saved source or a manual-override flag on a rank.

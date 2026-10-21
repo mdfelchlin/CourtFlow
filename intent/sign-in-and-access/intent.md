@@ -183,7 +183,7 @@ These are first drafts of the wording. Text in `{{ }}` is filled in when the ema
 ## Affected users and systems
 Directors and organizers now sign in, and are owners, editors, or viewers in one organization. CourtFlow operators review access requests and set up organizations. Coaches, players, and spectators still have no account and still use the public site.
 
-This touches the Blazor WebAssembly app (public top bar, director app bar, sign-in, Request Access, "You don't have access yet" page, organization page, and operator screen), the .NET API (who is signed in, which organization's data they can see, and what their role lets them change), the database (people, memberships, roles, invitations, and access requests), and outgoing email. It replaces the built-in Test Organization scope with the signed-in person's organization. It changes the public landing page slice's rule that "Login" goes straight to the tournament list. The proof of concept is reference only.
+This touches the Blazor WebAssembly app (public top bar, director app bar, sign-in, Request Access, "You don't have access yet" page, organization page, and operator screen), the .NET API (who is signed in, which organization's data they can see, and what their role lets them change), the database (people, memberships, roles, invitations, and access requests), and outgoing email. It replaces the built-in Test Organization scope with the signed-in person's organization. It changes the public landing page slice's rule that "Login" goes straight to the tournament list.
 
 ## Constraints
 - WorkOS handles sign-in, as the product intent already decided.
@@ -203,7 +203,6 @@ This touches the Blazor WebAssembly app (public top bar, director app bar, sign-
 - No limit on organization size.
 - Request Access never creates an account on its own. An operator approves every new person who doesn't come through an owner's invitation.
 - The existing Test Organization and its data are kept.
-- New work stays outside the proof of concept.
 
 ## Open questions
 - Email provider and sender address. Left to the spec.

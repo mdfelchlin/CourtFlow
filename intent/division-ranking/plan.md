@@ -2,7 +2,7 @@
 
 Follows the spec in [spec.md](spec.md) and the domain-driven design constraint in [../product/intent.md](../product/intent.md).
 
-A ranking is part of the **Tournament**, beside its divisions and entries. A division is ranked only when it has `RankingPlace` rows. Not ranked stores nothing, so the last team leaving a ranked division returns it to not ranked with no extra flag. Adding, moving, and removing an entry update that ranking in the same operation, and one `SaveChangesAsync` writes both. The application layer loads the tournament, lists or saves the ranking, and orders an unranked division by name. The API and the Blazor app stay outside the domain. On-screen words live in `RankingWording` so the Format page and the editor cannot drift. [poc/](../../poc/) stays untouched.
+A ranking is part of the **Tournament**, beside its divisions and entries. A division is ranked only when it has `RankingPlace` rows. Not ranked stores nothing, so the last team leaving a ranked division returns it to not ranked with no extra flag. Adding, moving, and removing an entry update that ranking in the same operation, and one `SaveChangesAsync` writes both. The application layer loads the tournament, lists or saves the ranking, and orders an unranked division by name. The API and the Blazor app stay outside the domain. On-screen words live in `RankingWording` so the Format page and the editor cannot drift.
 
 Saving a ranking that is already stored updates the existing places in place. Inserting a fresh set on every save would collide with the unique entry index while the old rows were still present. Reordering can also give two places the same rank for a moment inside one save. The unique rank constraint is therefore deferrable, so Postgres checks it at the end of the statement. The unique entry constraint stays immediate.
 
@@ -157,9 +157,7 @@ Web changes to existing tests:
 - **Simultaneous saves.** Two people saving different orders for the same teams are not simulated. The last save wins.
 - **Screen reader delivery.** The live region text is asserted. A reader announcing it is not.
 
-## Proof of concept left behind
-
-[poc/docs/features/division-detail.md](../../poc/docs/features/division-detail.md) had these, and this slice does not carry them forward:
+## Not in this slice
 
 - A ranking panel pinned beside every step, with a saved source and a manual-override flag.
 - A fixed random seed so a later step could repeat the same shuffle.

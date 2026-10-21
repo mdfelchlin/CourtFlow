@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice uses the .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not call WorkOS, OR-Tools, or Supabase. Supabase is the hosted Postgres when deployment is in scope.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md) where this slice uses them. **Tournament** is one competitive event. **Organization** is the boundary that owns tournaments. A **venue** is a place where that tournament is played. A **court** is one numbered playing surface at that venue. This slice does not use Event, Club, Team, Division, or Wave.
-
-The proof of concept is evidence of past behavior. Where it disagrees with this spec, this spec wins.
+**Tournament** is one competitive event. **Organization** is the boundary that owns tournaments. A **venue** is a place where that tournament is played. A **court** is one numbered playing surface at that venue. This slice does not use Event, Club, Team, Division, or Wave.
 
 ## What the director can do
 
@@ -88,8 +86,6 @@ The Blazor app talks only to the .NET API. The API uses Entity Framework Core to
 This slice does not detect simultaneous edits. The last save wins.
 
 ## Deliberately not in this slice
-
-The proof of concept did these on the tournament editor. This slice does not.
 
 - Sign-in, Clerk, and choosing an organization.
 - Publish, unpublish, archive, un-archive, and a public event link.

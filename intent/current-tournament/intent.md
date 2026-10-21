@@ -18,14 +18,13 @@ The Teams page uses this dropdown. It no longer has its own tournament picker un
 The tournament list does not show the dropdown. That page is the list of tournaments, not work inside one. The tournament editor does not show it either. That page already opens one tournament from its address.
 
 ## Affected users and systems
-Directors use the Blazor WebAssembly app. This slice adds the shared dropdown and moves the Teams page onto it. The API and the database do not change. Coaches, players, and spectators do not use it. The proof of concept is reference only.
+Directors use the Blazor WebAssembly app. This slice adds the shared dropdown and moves the Teams page onto it. The API and the database do not change. Coaches, players, and spectators do not use it.
 
 ## Constraints
 - The dropdown is on the page, in line with the title. It is not in the app bar.
 - One current tournament is shared by the pages that use the dropdown.
 - The tournament list and the tournament editor do not show it.
 - With no current tournament, the dropdown shows "Select tournament".
-- New work stays outside the proof of concept.
 
 ## Open questions
 None.

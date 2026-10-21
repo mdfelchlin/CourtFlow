@@ -2,9 +2,7 @@
 
 Follows the accepted intent in [intent.md](intent.md). The north star in [../product/intent.md](../product/intent.md) locks the stack. This slice uses the .NET API, Blazor WebAssembly with MudBlazor, Entity Framework Core, and local Postgres. It does not call WorkOS, OR-Tools, or Supabase. The lifecycle rules live on the **Tournament** in the domain model. The application layer holds the use cases that load a tournament, call one transition, and save.
 
-Words match [poc/CONTEXT.md](../../poc/CONTEXT.md) where this slice uses them, with one exception. The proof of concept calls the first state `draft`. This slice calls it **Unpublished**, as the intent does. The three states are **Unpublished**, **Published**, and **Archived**.
-
-The proof of concept is evidence of past behavior. Its [tournament editor](../../poc/docs/features/tournaments.md) restored an archived tournament to published, let an archived tournament go to draft, and auto-archived a number of days after the end date. Where it disagrees with this spec, this spec wins.
+The three states are **Unpublished**, **Published**, and **Archived**. The first state is **Unpublished**, as the intent says.
 
 Tournament details, venues, and delete otherwise follow [../tournament-setup/spec.md](../tournament-setup/spec.md). Divisions follow [../tournament-divisions/spec.md](../tournament-divisions/spec.md). Entries and import follow [../tournament-teams/spec.md](../tournament-teams/spec.md). The shared dropdown follows [../current-tournament/spec.md](../current-tournament/spec.md). This spec adds to each of them only what is written here.
 
@@ -151,7 +149,6 @@ The intent left these open, or did not mention them. Change any of them before a
 
 ## Flagged for the owner
 
-- **Terms disagree with the proof of concept's glossary.** [poc/CONTEXT.md](../../poc/CONTEXT.md) calls the first state `draft`. This spec uses "Unpublished." The glossary is not changed here. The domain glossary should be updated when one exists outside `poc/`.
 - **Viewers and archived tournaments.** The accepted [sign-in and access intent](../sign-in-and-access/intent.md) says viewers see published tournaments and not unpublished ones. It does not say whether viewers see archived tournaments. That slice's spec should decide.
 - **Deactivated organizations.** That same intent removes a deactivated organization's published tournaments from the public site and puts them back on reactivation. This spec keeps archiving them automatically on schedule while the organization is deactivated, so a tournament may come back already Archived. That slice's spec should confirm or change this.
 - **"Within one day" while down.** CourtFlow can keep the one-day promise only while it is running. After an outage, overdue tournaments are archived on the next check.
@@ -165,4 +162,3 @@ The intent left these open, or did not mention them. Change any of them before a
 - Restoring straight to Published.
 - Recovering a deleted tournament.
 - Sign-in, roles, and who may publish. Until sign-in exists, anyone who can reach the director app can use every action.
-- Changing [poc/](../../poc/).
