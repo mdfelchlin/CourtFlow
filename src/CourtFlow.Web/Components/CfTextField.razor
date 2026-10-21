@@ -7,7 +7,7 @@
 }
 else
 {
-    <div @attributes="AdditionalAttributes">
+    <div class="@FieldClass" @attributes="AdditionalAttributes">
         @Input
     </div>
 }
@@ -22,6 +22,11 @@ else
 
     /// <summary>When false, the label is not shown. <see cref="AriaLabel"/> still names the field.</summary>
     [Parameter] public bool ShowLabel { get; set; } = true;
+
+    /// <summary>Centers the text in the field.</summary>
+    [Parameter] public bool CenterText { get; set; }
+
+    private string? FieldClass => CenterText ? CfDefaults.CenterTextClass : null;
 
     private RenderFragment Input => @<MudTextField T="string"
                                                     Value="@Value"

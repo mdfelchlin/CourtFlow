@@ -97,11 +97,9 @@ public class FormatPageTests : BunitContext, IDisposable
         cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("[data-testid=format-row]").Count));
         var text = cut.Find("table").TextContent;
         Assert.Contains("12U Club (Female)", text);
-        Assert.Contains("1 team.", text);
+        Assert.Equal(["1", "3", "0"], cut.FindAll("[data-testid=format-team-count]").Select(cell => cell.TextContent.Trim()));
         Assert.Contains(RankingWording.NotRanked, text);
-        Assert.Contains("3 teams.", text);
         Assert.Contains("Ranked, 1 new team at the bottom.", text);
-        Assert.Contains("0 teams.", text);
         Assert.Contains(RankingWording.AddTeamsFirst, text);
         Assert.True(cut.Find($"#edit-format-{men.Id}").HasAttribute("disabled"));
         Assert.False(cut.Find($"#edit-format-{club.Id}").HasAttribute("disabled"));

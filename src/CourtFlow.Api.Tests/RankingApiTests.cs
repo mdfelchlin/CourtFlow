@@ -35,12 +35,12 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
 
         Assert.Equal(["12U Club", "14U Open", "14U Open"], format.Select(division => division.Name).ToArray());
         Assert.Equal(["Female", "Female", "Male"], format.Select(division => division.Gender).ToArray());
-        Assert.Equal("1 team.", RankingWording.TeamCount(format[0].TeamCount));
+        Assert.Equal(1, format[0].TeamCount);
         Assert.Equal(RankingWording.NotRanked, format[0].Ranking);
-        Assert.Equal("3 teams.", RankingWording.TeamCount(format[1].TeamCount));
+        Assert.Equal(3, format[1].TeamCount);
         Assert.Equal("Ranked, 1 new team at the bottom.", format[1].Ranking);
         Assert.Equal(RankingWording.AddTeamsFirst, format[2].Ranking);
-        Assert.Equal("0 teams.", RankingWording.TeamCount(format[2].TeamCount));
+        Assert.Equal(0, format[2].TeamCount);
     }
 
     [Fact]

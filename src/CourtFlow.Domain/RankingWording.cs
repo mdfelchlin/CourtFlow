@@ -33,8 +33,6 @@ public static class RankingWording
             : $"Ranked, {newTeams} new teams at the bottom.";
     }
 
-    public static string TeamCount(int count) => count == 1 ? "1 team." : $"{count} teams.";
-
     public static string RankRejected(int count) => $"Enter a rank from 1 to {count},";
 
     public static string Moved(string teamName, int rank, int total) =>

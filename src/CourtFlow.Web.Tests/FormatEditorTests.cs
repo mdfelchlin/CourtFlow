@@ -40,6 +40,9 @@ public class FormatEditorTests : BunitContext, IDisposable
         ranking.WaitForAssertion(() => Assert.Contains("Ohio St U", ranking.Markup));
         Assert.Equal("Back to format", ranking.Find("a[href='/format']").GetAttribute("aria-label"));
         Assert.Contains("City Cup", ranking.Find("[data-testid=tournament-name]").TextContent);
+        Assert.Contains("1. Ranking", Step(ranking, "Ranking").TextContent);
+        Assert.Contains("2. Pools", Step(ranking, "Pools").TextContent);
+        Assert.Contains("3. Brackets", Step(ranking, "Brackets").TextContent);
         Assert.Equal("page", Step(ranking, "Ranking").GetAttribute("aria-current"));
         Assert.Null(Step(ranking, "Pools").GetAttribute("aria-current"));
         Assert.EndsWith($"/format/{division.Id}/ranking", Step(ranking, "Ranking").GetAttribute("href"));
@@ -182,13 +185,17 @@ public class FormatEditorTests : BunitContext, IDisposable
         cut.WaitForAssertion(() => Assert.Equal(["alpha", "Alpha"], cut.Instance.Order));
         Assert.Contains(RankingWording.NameOrderAlert, cut.Markup);
         Assert.Contains(RankingWording.NotRanked, cut.Find("[data-testid=ranking-status]").TextContent);
+        Assert.Equal("Ranking", cut.Find("[data-testid=ranking-column]").TextContent.Trim());
+        Assert.Contains("Team", cut.Markup);
+        Assert.Contains("Club", cut.Markup);
         Assert.False(cut.Find("#save-ranking").HasAttribute("disabled"));
         Assert.True(cut.Find("#discard-ranking").HasAttribute("disabled"));
 
         cut.Find("#save-ranking").Click();
         cut.WaitForAssertion(() => Assert.Equal(1, _api.SaveRankingCalls));
         Assert.Equal([teams[1].Id, teams[0].Id], _api.LastRankingSaved);
-        cut.WaitForAssertion(() => Assert.Equal(RankingWording.Ranked, cut.Find("[data-testid=ranking-status]").TextContent.Trim()));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=ranking-status]")));
+        Assert.Equal("Ranking", cut.Find("[data-testid=ranking-column]").TextContent.Trim());
         Assert.DoesNotContain(RankingWording.NameOrderAlert, cut.Markup);
         Assert.Contains(Services.GetRequiredService<ISnackbar>().ShownSnackbars, snackbar => snackbar.Message == Feedback.SavedMessage);
 

@@ -36,17 +36,19 @@ else
             @for (var i = 0; i < Steps.Length; i++)
             {
                 var step = Steps[i];
+                var number = i + 1;
+                var href = StepHref(i);
                 var current = Current == step.Path;
-                if (i > 0)
+                if (number > 1)
                 {
                     <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" aria-hidden="true" />
                 }
-                <MudButton Href="@StepHref(i)"
+                <MudButton Href="@href"
                            Variant="@(current ? Variant.Filled : Variant.Outlined)"
                            Color="@(current ? Color.Primary : Color.Default)"
                            Size="@CfDefaults.ButtonSize"
                            aria-current="@(current ? "page" : null)">
-                    @(i + 1). @step.Label
+                    @number. @step.Label
                 </MudButton>
             }
         </MudStack>
@@ -67,8 +69,12 @@ else
         }
         else
         {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2" Wrap="Wrap.Wrap">
-                <MudText Typo="Typo.body1" data-testid="ranking-status">@StatusText</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="2" Wrap="Wrap.Wrap">
+                @if (StatusText != RankingWording.Ranked)
+                {
+                    <MudText Typo="Typo.body2" data-testid="ranking-status">@StatusText</MudText>
+                    <MudSpacer />
+                }
                 @if (!IsReadOnly)
                 {
                     <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
@@ -85,6 +91,8 @@ else
             }
 
             <MudText Typo="Typo.body2" aria-live="polite" data-testid="ranking-live">@announcement</MudText>
+
+            @ColumnHead
 
             @if (IsReadOnly)
             {
@@ -225,34 +233,36 @@ else
         StateHasChanged();
     }
 
-    private RenderFragment Row(RankingRow row, bool editable) => @<MudStack Spacing="0">
-        <MudGrid Spacing="1">
+    private RenderFragment ColumnHead => @<MudGrid Spacing="2" Class="@($"px-3 {CfDefaults.AlignCenterClass}")">
+        @if (!IsReadOnly)
+        {
+            <MudItem xs="2" sm="1" md="1"></MudItem>
+        }
+        <MudItem xs="@(IsReadOnly ? 5 : 4)" sm="@(IsReadOnly ? 6 : 5)" md="@(IsReadOnly ? 6 : 5)">
+            <MudText Typo="Typo.subtitle2">Team</MudText>
+        </MudItem>
+        <MudItem xs="@(IsReadOnly ? 4 : 3)" sm="4" md="4">
+            <MudText Typo="Typo.subtitle2">Club</MudText>
+        </MudItem>
+        <MudItem xs="3" sm="2" md="2">
+            <MudText Typo="Typo.subtitle2" Align="Align.Center" data-testid="ranking-column">Ranking</MudText>
+        </MudItem>
+    </MudGrid>;
+
+    private RenderFragment Row(RankingRow row, bool editable) => @<MudPaper Outlined="true" Elevation="0" Class="px-3 py-2 mb-2">
+        <MudGrid Spacing="2" Class="@CfDefaults.AlignCenterClass">
             @if (editable)
             {
                 <MudItem xs="2" sm="1" md="1">
-                    <MudDragHandle T="RankingRow" aria-label="@RankingWording.DragOf(row.TeamName, row.ClubName)">
-                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" aria-hidden="true" />
-                    </MudDragHandle>
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center">
+                        <MudDragHandle T="RankingRow" Class="pa-2" aria-label="@RankingWording.DragOf(row.TeamName, row.ClubName)">
+                            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Medium" aria-hidden="true" />
+                        </MudDragHandle>
+                    </MudStack>
                 </MudItem>
             }
-            <MudItem xs="3" sm="2" md="1">
-                @if (editable)
-                {
-                    <CfTextField @key="@($"{row.EntryId}:{rankEpoch}")"
-                                 Label="Rank"
-                                 ShowLabel="false"
-                                 AriaLabel="@RankingWording.RankOf(row.TeamName, row.ClubName)"
-                                 Value="@ShownRank(row)"
-                                 ValueChanged="@(value => CommitRankAsync(row, value))"
-                                 data-testid="@($"rank-{row.EntryId}")" />
-                }
-                else
-                {
-                    <MudText Typo="Typo.body1" data-testid="@($"rank-{row.EntryId}")">@RankText(row)</MudText>
-                }
-            </MudItem>
-            <MudItem xs="@(editable ? 7 : 9)" sm="@(editable ? 5 : 6)" md="@(editable ? 6 : 7)">
-                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <MudItem xs="@(editable ? 4 : 5)" sm="@(editable ? 5 : 6)" md="@(editable ? 5 : 6)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
                     <MudText Typo="Typo.body1" data-testid="ranking-team">@row.TeamName</MudText>
                     @if (row.IsNew)
                     {
@@ -260,12 +270,28 @@ else
                     }
                 </MudStack>
             </MudItem>
-            <MudItem xs="12" sm="4" md="4">
+            <MudItem xs="@(editable ? 3 : 4)" sm="4" md="4">
                 <MudText Typo="Typo.body2">@row.ClubName</MudText>
             </MudItem>
+            <MudItem xs="3" sm="2" md="2">
+                @if (editable)
+                {
+                    <CfTextField @key="@($"{row.EntryId}:{rankEpoch}")"
+                                 Label="Rank"
+                                 ShowLabel="false"
+                                 CenterText="true"
+                                 AriaLabel="@RankingWording.RankOf(row.TeamName, row.ClubName)"
+                                 Value="@ShownRank(row)"
+                                 ValueChanged="@(value => CommitRankAsync(row, value))"
+                                 data-testid="@($"rank-{row.EntryId}")" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1" Align="Align.Center" data-testid="@($"rank-{row.EntryId}")">@RankText(row)</MudText>
+                }
+            </MudItem>
         </MudGrid>
-        <MudDivider Class="my-1" />
-    </MudStack>;
+    </MudPaper>;
 
     private static bool SelectsRanking(RankingRow row, string zone) => zone == "ranking";
 

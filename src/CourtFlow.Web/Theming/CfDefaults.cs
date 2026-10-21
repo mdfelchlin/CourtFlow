@@ -31,6 +31,12 @@ public static class CfDefaults
     /// <summary>MudBlazor's own class for the palette's secondary text color.</summary>
     public const string SecondaryTextClass = "mud-text-secondary";
 
+    /// <summary>MudBlazor's flex utility that centers a row's children on the cross axis.</summary>
+    public const string AlignCenterClass = "align-center";
+
+    /// <summary>MudBlazor's utility that centers the text inside an element, including a rank field.</summary>
+    public const string CenterTextClass = "mud-typography-align-center";
+
     /// <summary>
     /// The brand link and its name in an app bar. MudBlazor 8.13 ships no truncation utility, so the
     /// two rules behind these names live in <c>wwwroot/css/app.css</c>. They let the word CourtFlow

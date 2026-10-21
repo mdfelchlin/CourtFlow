@@ -56,7 +56,7 @@
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Division" data-testid="format-row">@Division.Label(context.Name, context.Gender)</MudTd>
-                <MudTd DataLabel="Teams">@RankingWording.TeamCount(context.TeamCount)</MudTd>
+                <MudTd DataLabel="Teams" data-testid="format-team-count">@context.TeamCount</MudTd>
                 <MudTd DataLabel="Ranking">@context.Ranking</MudTd>
                 <MudTd DataLabel="Actions">
                     <MudStack Row="true" Justify="Justify.FlexEnd">
