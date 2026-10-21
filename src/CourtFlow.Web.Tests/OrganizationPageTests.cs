@@ -1,8 +1,10 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using MudBlazor;
 
 namespace CourtFlow.Web.Tests;
@@ -30,7 +32,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Members_and_invitations_render_under_the_organization_name()
+    public void MembersAndInvitationsRenderUnderTheOrganizationName()
     {
         var cut = RenderPage();
 
@@ -42,7 +44,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void The_last_owner_cannot_be_demoted_or_removed()
+    public void TheLastOwnerCannotBeDemotedOrRemoved()
     {
         var cut = RenderPage();
 
@@ -55,7 +57,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Changing_a_role_calls_the_api_at_once()
+    public void ChangingARoleCallsTheApiAtOnce()
     {
         var cut = RenderPage();
         var editorRole = cut.FindComponents<MudSelect<OrganizationRole>>()[1];
@@ -66,7 +68,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Remove_confirms_then_calls_the_api()
+    public void RemoveConfirmsThenCallsTheApi()
     {
         var cut = RenderPage();
 
@@ -78,7 +80,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Cancel_confirms_then_calls_the_api()
+    public void CancelConfirmsThenCallsTheApi()
     {
         var cut = RenderPage();
 
@@ -90,7 +92,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Resend_works_on_an_expired_invitation()
+    public void ResendWorksOnAnExpiredInvitation()
     {
         var cut = RenderPage();
 
@@ -101,7 +103,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Invite_defaults_to_editor_and_sends_the_email()
+    public void InviteDefaultsToEditorAndSendsTheEmail()
     {
         var cut = RenderPage();
 
@@ -116,7 +118,7 @@ public class OrganizationPageTests : AccessTestContext
     }
 
     [Fact]
-    public void A_refused_invitation_keeps_the_dialog_open_with_the_message()
+    public void ARefusedInvitationKeepsTheDialogOpenWithTheMessage()
     {
         Api.RejectAccessWith = "This person already belongs to another organization.";
         var cut = RenderPage();

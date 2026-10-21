@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
+
 using CourtFlow.Application.Access;
+
 using Microsoft.Extensions.Logging;
 
 namespace CourtFlow.Infrastructure.Captcha;
@@ -10,7 +12,7 @@ public sealed class TurnstileOptions
 }
 
 /// <summary>Checks a Cloudflare Turnstile answer. Anything other than a clear yes counts as a failed check.</summary>
-public sealed class TurnstileVerifier(HttpClient http, TurnstileOptions options, ILogger<TurnstileVerifier> logger) : ICaptchaVerifier
+public sealed partial class TurnstileVerifier(HttpClient http, TurnstileOptions options, ILogger<TurnstileVerifier> logger) : ICaptchaVerifier
 {
     private const string VerifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -34,10 +36,13 @@ public sealed class TurnstileVerifier(HttpClient http, TurnstileOptions options,
         }
         catch (HttpRequestException exception)
         {
-            logger.LogWarning(exception, "Turnstile could not be reached.");
+            LogUnreachable(logger, exception);
             return false;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Turnstile could not be reached.")]
+    private static partial void LogUnreachable(ILogger logger, Exception exception);
 
     private sealed record SiteVerify(bool Success);
 }

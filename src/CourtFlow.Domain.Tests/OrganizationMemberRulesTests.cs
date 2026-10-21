@@ -5,7 +5,7 @@ namespace CourtFlow.Domain.Tests;
 public class OrganizationMemberRulesTests
 {
     [Fact]
-    public void A_new_organization_is_active_with_no_members()
+    public void ANewOrganizationIsActiveWithNoMembers()
     {
         var organization = Organization.Create("Rapids Volleyball");
 
@@ -14,7 +14,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void A_member_keeps_a_normalized_email_and_a_trimmed_name()
+    public void AMemberKeepsANormalizedEmailAndATrimmedName()
     {
         var organization = Organization.Create("Rapids Volleyball");
 
@@ -26,7 +26,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void The_same_user_cannot_be_added_twice()
+    public void TheSameUserCannotBeAddedTwice()
     {
         var organization = Organization.Create("Rapids Volleyball");
         organization.AddMember("user_1", "pat@example.com", "Pat", OrganizationRole.Owner);
@@ -38,7 +38,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void The_last_owner_cannot_be_removed()
+    public void TheLastOwnerCannotBeRemoved()
     {
         var organization = WithOwner(out var owner);
 
@@ -51,7 +51,7 @@ public class OrganizationMemberRulesTests
     [Theory]
     [InlineData(OrganizationRole.Editor)]
     [InlineData(OrganizationRole.Viewer)]
-    public void The_last_owner_cannot_be_demoted(OrganizationRole role)
+    public void TheLastOwnerCannotBeDemoted(OrganizationRole role)
     {
         var organization = WithOwner(out var owner);
 
@@ -62,7 +62,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void With_a_second_owner_an_owner_can_be_demoted_or_removed()
+    public void WithASecondOwnerAnOwnerCanBeDemotedOrRemoved()
     {
         var organization = WithOwner(out var first);
         var second = organization.AddMember("user_2", "sam@example.com", "Sam", OrganizationRole.Owner);
@@ -76,7 +76,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void Editors_and_viewers_can_be_removed_while_an_owner_remains()
+    public void EditorsAndViewersCanBeRemovedWhileAnOwnerRemains()
     {
         var organization = WithOwner(out _);
         var editor = organization.AddMember("user_2", "sam@example.com", "Sam", OrganizationRole.Editor);
@@ -87,7 +87,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void Is_last_owner_counts_only_owners()
+    public void IsLastOwnerCountsOnlyOwners()
     {
         var organization = WithOwner(out var owner);
         organization.AddMember("user_2", "sam@example.com", "Sam", OrganizationRole.Editor);
@@ -99,7 +99,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void A_profile_refresh_updates_the_copied_email_and_name()
+    public void AProfileRefreshUpdatesTheCopiedEmailAndName()
     {
         var organization = WithOwner(out var owner);
 
@@ -110,7 +110,7 @@ public class OrganizationMemberRulesTests
     }
 
     [Fact]
-    public void Deactivate_and_reactivate_flip_the_status_and_public_visibility()
+    public void DeactivateAndReactivateFlipTheStatusAndPublicVisibility()
     {
         var organization = Organization.Create("Rapids Volleyball");
         Assert.True(organization.IsVisibleToPublic);
@@ -129,13 +129,13 @@ public class OrganizationMemberRulesTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void An_organization_needs_a_name(string name)
+    public void AnOrganizationNeedsAName(string name)
     {
         Assert.Throws<DomainRuleException>(() => Organization.Create(name));
     }
 
     [Fact]
-    public void An_organization_name_is_at_most_100_characters()
+    public void AnOrganizationNameIsAtMost100Characters()
     {
         Organization.Create(new string('a', 100));
         Assert.Throws<DomainRuleException>(() => Organization.Create(new string('a', 101)));

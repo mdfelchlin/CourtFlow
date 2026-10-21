@@ -1,4 +1,5 @@
 using CourtFlow.Web.Theming;
+
 using MudBlazor;
 using MudBlazor.Utilities;
 
@@ -13,7 +14,7 @@ public class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public void Text_reads_on_background_and_surface(string mode)
+    public void TextReadsOnBackgroundAndSurface(string mode)
     {
         var palette = Palette(mode);
 
@@ -25,7 +26,7 @@ public class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public void App_bar_text_reads_on_the_app_bar(string mode)
+    public void AppBarTextReadsOnTheAppBar(string mode)
     {
         var palette = Palette(mode);
 
@@ -34,7 +35,7 @@ public class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public void Each_status_color_reads_against_its_contrast_text(string mode)
+    public void EachStatusColorReadsAgainstItsContrastText(string mode)
     {
         var palette = Palette(mode);
 
@@ -47,7 +48,7 @@ public class ThemeContrastTests
     }
 
     [Fact]
-    public void Drawer_text_reads_on_the_dark_drawer()
+    public void DrawerTextReadsOnTheDarkDrawer()
     {
         var palette = CourtFlowTheme.Theme.PaletteDark;
 
@@ -57,7 +58,7 @@ public class ThemeContrastTests
     /// <summary>MudBlazor uses Primary as text for links and the active drawer item.</summary>
     [Theory]
     [MemberData(nameof(Modes))]
-    public void Primary_reads_as_text_on_every_surface(string mode)
+    public void PrimaryReadsAsTextOnEverySurface(string mode)
     {
         var palette = Palette(mode);
 

@@ -1,14 +1,17 @@
 using System.Net;
+
 using CourtFlow.Application.Access;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
 using CourtFlow.Infrastructure.Email;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -16,7 +19,7 @@ public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task An_action_and_its_email_save_together()
+    public async Task AnActionAndItsEmailSaveTogether()
     {
         await InviteAsync("new@club.test");
 
@@ -25,7 +28,7 @@ public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_failing_save_leaves_no_email()
+    public async Task AFailingSaveLeavesNoEmail()
     {
         await factory.WithDbAsync(async db =>
         {
@@ -40,7 +43,7 @@ public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Due_emails_are_sent()
+    public async Task DueEmailsAreSent()
     {
         await InviteAsync("new@club.test");
 
@@ -53,7 +56,7 @@ public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_failing_sender_retries_on_schedule_and_gives_up_after_5_retries()
+    public async Task AFailingSenderRetriesOnScheduleAndGivesUpAfter5Retries()
     {
         await InviteAsync("new@club.test");
         factory.Email.Fails = true;
@@ -81,7 +84,7 @@ public sealed class EmailOutboxTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_action_succeeds_whatever_the_sender_does()
+    public async Task TheActionSucceedsWhateverTheSenderDoes()
     {
         factory.Email.Fails = true;
 

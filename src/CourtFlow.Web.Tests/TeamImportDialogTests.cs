@@ -1,10 +1,14 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -26,10 +30,14 @@ public class TeamImportDialogTests : BunitContext, IDisposable
         Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Opening_shows_the_title_template_link_and_a_disabled_import()
+    public void OpeningShowsTheTitleTemplateLinkAndADisabledImport()
     {
         var dialogs = OpenImport();
 
@@ -40,7 +48,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task An_oversized_file_is_refused_before_any_api_call()
+    public async Task AnOversizedFileIsRefusedBeforeAnyApiCall()
     {
         var dialogs = OpenImport();
 
@@ -53,7 +61,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_file_error_from_the_api_shows_its_message_and_no_table()
+    public async Task AFileErrorFromTheApiShowsItsMessageAndNoTable()
     {
         _api.ImportPreview = new TeamImportPreviewResponse(
             "The file is empty.",
@@ -71,7 +79,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task The_preview_lists_rows_and_hides_rejected_only_until_there_is_a_rejection()
+    public async Task ThePreviewListsRowsAndHidesRejectedOnlyUntilThereIsARejection()
     {
         _api.ImportPreview = Preview(
             Row(2, TeamImportOutcome.AddNewClubAndTeam, null, null),
@@ -89,7 +97,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Rejected_rows_show_an_icon_and_the_switch_narrows_the_table()
+    public async Task RejectedRowsShowAnIconAndTheSwitchNarrowsTheTable()
     {
         _api.ImportPreview = Preview(
             Row(2, TeamImportOutcome.AddNewTeam, null, null),
@@ -110,13 +118,14 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_stale_response_shows_the_new_preview()
+    public async Task AStaleResponseShowsTheNewPreview()
     {
         _api.ImportPreview = Preview(Row(2, TeamImportOutcome.AddNewTeam, null, null));
         _api.ImportResponse = new TeamImportResponse(
             null,
             Preview(Row(2, TeamImportOutcome.Rejected, null, "Add the division \"14U Open (Female)\" to the tournament before importing."))
-                with { Stale = true });
+                with
+            { Stale = true });
         var dialogs = OpenImport();
         await Choose(dialogs, SmallCsv());
         dialogs.WaitForAssertion(() => Assert.False(dialogs.Find("#import").HasAttribute("disabled")));
@@ -132,7 +141,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_successful_import_closes_the_dialog_and_reloads_the_page()
+    public async Task ASuccessfulImportClosesTheDialogAndReloadsThePage()
     {
         _api.ImportPreview = Preview(Row(2, TeamImportOutcome.AddNewClubAndTeam, null, null));
         _api.ImportResponse = new TeamImportResponse(new TeamImportResultResponse(157), null);
@@ -150,7 +159,7 @@ public class TeamImportDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Cancel_calls_no_import()
+    public void CancelCallsNoImport()
     {
         var dialogs = OpenImport();
 

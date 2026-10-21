@@ -1,10 +1,14 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -26,7 +30,11 @@ public class TournamentStatusTests : BunitContext, IDisposable
         Services.AddScoped<Confirmations>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     // ----- The badge -----
 
@@ -34,7 +42,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     [InlineData(TournamentStatus.Unpublished, "Unpublished")]
     [InlineData(TournamentStatus.Published, "Published")]
     [InlineData(TournamentStatus.Archived, "Archived")]
-    public void Badge_names_the_state(TournamentStatus status, string expected)
+    public void BadgeNamesTheState(TournamentStatus status, string expected)
     {
         var cut = Render<CfStatusBadge>(parameters => parameters.Add(badge => badge.Status, status));
 
@@ -42,7 +50,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void List_shows_each_tournament_state()
+    public void ListShowsEachTournamentState()
     {
         _api.Tournaments.Add(Sample(name: "Winter Cup"));
         _api.Tournaments.Add(Sample(name: "Spring Classic", status: TournamentStatus.Published));
@@ -59,7 +67,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     // ----- The status bar -----
 
     [Fact]
-    public void An_unpublished_tournament_offers_only_publish()
+    public void AnUnpublishedTournamentOffersOnlyPublish()
     {
         var cut = RenderEditor(Sample());
 
@@ -71,7 +79,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_published_tournament_offers_unpublish_and_archive()
+    public void APublishedTournamentOffersUnpublishAndArchive()
     {
         var cut = RenderEditor(Published());
 
@@ -82,7 +90,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_tournament_offers_only_restore()
+    public void AnArchivedTournamentOffersOnlyRestore()
     {
         var cut = RenderEditor(Sample(status: TournamentStatus.Archived));
 
@@ -94,7 +102,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_published_tournament_says_when_it_will_be_archived()
+    public void APublishedTournamentSaysWhenItWillBeArchived()
     {
         var cut = RenderEditor(Published());
 
@@ -104,7 +112,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Publishing_records_the_state_and_says_published()
+    public void PublishingRecordsTheStateAndSaysPublished()
     {
         var cut = RenderEditor(Sample());
 
@@ -116,7 +124,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Restoring_returns_the_tournament_to_unpublished()
+    public void RestoringReturnsTheTournamentToUnpublished()
     {
         var cut = RenderEditor(Sample(status: TournamentStatus.Archived));
 
@@ -130,7 +138,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     [Theory]
     [InlineData("#unpublish", TournamentStatusBar.UnpublishTitle, TournamentStatusBar.UnpublishWarning, TournamentStatusBar.UnpublishConfirmText)]
     [InlineData("#archive", TournamentStatusBar.ArchiveTitle, TournamentStatusBar.ArchiveWarning, TournamentStatusBar.ArchiveConfirmText)]
-    public void Unpublish_and_archive_warn_first_and_canceling_changes_nothing(
+    public void UnpublishAndArchiveWarnFirstAndCancelingChangesNothing(
         string button,
         string title,
         string warning,
@@ -153,7 +161,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_unpublish_hides_the_tournament_from_the_public()
+    public void ConfirmingUnpublishHidesTheTournamentFromThePublic()
     {
         var dialogs = Render<MudDialogProvider>();
         var cut = RenderEditor(Published());
@@ -168,7 +176,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_archive_locks_the_editor()
+    public void ConfirmingArchiveLocksTheEditor()
     {
         var dialogs = Render<MudDialogProvider>();
         var cut = RenderEditor(Published());
@@ -184,7 +192,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_rejected_action_warns_and_reloads_what_the_api_now_holds()
+    public void ARejectedActionWarnsAndReloadsWhatTheApiNowHolds()
     {
         var tournament = Published();
         var dialogs = Render<MudDialogProvider>();
@@ -205,7 +213,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     // ----- An archived tournament is read-only -----
 
     [Fact]
-    public void An_archived_editor_disables_the_fields_and_hides_save()
+    public void AnArchivedEditorDisablesTheFieldsAndHidesSave()
     {
         var cut = RenderEditor(Sample(status: TournamentStatus.Archived));
 
@@ -217,7 +225,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_editor_hides_the_venue_and_division_buttons()
+    public void AnArchivedEditorHidesTheVenueAndDivisionButtons()
     {
         var tournament = Sample(status: TournamentStatus.Archived);
         var venueId = Guid.NewGuid();
@@ -242,7 +250,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_tournament_can_still_be_deleted_but_a_published_one_cannot()
+    public void AnArchivedTournamentCanStillBeDeletedButAPublishedOneCannot()
     {
         var published = Sample(name: "Spring Classic", status: TournamentStatus.Published);
         var archived = Sample(name: "Fall Open", status: TournamentStatus.Archived);
@@ -260,7 +268,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Deleting_warns_that_it_cannot_be_undone()
+    public void DeletingWarnsThatItCannotBeUndone()
     {
         var tournament = Sample(status: TournamentStatus.Archived);
         _api.Tournaments.Add(tournament);
@@ -274,7 +282,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void The_dropdown_marks_an_archived_tournament()
+    public void TheDropdownMarksAnArchivedTournament()
     {
         var archived = Sample(name: "Fall Open", status: TournamentStatus.Archived);
         _api.Tournaments.Add(Sample(name: "Winter Cup"));
@@ -289,7 +297,7 @@ public class TournamentStatusTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_tournament_takes_no_new_teams()
+    public void AnArchivedTournamentTakesNoNewTeams()
     {
         var tournament = Sample(status: TournamentStatus.Archived);
         var divisionId = Guid.NewGuid();

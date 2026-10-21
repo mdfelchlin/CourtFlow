@@ -1,11 +1,12 @@
 using CourtFlow.Application.Email;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace CourtFlow.Infrastructure.Email;
 
 /// <summary>Sends due outbox rows. A failure is retried after 1, 5, 10, 20, and 30 minutes, then given up and left logged.</summary>
-public sealed class EmailOutboxSender(CourtFlowDbContext db, IEmailSender sender, ILogger<EmailOutboxSender> logger)
+public sealed partial class EmailOutboxSender(CourtFlowDbContext db, IEmailSender sender, ILogger<EmailOutboxSender> logger)
 {
     public static readonly IReadOnlyList<TimeSpan> RetryDelays =
     [
@@ -39,9 +40,9 @@ public sealed class EmailOutboxSender(CourtFlowDbContext db, IEmailSender sender
             {
                 email.MarkFailed(now, exception.Message, RetryDelays);
                 if (email.NextAttemptAt is null)
-                    logger.LogError(exception, "Gave up sending email {Id} ({Subject}) after {Attempts} attempts.", email.Id, email.Subject, email.Attempts);
+                    LogGaveUp(logger, exception, email.Id, email.Subject, email.Attempts);
                 else
-                    logger.LogWarning(exception, "Sending email {Id} ({Subject}) failed. It will be retried at {NextAttemptAt}.", email.Id, email.Subject, email.NextAttemptAt);
+                    LogRetry(logger, exception, email.Id, email.Subject, email.NextAttemptAt);
             }
 
             await db.SaveChangesAsync(cancellationToken);
@@ -49,4 +50,10 @@ public sealed class EmailOutboxSender(CourtFlowDbContext db, IEmailSender sender
 
         return sent;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Gave up sending email {Id} ({Subject}) after {Attempts} attempts.")]
+    private static partial void LogGaveUp(ILogger logger, Exception exception, Guid id, string subject, int attempts);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Sending email {Id} ({Subject}) failed. It will be retried at {NextAttemptAt}.")]
+    private static partial void LogRetry(ILogger logger, Exception exception, Guid id, string subject, DateTimeOffset? nextAttemptAt);
 }

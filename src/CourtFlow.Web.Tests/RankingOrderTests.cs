@@ -5,7 +5,7 @@ namespace CourtFlow.Web.Tests;
 public class RankingOrderTests
 {
     [Fact]
-    public void Move_matches_taking_a_row_out_and_inserting_it()
+    public void MoveMatchesTakingARowOutAndInsertingIt()
     {
         var items = new[] { "Alpha", "Bravo", "Charlie", "Delta" };
 
@@ -16,7 +16,7 @@ public class RankingOrderTests
     }
 
     [Fact]
-    public void Shuffle_uses_the_random_source_and_never_keeps_the_current_order()
+    public void ShuffleUsesTheRandomSourceAndNeverKeepsTheCurrentOrder()
     {
         var items = new[] { "Alpha", "Bravo", "Charlie" };
 
@@ -30,7 +30,7 @@ public class RankingOrderTests
 
     private sealed class FixedRandom(int value) : IRankingRandom
     {
-        public int Next(int maxExclusive)
+        public int NextValue(int maxExclusive)
         {
             var chosen = value < 0 ? 0 : value;
             return chosen >= maxExclusive ? maxExclusive - 1 : chosen;

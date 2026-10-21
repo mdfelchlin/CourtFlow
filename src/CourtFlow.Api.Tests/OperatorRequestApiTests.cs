@@ -1,16 +1,19 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Application.Access;
 using CourtFlow.Application.Organizations;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -18,7 +21,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Only_operators_can_use_it()
+    public async Task OnlyOperatorsCanUseIt()
     {
         Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().GetAsync("/api/operator/requests", TestContext.Current.CancellationToken)).StatusCode);
         Assert.Equal(AccessReasons.Forbidden, await ReasonAsync(await factory.CreateMemberClient().GetAsync("/api/operator/requests", TestContext.Current.CancellationToken)));
@@ -26,7 +29,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Waiting_requests_are_listed_oldest_first()
+    public async Task WaitingRequestsAreListedOldestFirst()
     {
         await AccessRequestApiTests.SubmitAsync(factory.CreateClient(), AccessRequestApiTests.Form("first@club.test"));
         factory.Clock.Advance(TimeSpan.FromHours(1));
@@ -38,7 +41,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approving_into_a_new_organization_creates_it_invites_the_owner_and_sends_email_3()
+    public async Task ApprovingIntoANewOrganizationCreatesItInvitesTheOwnerAndSendsEmail3()
     {
         var request = await SubmitAsync();
         factory.Email.Reset();
@@ -58,7 +61,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approving_into_an_existing_organization_uses_the_role_and_sends_email_4()
+    public async Task ApprovingIntoAnExistingOrganizationUsesTheRoleAndSendsEmail4()
     {
         var request = await SubmitAsync();
 
@@ -74,7 +77,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approving_someone_who_already_has_access_is_refused()
+    public async Task ApprovingSomeoneWhoAlreadyHasAccessIsRefused()
     {
         var request = await SubmitAsync();
         factory.AddMember(TestOrganizationSeed.Id, new TestUser("user_casey", "casey@club.test", "Casey"), OrganizationRole.Viewer);
@@ -85,7 +88,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approving_someone_with_a_pending_invitation_is_refused()
+    public async Task ApprovingSomeoneWithAPendingInvitationIsRefused()
     {
         var request = await SubmitAsync();
         (await PostAsync(factory.CreateMemberClient(), "/api/organization/invitations", new InviteMember("casey@club.test", OrganizationRole.Editor))).EnsureSuccessStatusCode();
@@ -96,7 +99,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approving_into_a_deactivated_organization_is_refused()
+    public async Task ApprovingIntoADeactivatedOrganizationIsRefused()
     {
         var request = await SubmitAsync();
         var gone = await factory.CreateOrganizationAsync("Gone Club", OrganizationStatus.Deactivated);
@@ -108,7 +111,7 @@ public sealed class OperatorRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Declining_denies_the_waitlist_entry_and_sends_email_5()
+    public async Task DecliningDeniesTheWaitlistEntryAndSendsEmail5()
     {
         var request = await SubmitAsync();
 

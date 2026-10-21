@@ -7,7 +7,7 @@ public class ClubTeamRulesTests
     private static readonly Guid Organization = Guid.NewGuid();
 
     [Fact]
-    public void Blank_club_name_is_rejected_and_a_real_name_is_trimmed()
+    public void BlankClubNameIsRejectedAndARealNameIsTrimmed()
     {
         var blank = Assert.Throws<DomainRuleException>(() => Club.Create(Organization, "   "));
         Assert.Equal(Club.NameRequired, blank.Message);
@@ -18,7 +18,7 @@ public class ClubTeamRulesTests
     }
 
     [Fact]
-    public void Blank_team_name_is_rejected_and_a_real_name_is_trimmed()
+    public void BlankTeamNameIsRejectedAndARealNameIsTrimmed()
     {
         var club = Club.Create(Organization, "Ohio State University");
 
@@ -31,7 +31,7 @@ public class ClubTeamRulesTests
     }
 
     [Fact]
-    public void Team_names_match_ignoring_case_and_spaces_within_a_club()
+    public void TeamNamesMatchIgnoringCaseAndSpacesWithinAClub()
     {
         var club = Club.Create(Organization, "Ohio State University");
         var team = club.AddTeam("Ohio St U");
@@ -42,7 +42,7 @@ public class ClubTeamRulesTests
     }
 
     [Fact]
-    public void Two_clubs_may_each_have_a_team_with_the_same_name()
+    public void TwoClubsMayEachHaveATeamWithTheSameName()
     {
         var first = Club.Create(Organization, "Ohio State University").AddTeam("Ohio St U");
         var second = Club.Create(Organization, "Ohio University").AddTeam("Ohio St U");
@@ -52,7 +52,7 @@ public class ClubTeamRulesTests
     }
 
     [Fact]
-    public void Renaming_to_another_teams_name_is_rejected_but_a_case_change_is_allowed()
+    public void RenamingToAnotherTeamsNameIsRejectedButACaseChangeIsAllowed()
     {
         var club = Club.Create(Organization, "Purdue University");
         var a = club.AddTeam("Purdue A");
@@ -67,7 +67,7 @@ public class ClubTeamRulesTests
     }
 
     [Fact]
-    public void Renaming_keeps_the_team_in_its_club()
+    public void RenamingKeepsTheTeamInItsClub()
     {
         var club = Club.Create(Organization, "Purdue University");
         var team = club.AddTeam("Purdue A");

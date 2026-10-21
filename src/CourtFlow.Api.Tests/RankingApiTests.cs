@@ -1,16 +1,19 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 using Npgsql;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -18,7 +21,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Format_list_reports_counts_and_ranking_status_in_division_order()
+    public async Task FormatListReportsCountsAndRankingStatusInDivisionOrder()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -44,7 +47,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_unranked_division_reads_back_in_name_order_and_saving_ranks_that_order()
+    public async Task AnUnrankedDivisionReadsBackInNameOrderAndSavingRanksThatOrder()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -66,7 +69,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Adding_moving_deleting_and_importing_keep_the_ranking_in_the_same_change()
+    public async Task AddingMovingDeletingAndImportingKeepTheRankingInTheSameChange()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -99,7 +102,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Renaming_a_team_or_division_does_not_change_the_ranking()
+    public async Task RenamingATeamOrDivisionDoesNotChangeTheRanking()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -120,7 +123,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_save_with_the_wrong_teams_writes_nothing()
+    public async Task ASaveWithTheWrongTeamsWritesNothing()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -139,7 +142,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Archived_save_is_rejected_and_a_viewer_cannot_save()
+    public async Task ArchivedSaveIsRejectedAndAViewerCannotSave()
     {
         var owner = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(owner, TournamentApiTests.Sample());
@@ -158,7 +161,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_organizations_division_is_not_found_and_deleting_a_tournament_removes_rankings()
+    public async Task AnotherOrganizationsDivisionIsNotFoundAndDeletingATournamentRemovesRankings()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -178,7 +181,7 @@ public sealed class RankingApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_database_refuses_a_repeated_entry_or_rank()
+    public async Task TheDatabaseRefusesARepeatedEntryOrRank()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());

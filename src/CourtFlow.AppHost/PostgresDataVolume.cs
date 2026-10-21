@@ -44,9 +44,8 @@ public static class PostgresDataVolume
             return;
         }
 
-        var docker = new DockerCli();
-        var namedVolumeExists = docker.VolumeExists(Name);
-        ComposeSource? source = namedVolumeExists ? null : docker.FindComposeSource(RepoRoot());
+        var namedVolumeExists = DockerCli.VolumeExists(Name);
+        ComposeSource? source = namedVolumeExists ? null : DockerCli.FindComposeSource(RepoRoot());
         var decision = Decide(namedVolumeExists, source?.VolumeName);
 
         if (decision.Action != PostgresVolumeAction.CopyFromSource)
@@ -55,15 +54,15 @@ public static class PostgresDataVolume
         }
 
         Console.WriteLine($"Copying existing Postgres data from {decision.SourceVolume} into {Name}.");
-        docker.StopContainer(source!.ContainerId);
-        docker.CreateVolume(Name);
+        DockerCli.StopContainer(source!.ContainerId);
+        DockerCli.CreateVolume(Name);
         try
         {
-            docker.CopyVolume(decision.SourceVolume!, Name);
+            DockerCli.CopyVolume(decision.SourceVolume!, Name);
         }
         catch
         {
-            docker.TryRemoveVolume(Name);
+            DockerCli.TryRemoveVolume(Name);
             throw;
         }
     }
@@ -86,9 +85,9 @@ public static class PostgresDataVolume
 
     sealed record ComposeSource(string ContainerId, string VolumeName);
 
-    sealed class DockerCli
+    static class DockerCli
     {
-        public bool VolumeExists(string name)
+        public static bool VolumeExists(string name)
         {
             var result = Run("volume", "inspect", name);
             if (result.ExitCode == 0)
@@ -104,7 +103,7 @@ public static class PostgresDataVolume
             throw DockerFailed(result);
         }
 
-        public ComposeSource? FindComposeSource(string repoRoot)
+        public static ComposeSource? FindComposeSource(string repoRoot)
         {
             var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             AddIds(ids, Run("ps", "-aq", "--filter", $"label={ComposeServiceLabel}=postgres"));
@@ -136,13 +135,13 @@ public static class PostgresDataVolume
             return nameMatch;
         }
 
-        public void StopContainer(string containerId) =>
+        public static void StopContainer(string containerId) =>
             RequireOk(Run("stop", containerId));
 
-        public void CreateVolume(string name) =>
+        public static void CreateVolume(string name) =>
             RequireOk(Run("volume", "create", name));
 
-        public void CopyVolume(string source, string destination) =>
+        public static void CopyVolume(string source, string destination) =>
             RequireOk(Run(
                 "run", "--rm",
                 "-v", $"{source}:/from:ro",
@@ -150,7 +149,7 @@ public static class PostgresDataVolume
                 "postgres:16",
                 "sh", "-c", "cp -a /from/. /to/"));
 
-        public void TryRemoveVolume(string name) =>
+        public static void TryRemoveVolume(string name) =>
             Run("volume", "rm", name);
 
         static void AddIds(HashSet<string> ids, DockerResult result)

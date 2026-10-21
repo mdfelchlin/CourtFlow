@@ -1,13 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Application;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -15,7 +17,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Venue_rules_match_the_domain_and_court_identity_is_kept()
+    public async Task VenueRulesMatchTheDomainAndCourtIdentityIsKept()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -51,7 +53,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     [InlineData("   ", 1)]
     [InlineData("Main Gym", -1)]
     [InlineData("Main Gym", 100)]
-    public async Task Invalid_venues_are_rejected(string name, int courtCount)
+    public async Task InvalidVenuesAreRejected(string name, int courtCount)
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -63,7 +65,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_missing_court_count_is_rejected()
+    public async Task AMissingCourtCountIsRejected()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -75,7 +77,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Venue_changes_for_a_missing_tournament_are_rejected()
+    public async Task VenueChangesForAMissingTournamentAreRejected()
     {
         var client = factory.CreateMemberClient();
         var missingTournament = Guid.NewGuid();
@@ -87,7 +89,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Deleting_a_tournament_deletes_its_venues_and_courts()
+    public async Task DeletingATournamentDeletesItsVenuesAndCourts()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -105,7 +107,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Deleting_a_venue_deletes_its_courts_and_leaves_the_tournament()
+    public async Task DeletingAVenueDeletesItsCourtsAndLeavesTheTournament()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -126,7 +128,7 @@ public sealed class VenueApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_organizations_venue_cannot_be_changed()
+    public async Task AnotherOrganizationsVenueCannotBeChanged()
     {
         var otherVenueId = await InsertOtherVenueAsync();
         var client = factory.CreateMemberClient();

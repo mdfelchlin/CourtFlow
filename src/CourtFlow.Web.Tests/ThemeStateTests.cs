@@ -9,7 +9,7 @@ public class ThemeStateTests
     [InlineData("dark", true, ThemeMode.Dark)]
     [InlineData("light", false, ThemeMode.Light)]
     [InlineData("light", true, ThemeMode.Light)]
-    public void A_valid_cookie_wins_over_the_system(string cookie, bool systemPrefersDark, ThemeMode expected)
+    public void AValidCookieWinsOverTheSystem(string cookie, bool systemPrefersDark, ThemeMode expected)
     {
         Assert.Equal(expected, ThemeState.Resolve(cookie, systemPrefersDark));
     }
@@ -20,7 +20,7 @@ public class ThemeStateTests
     [InlineData("blue", false, ThemeMode.Light)]
     [InlineData("blue", true, ThemeMode.Dark)]
     [InlineData("", true, ThemeMode.Dark)]
-    public void A_missing_or_invalid_cookie_follows_the_system(string? cookie, bool systemPrefersDark, ThemeMode expected)
+    public void AMissingOrInvalidCookieFollowsTheSystem(string? cookie, bool systemPrefersDark, ThemeMode expected)
     {
         Assert.Equal(expected, ThemeState.Resolve(cookie, systemPrefersDark));
     }
@@ -28,13 +28,13 @@ public class ThemeStateTests
     [Theory]
     [InlineData("DARK", ThemeMode.Dark)]
     [InlineData("Light", ThemeMode.Light)]
-    public void Cookie_case_is_ignored(string cookie, ThemeMode expected)
+    public void CookieCaseIsIgnored(string cookie, ThemeMode expected)
     {
         Assert.Equal(expected, ThemeState.Resolve(cookie, systemPrefersDark: expected == ThemeMode.Light));
     }
 
     [Fact]
-    public async Task Initialize_reads_the_store_once_and_never_writes()
+    public async Task InitializeReadsTheStoreOnceAndNeverWrites()
     {
         var store = new FakeThemePreferenceStore { Cookie = "dark" };
         var state = new ThemeState(store);
@@ -48,7 +48,7 @@ public class ThemeStateTests
     }
 
     [Fact]
-    public async Task Toggle_flips_the_mode_raises_changed_and_writes_the_new_mode()
+    public async Task ToggleFlipsTheModeRaisesChangedAndWritesTheNewMode()
     {
         var store = new FakeThemePreferenceStore();
         var state = new ThemeState(store);
@@ -70,7 +70,7 @@ public class ThemeStateTests
     }
 
     [Fact]
-    public async Task The_public_and_director_choices_toggle_independently()
+    public async Task ThePublicAndDirectorChoicesToggleIndependently()
     {
         var publicStore = new FakeThemePreferenceStore { Cookie = "dark" };
         var directorStore = new FakeThemePreferenceStore();
@@ -95,7 +95,7 @@ public class ThemeStateTests
     }
 
     [Fact]
-    public async Task A_refused_cookie_still_leaves_the_new_mode()
+    public async Task ARefusedCookieStillLeavesTheNewMode()
     {
         var store = new FakeThemePreferenceStore { RefuseWrites = true };
         var state = new ThemeState(store);

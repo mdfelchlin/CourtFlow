@@ -8,7 +8,7 @@ public class TournamentLifecycleTests
     private static readonly DateTimeOffset Noon = new(2026, 3, 1, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void A_new_tournament_is_unpublished_with_no_publish_moment()
+    public void ANewTournamentIsUnpublishedWithNoPublishMoment()
     {
         var tournament = Create();
 
@@ -22,7 +22,7 @@ public class TournamentLifecycleTests
     [InlineData(TournamentStatus.Published, "unpublish", TournamentStatus.Unpublished)]
     [InlineData(TournamentStatus.Published, "archive", TournamentStatus.Archived)]
     [InlineData(TournamentStatus.Archived, "restore", TournamentStatus.Unpublished)]
-    public void Allowed_transitions_move_to_the_expected_state(TournamentStatus from, string action, TournamentStatus expected)
+    public void AllowedTransitionsMoveToTheExpectedState(TournamentStatus from, string action, TournamentStatus expected)
     {
         var tournament = CreateIn(from);
 
@@ -40,7 +40,7 @@ public class TournamentLifecycleTests
     [InlineData(TournamentStatus.Archived, "archive", Tournament.OnlyPublishedCanBeArchived)]
     [InlineData(TournamentStatus.Unpublished, "restore", Tournament.OnlyArchivedCanBeRestored)]
     [InlineData(TournamentStatus.Published, "restore", Tournament.OnlyArchivedCanBeRestored)]
-    public void Every_other_transition_is_rejected_and_the_state_is_unchanged(TournamentStatus from, string action, string message)
+    public void EveryOtherTransitionIsRejectedAndTheStateIsUnchanged(TournamentStatus from, string action, string message)
     {
         var tournament = CreateIn(from);
 
@@ -51,7 +51,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void Publish_records_the_moment_and_republishing_moves_it()
+    public void PublishRecordsTheMomentAndRepublishingMovesIt()
     {
         var tournament = Create();
 
@@ -69,7 +69,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void Archive_and_restore_leave_the_publish_moment_alone()
+    public void ArchiveAndRestoreLeaveThePublishMomentAlone()
     {
         var tournament = Create();
         tournament.Publish(Noon);
@@ -83,7 +83,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void The_automatic_archive_waits_the_full_270_days()
+    public void TheAutomaticArchiveWaitsTheFull270Days()
     {
         var tournament = Create();
         tournament.Publish(Noon);
@@ -97,7 +97,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void The_automatic_archive_leaves_unpublished_and_archived_tournaments_alone()
+    public void TheAutomaticArchiveLeavesUnpublishedAndArchivedTournamentsAlone()
     {
         var unpublished = Create();
         Assert.False(unpublished.ArchiveIfDue(Noon.AddYears(5)));
@@ -111,7 +111,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void The_automatic_archive_counts_from_the_latest_publish()
+    public void TheAutomaticArchiveCountsFromTheLatestPublish()
     {
         var tournament = Create();
         tournament.Publish(Noon);
@@ -125,13 +125,13 @@ public class TournamentLifecycleTests
     [Theory]
     [InlineData(TournamentStatus.Unpublished)]
     [InlineData(TournamentStatus.Archived)]
-    public void Unpublished_and_archived_tournaments_can_be_deleted(TournamentStatus status)
+    public void UnpublishedAndArchivedTournamentsCanBeDeleted(TournamentStatus status)
     {
         CreateIn(status).EnsureCanDelete();
     }
 
     [Fact]
-    public void A_published_tournament_cannot_be_deleted()
+    public void APublishedTournamentCannotBeDeleted()
     {
         var exception = Assert.Throws<DomainRuleException>(() => CreateIn(TournamentStatus.Published).EnsureCanDelete());
 
@@ -139,7 +139,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void An_archived_tournament_rejects_every_change()
+    public void AnArchivedTournamentRejectsEveryChange()
     {
         var tournament = CreateIn(TournamentStatus.Archived);
 
@@ -151,7 +151,7 @@ public class TournamentLifecycleTests
     }
 
     [Fact]
-    public void A_restored_tournament_accepts_changes_again()
+    public void ARestoredTournamentAcceptsChangesAgain()
     {
         var tournament = CreateIn(TournamentStatus.Archived);
 

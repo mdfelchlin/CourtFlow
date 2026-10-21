@@ -7,9 +7,10 @@ public class TournamentRulesTests
     private static readonly Guid OrganizationId = Guid.Parse("8f1c2a3e-5b6d-4e7f-9a0b-1c2d3e4f5a6b");
     private static readonly DateOnly Start = new(2026, 9, 1);
     private static readonly DateOnly End = new(2026, 9, 3);
+    private static readonly string[] CupAndOpen = ["Cup", "Open"];
 
     [Fact]
-    public void Whitespace_name_is_rejected_and_a_real_name_is_trimmed()
+    public void WhitespaceNameIsRejectedAndARealNameIsTrimmed()
     {
         Assert.Throws<DomainRuleException>(() => Create("   "));
         var tournament = Create("  City Cup  ");
@@ -17,7 +18,7 @@ public class TournamentRulesTests
     }
 
     [Fact]
-    public void Empty_description_is_saved()
+    public void EmptyDescriptionIsSaved()
     {
         var tournament = Create("City Cup", description: "   ");
         Assert.Equal("", tournament.Description);
@@ -26,7 +27,7 @@ public class TournamentRulesTests
     [Theory]
     [InlineData(2026, 9, 1, 2026, 9, 1)]
     [InlineData(2026, 9, 3, 2026, 9, 1)]
-    public void End_date_on_or_before_start_is_rejected(int startYear, int startMonth, int startDay, int endYear, int endMonth, int endDay)
+    public void EndDateOnOrBeforeStartIsRejected(int startYear, int startMonth, int startDay, int endYear, int endMonth, int endDay)
     {
         Assert.Throws<DomainRuleException>(() => Create(
             "City Cup",
@@ -35,14 +36,14 @@ public class TournamentRulesTests
     }
 
     [Fact]
-    public void Span_longer_than_five_days_is_accepted()
+    public void SpanLongerThanFiveDaysIsAccepted()
     {
         var tournament = Create("City Cup", start: new DateOnly(2026, 9, 1), end: new DateOnly(2026, 9, 6));
         Assert.Equal(new DateOnly(2026, 9, 6), tournament.EndDate);
     }
 
     [Fact]
-    public void September_1_through_5_does_not_warn_and_through_6_does()
+    public void September1Through5DoesNotWarnAndThrough6Does()
     {
         Assert.False(TournamentWarnings.SpanExceedsFiveDays(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 5)));
         Assert.Equal(5, TournamentWarnings.InclusiveDays(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 5)));
@@ -50,10 +51,10 @@ public class TournamentRulesTests
     }
 
     [Fact]
-    public void Matching_name_warns_except_the_tournaments_own_name()
+    public void MatchingNameWarnsExceptTheTournamentsOwnName()
     {
         Assert.True(TournamentWarnings.NameMatchesAnother("  Cup ", ["cup"]));
-        var others = new[] { "Cup", "Open" }.Where(name => !string.Equals(name.Trim(), "Cup", StringComparison.OrdinalIgnoreCase));
+        var others = CupAndOpen.Where(name => !string.Equals(name.Trim(), "Cup", StringComparison.OrdinalIgnoreCase));
         Assert.False(TournamentWarnings.NameMatchesAnother("Cup", others));
         Assert.False(TournamentWarnings.NameMatchesAnother("   ", ["cup"]));
     }
@@ -61,7 +62,7 @@ public class TournamentRulesTests
     [Theory]
     [InlineData(15)]
     [InlineData(240)]
-    public void Duration_boundaries_are_accepted(int minutes)
+    public void DurationBoundariesAreAccepted(int minutes)
     {
         var tournament = Create("City Cup", duration: minutes);
         Assert.Equal(minutes, tournament.DefaultMatchDurationMinutes);
@@ -70,13 +71,13 @@ public class TournamentRulesTests
     [Theory]
     [InlineData(14)]
     [InlineData(241)]
-    public void Duration_outside_range_is_rejected(int minutes)
+    public void DurationOutsideRangeIsRejected(int minutes)
     {
         Assert.Throws<DomainRuleException>(() => Create("City Cup", duration: minutes));
     }
 
     [Fact]
-    public void Listed_us_time_zones_are_accepted_and_others_are_rejected()
+    public void ListedUsTimeZonesAreAcceptedAndOthersAreRejected()
     {
         foreach (var zone in UsTimeZones.All)
         {
@@ -89,7 +90,7 @@ public class TournamentRulesTests
     }
 
     [Fact]
-    public void Duplicate_tournament_names_are_accepted()
+    public void DuplicateTournamentNamesAreAccepted()
     {
         var first = Create("City Cup");
         var second = Create("city cup");

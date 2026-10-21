@@ -1,4 +1,5 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Layout;
@@ -11,7 +12,7 @@ public class NavMenuTests : AccessTestContext
     [InlineData(OrganizationRole.Owner)]
     [InlineData(OrganizationRole.Editor)]
     [InlineData(OrganizationRole.Viewer)]
-    public void Tournaments_and_teams_show_for_every_role_without_the_operator_group(OrganizationRole role)
+    public void TournamentsAndTeamsShowForEveryRoleWithoutTheOperatorGroup(OrganizationRole role)
     {
         SignInAs(TestAccess.Member(role));
 
@@ -22,7 +23,7 @@ public class NavMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void An_operator_member_sees_both()
+    public void AnOperatorMemberSeesBoth()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer, isOperator: true));
 
@@ -32,7 +33,7 @@ public class NavMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void An_operator_without_a_membership_sees_only_the_operator_group()
+    public void AnOperatorWithoutAMembershipSeesOnlyTheOperatorGroup()
     {
         SignInAs(TestAccess.NoMembership(isOperator: true));
 
@@ -42,13 +43,14 @@ public class NavMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void Sign_out_is_the_last_link_in_the_drawer()
+    public void SignOutIsTheLastLinkInTheDrawer()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
 
         var cut = Render<NavMenu>();
 
-        var last = cut.FindAll("a.mud-nav-link").Last();
+        var links = cut.FindAll("a.mud-nav-link");
+        var last = links[^1];
         Assert.Equal(TestAccess.Logout, last.GetAttribute("href"));
         Assert.Equal(CfUserMenu.SignOutText, last.TextContent.Trim());
     }

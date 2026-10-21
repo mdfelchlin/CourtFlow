@@ -1,9 +1,13 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+
 using CourtFlow.AppHost;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.AppHost.Tests;
 
@@ -21,10 +25,14 @@ public class AppHostModelTests : IAsyncLifetime
     public async ValueTask InitializeAsync() =>
         _appHost = await DistributedApplicationTestingBuilder.CreateAsync<Program>();
 
-    public async ValueTask DisposeAsync() => await _appHost.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        await _appHost.DisposeAsync();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public async Task Host_starts_the_api_blazor_app_postgres_and_mailpit()
+    public async Task HostStartsTheApiBlazorAppPostgresAndMailpit()
     {
         var projects = _appHost.Resources.Where(IsProject).ToList();
         var servers = _appHost.Resources.OfType<PostgresServerResource>().ToList();
@@ -59,12 +67,22 @@ public class AppHostModelTests : IAsyncLifetime
         Assert.Contains(api.Annotations.OfType<WaitAnnotation>(), wait => wait.Resource.Name == "CourtFlow");
         Assert.Contains(api.Annotations.OfType<ResourceRelationshipAnnotation>(), relationship => relationship.Resource.Name == "CourtFlow");
         Assert.Contains(api.Annotations.OfType<ResourceRelationshipAnnotation>(), relationship => relationship.Resource == mailpit);
-#pragma warning disable CS0618
-        var apiEnvironment = await ((IResourceWithEnvironment)api).GetEnvironmentVariableValuesAsync(DistributedApplicationOperation.Publish);
-#pragma warning restore CS0618
-        Assert.Contains("Email__Smtp", apiEnvironment.Keys);
-        Assert.Contains("WorkOS__ApiKey", apiEnvironment.Keys);
-        Assert.Contains("Resend__ApiKey", apiEnvironment.Keys);
+        await using var publishServices = _appHost.Services.BuildServiceProvider();
+        var executionContext = new DistributedApplicationExecutionContext(
+            new DistributedApplicationExecutionContextOptions(DistributedApplicationOperation.Publish)
+            {
+                Services = publishServices,
+            });
+        var apiConfiguration = await ExecutionConfigurationBuilder
+            .Create(api)
+            .WithEnvironmentVariablesConfig()
+            .BuildAsync(executionContext, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Null(apiConfiguration.Exception);
+        var apiEnvironment = apiConfiguration.EnvironmentVariables;
+        var apiEnvironmentNames = apiEnvironment.Select(variable => variable.Key).ToArray();
+        Assert.Contains("Email__Smtp", apiEnvironmentNames);
+        Assert.Contains("WorkOS__ApiKey", apiEnvironmentNames);
+        Assert.Contains("Resend__ApiKey", apiEnvironmentNames);
         var apiKeys = _appHost.Resources.OfType<ParameterResource>()
             .Where(parameter => parameter.Name is "workos-api-key" or "resend-api-key")
             .ToList();
@@ -94,7 +112,7 @@ public class AppHostModelTests : IAsyncLifetime
     static EndpointAnnotation Endpoint(IResource resource, string name) =>
         Assert.Single(resource.Annotations.OfType<EndpointAnnotation>(), endpoint => endpoint.Name == name);
 
-    static ContainerMountAnnotation DataVolume(IResource resource) =>
+    static ContainerMountAnnotation DataVolume(PostgresServerResource resource) =>
         Assert.Single(resource.Annotations.OfType<ContainerMountAnnotation>(), mount => mount.Type == ContainerMountType.Volume);
 
     static string? ImageTag(IResource resource)

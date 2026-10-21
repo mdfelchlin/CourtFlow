@@ -1,5 +1,7 @@
 using System.Security.Claims;
+
 using CourtFlow.Domain;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace CourtFlow.Web.Services;

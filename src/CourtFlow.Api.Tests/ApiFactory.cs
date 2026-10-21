@@ -5,6 +5,7 @@ using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
 using CourtFlow.Infrastructure.Access;
 using CourtFlow.Infrastructure.Email;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using Testcontainers.PostgreSql;
 
 namespace CourtFlow.Api.Tests;
@@ -178,7 +180,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 }
 
 [CollectionDefinition(Name)]
-public sealed class ApiCollection : ICollectionFixture<ApiFactory>
+public sealed class ApiFixture : ICollectionFixture<ApiFactory>
 {
     public const string Name = "api";
 }

@@ -13,6 +13,6 @@ public sealed class ReturnUrlTests
     [InlineData("", false)]
     [InlineData(null, false)]
     [InlineData("tournaments", false)]
-    public void Only_paths_on_this_site_are_local(string? value, bool expected) =>
+    public void OnlyPathsOnThisSiteAreLocal(string? value, bool expected) =>
         Assert.Equal(expected, ReturnUrl.IsLocal(value));
 }

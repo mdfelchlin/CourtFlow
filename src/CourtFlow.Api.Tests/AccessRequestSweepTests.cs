@@ -1,11 +1,13 @@
 using CourtFlow.Application.Access;
 using CourtFlow.Domain;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
 {
     private const string Reminder = "Your CourtFlow access request is still waiting";
@@ -15,7 +17,7 @@ public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task The_reminder_is_sent_once_in_the_last_24_hours()
+    public async Task TheReminderIsSentOnceInTheLast24Hours()
     {
         await SubmitAsync();
 
@@ -31,7 +33,7 @@ public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task No_reminder_after_approval()
+    public async Task NoReminderAfterApproval()
     {
         var request = await SubmitAsync();
         (await PostAsync(factory.CreateOperatorClient(), $"/api/operator/requests/{request.Id}/approve",
@@ -44,7 +46,7 @@ public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Expiry_at_7_days_deletes_the_waitlist_entry()
+    public async Task ExpiryAt7DaysDeletesTheWaitlistEntry()
     {
         var request = await SubmitAsync();
 
@@ -57,7 +59,7 @@ public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_same_email_can_send_again_after_expiry()
+    public async Task TheSameEmailCanSendAgainAfterExpiry()
     {
         await SubmitAsync();
         factory.Clock.Advance(TimeSpan.FromDays(7));
@@ -69,7 +71,7 @@ public sealed class AccessRequestSweepTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_missing_waitlist_entry_marks_the_request_expired()
+    public async Task AMissingWaitlistEntryMarksTheRequestExpired()
     {
         var request = await SubmitAsync();
         factory.WorkOs.MissingEntries.Add(request.WaitlistEntryId);

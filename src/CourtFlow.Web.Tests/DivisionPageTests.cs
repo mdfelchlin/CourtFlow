@@ -1,10 +1,14 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -25,10 +29,14 @@ public class DivisionPageTests : BunitContext, IDisposable
         Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Divisions_stay_hidden_until_the_tournament_is_saved()
+    public void DivisionsStayHiddenUntilTheTournamentIsSaved()
     {
         var cut = Render<TournamentEditor>();
 
@@ -39,7 +47,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Unknown_tournament_shows_not_found_and_no_divisions()
+    public void UnknownTournamentShowsNotFoundAndNoDivisions()
     {
         var cut = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, Guid.NewGuid()));
 
@@ -49,7 +57,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_empty_section_tells_the_director_to_add_a_division()
+    public void AnEmptySectionTellsTheDirectorToAddADivision()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -59,7 +67,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Adding_starts_with_no_gender_and_cancel_saves_nothing()
+    public void AddingStartsWithNoGenderAndCancelSavesNothing()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -80,7 +88,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Saving_a_division_closes_the_dialog_and_reloads_the_list()
+    public async Task SavingADivisionClosesTheDialogAndReloadsTheList()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -105,7 +113,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_blank_name_keeps_the_dialog_open()
+    public void ABlankNameKeepsTheDialogOpen()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -123,7 +131,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_repeated_name_and_gender_keeps_the_dialog_open()
+    public async Task ARepeatedNameAndGenderKeepsTheDialogOpen()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -144,7 +152,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_failed_save_keeps_the_dialog_open()
+    public async Task AFailedSaveKeepsTheDialogOpen()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -164,7 +172,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Editing_opens_prefilled_and_updates()
+    public async Task EditingOpensPrefilledAndUpdates()
     {
         var (tournament, divisionId) = WithDivision("14U Open", "Female");
         var dialogs = Render<MudDialogProvider>();
@@ -191,7 +199,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Rows_show_name_and_gender_in_list_order_with_accessible_labels()
+    public void RowsShowNameAndGenderInListOrderWithAccessibleLabels()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -216,7 +224,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_delete_leaves_the_division_and_the_dialog_has_no_body()
+    public void CancelingDeleteLeavesTheDivisionAndTheDialogHasNoBody()
     {
         var (tournament, divisionId) = WithDivision("14U Open", "Female");
         var dialogs = Render<MudDialogProvider>();
@@ -235,7 +243,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_delete_removes_the_division()
+    public void ConfirmingDeleteRemovesTheDivision()
     {
         var (tournament, divisionId) = WithDivision("14U Open", "Female");
         var dialogs = Render<MudDialogProvider>();
@@ -255,7 +263,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_rejected_division_delete_keeps_the_division_and_shows_the_count()
+    public void ARejectedDivisionDeleteKeepsTheDivisionAndShowsTheCount()
     {
         var (tournament, divisionId) = WithDivision("14U Open", "Female");
         _api.RejectDivisionDeleteWith = Division.HasTeams(3);
@@ -273,7 +281,7 @@ public class DivisionPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Tournament_delete_confirmation_includes_divisions()
+    public void TournamentDeleteConfirmationIncludesDivisions()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);

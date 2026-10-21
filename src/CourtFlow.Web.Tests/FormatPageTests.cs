@@ -1,9 +1,12 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor.Services;
 
 namespace CourtFlow.Web.Tests;
@@ -24,10 +27,14 @@ public class FormatPageTests : BunitContext, IDisposable
         Render<MudBlazor.MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void No_tournaments_shows_the_same_message_and_link_as_teams()
+    public void NoTournamentsShowsTheSameMessageAndLinkAsTeams()
     {
         var cut = Render<Format>();
 
@@ -36,7 +43,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Nothing_selected_asks_for_a_tournament()
+    public void NothingSelectedAsksForATournament()
     {
         _api.Tournaments.Add(Sample());
 
@@ -46,7 +53,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void While_the_list_loads_the_bar_shows_and_the_table_does_not()
+    public void WhileTheListLoadsTheBarShowsAndTheTableDoesNot()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -63,7 +70,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void With_no_divisions_the_message_links_to_the_editor()
+    public void WithNoDivisionsTheMessageLinksToTheEditor()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -76,7 +83,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Rows_follow_division_order_and_an_empty_division_cannot_be_edited()
+    public void RowsFollowDivisionOrderAndAnEmptyDivisionCannotBeEdited()
     {
         var tournament = Sample();
         var open = new DivisionResponse(Guid.NewGuid(), tournament.Id, "14U Open", "Female");
@@ -108,7 +115,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_tournament_shows_the_note_and_view_buttons()
+    public void AnArchivedTournamentShowsTheNoteAndViewButtons()
     {
         var tournament = Sample(TournamentStatus.Archived);
         var division = new DivisionResponse(Guid.NewGuid(), tournament.Id, "14U Open", "Female");
@@ -124,7 +131,7 @@ public class FormatPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Edit_opens_the_division_ranking()
+    public void EditOpensTheDivisionRanking()
     {
         var tournament = Sample();
         var division = new DivisionResponse(Guid.NewGuid(), tournament.Id, "14U Open", "Female");

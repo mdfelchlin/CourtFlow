@@ -4,7 +4,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using CourtFlow.Application.Access;
+
 using Microsoft.Extensions.Logging;
 
 namespace CourtFlow.Infrastructure.WorkOs;
@@ -22,7 +24,7 @@ public sealed class WorkOsOptions
 /// invitations and the Waitlist are plain calls. Errors WorkOS reports as expected states, such as an entry already
 /// denied or an invitation already revoked, are treated as done.
 /// </summary>
-public sealed class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOptions web, ILogger<WorkOsGateway> logger) : IWorkOs
+public sealed partial class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOptions web, ILogger<WorkOsGateway> logger) : IWorkOs
 {
     private const string UserAlreadyExists = "user_already_exists";
 
@@ -155,7 +157,8 @@ public sealed class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOpt
             return await ReadAsync<AuthenticateBody>(response, cancellationToken);
         if ((int)response.StatusCode is >= 400 and < 500)
         {
-            logger.LogWarning("WorkOS refused an authentication: {Status} {Body}", (int)response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            LogAuthenticationRefused(logger, (int)response.StatusCode, responseBody);
             return null;
         }
 
@@ -169,7 +172,8 @@ public sealed class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOpt
             return;
         if ((int)response.StatusCode is >= 400 and < 500)
         {
-            logger.LogInformation("WorkOS answered {Status} when asked to {Action}; treating it as done.", (int)response.StatusCode, action);
+            if (logger.IsEnabled(LogLevel.Information))
+                LogTreatedAsDone(logger, (int)response.StatusCode, action);
             return;
         }
 
@@ -217,7 +221,7 @@ public sealed class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOpt
     private async Task<WorkOsUnavailableException> UnavailableAsync(HttpResponseMessage response, string action, CancellationToken cancellationToken)
     {
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        logger.LogError("WorkOS answered {Status} when asked to {Action}: {Body}", (int)response.StatusCode, action, body);
+        LogWorkOsFailed(logger, (int)response.StatusCode, action, body);
         return new WorkOsUnavailableException($"WorkOS could not {action}.");
     }
 
@@ -240,6 +244,15 @@ public sealed class WorkOsGateway(HttpClient http, WorkOsOptions options, WebOpt
             return null;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "WorkOS refused an authentication: {Status} {Body}")]
+    private static partial void LogAuthenticationRefused(ILogger logger, int status, string body);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "WorkOS answered {Status} when asked to {Action}; treating it as done.")]
+    private static partial void LogTreatedAsDone(ILogger logger, int status, string action);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "WorkOS answered {Status} when asked to {Action}: {Body}")]
+    private static partial void LogWorkOsFailed(ILogger logger, int status, string action, string body);
 
     private string BaseUrl => options.ApiBaseUrl.EndsWith('/') ? options.ApiBaseUrl : options.ApiBaseUrl + "/";
 

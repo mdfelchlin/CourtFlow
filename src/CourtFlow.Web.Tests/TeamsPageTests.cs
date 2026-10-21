@@ -1,9 +1,13 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -25,10 +29,14 @@ public class TeamsPageTests : BunitContext, IDisposable
         Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Count_text_matches_the_spec()
+    public void CountTextMatchesTheSpec()
     {
         Assert.Equal("157 teams", Teams.CountText(157, 157, filtered: false));
         Assert.Equal("1 team", Teams.CountText(1, 1, filtered: false));
@@ -36,7 +44,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void The_picker_uses_the_tournament_list_order_and_prompt()
+    public void ThePickerUsesTheTournamentListOrderAndPrompt()
     {
         _api.Tournaments.Add(Sample(name: "Later Cup"));
         _api.Tournaments.Add(Sample(name: "Earlier Cup"));
@@ -63,7 +71,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_remembered_tournament_is_selected_on_load()
+    public void ARememberedTournamentIsSelectedOnLoad()
     {
         var (tournament, _, _) = WithReadyTournament();
         _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", _api.Divisions[tournament.Id][0].Id);
@@ -75,7 +83,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_remembered_id_that_no_longer_exists_is_cleared()
+    public void ARememberedIdThatNoLongerExistsIsCleared()
     {
         _api.Tournaments.Add(Sample());
         _memory.Remembered = Guid.NewGuid();
@@ -90,7 +98,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Picking_a_tournament_remembers_it()
+    public async Task PickingATournamentRemembersIt()
     {
         var first = Sample(name: "First Cup");
         var second = Sample(name: "Second Cup");
@@ -105,7 +113,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void No_tournaments_shows_the_message_and_a_link_home()
+    public void NoTournamentsShowsTheMessageAndALinkHome()
     {
         var cut = Render<Teams>();
 
@@ -119,7 +127,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Nothing_selected_disables_add_and_import()
+    public void NothingSelectedDisablesAddAndImport()
     {
         _api.Tournaments.Add(Sample());
 
@@ -135,7 +143,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void While_the_tournament_list_loads_the_bar_shows_and_the_dropdown_does_not()
+    public void WhileTheTournamentListLoadsTheBarShowsAndTheDropdownDoesNot()
     {
         _api.Tournaments.Add(Sample());
         _api.ListTournamentsGate = new TaskCompletionSource();
@@ -151,7 +159,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Shared_names_both_appear_in_list_order()
+    public void SharedNamesBothAppearInListOrder()
     {
         _api.Tournaments.Add(Sample(name: "City Cup"));
         _api.Tournaments.Add(Sample(name: "City Cup"));
@@ -163,7 +171,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void While_loading_the_bar_shows_and_the_table_does_not()
+    public void WhileLoadingTheBarShowsAndTheTableDoesNot()
     {
         var (tournament, open, _) = WithReadyTournament();
         _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -180,7 +188,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void With_no_divisions_the_message_links_to_the_editor()
+    public void WithNoDivisionsTheMessageLinksToTheEditor()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -195,7 +203,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void With_no_teams_the_page_tells_the_director_to_add_or_import()
+    public void WithNoTeamsThePageTellsTheDirectorToAddOrImport()
     {
         WithReadyTournament();
 
@@ -206,7 +214,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void With_no_matches_the_table_says_so()
+    public void WithNoMatchesTheTableSaysSo()
     {
         var (tournament, open, _) = WithReadyTournament();
         _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -220,7 +228,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Rows_follow_the_api_order_and_show_accessible_labels()
+    public void RowsFollowTheApiOrderAndShowAccessibleLabels()
     {
         var (tournament, open, gold) = WithReadyTournament();
         var first = _api.SeedEntry(tournament.Id, "Zeta Club", "Alpha", open.Id);
@@ -236,7 +244,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task The_division_filter_and_search_narrow_the_rows()
+    public async Task TheDivisionFilterAndSearchNarrowTheRows()
     {
         var (tournament, open, gold) = WithReadyTournament();
         _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -267,7 +275,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Changing_the_tournament_resets_the_filter_and_search()
+    public async Task ChangingTheTournamentResetsTheFilterAndSearch()
     {
         var (first, open, _) = WithReadyTournament();
         _api.SeedEntry(first.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -292,7 +300,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_delete_leaves_the_team()
+    public void CancelingDeleteLeavesTheTeam()
     {
         var (tournament, open, _) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -311,7 +319,7 @@ public class TeamsPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_delete_removes_the_team_and_shows_deleted()
+    public void ConfirmingDeleteRemovesTheTeamAndShowsDeleted()
     {
         var (tournament, open, _) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);

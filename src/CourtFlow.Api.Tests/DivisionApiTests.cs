@@ -1,14 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -16,7 +18,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task List_is_ordered_by_name_then_female_before_male()
+    public async Task ListIsOrderedByNameThenFemaleBeforeMale()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -33,7 +35,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Create_trims_the_name_and_returns_an_id()
+    public async Task CreateTrimsTheNameAndReturnsAnId()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -51,7 +53,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Invalid_name_and_gender_are_rejected_with_the_spec_messages()
+    public async Task InvalidNameAndGenderAreRejectedWithTheSpecMessages()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -71,7 +73,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_repeated_name_and_gender_is_rejected_and_another_tournament_may_reuse_it()
+    public async Task ARepeatedNameAndGenderIsRejectedAndAnotherTournamentMayReuseIt()
     {
         var client = factory.CreateMemberClient();
         var first = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -93,7 +95,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Updating_a_division_does_not_conflict_with_itself()
+    public async Task UpdatingADivisionDoesNotConflictWithItself()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -109,7 +111,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Missing_tournament_or_division_is_not_found()
+    public async Task MissingTournamentOrDivisionIsNotFound()
     {
         var client = factory.CreateMemberClient();
         var missingTournament = Guid.NewGuid();
@@ -127,7 +129,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Deleting_a_division_leaves_the_tournament_and_the_other_division()
+    public async Task DeletingADivisionLeavesTheTournamentAndTheOtherDivision()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -144,7 +146,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Deleting_a_division_with_teams_is_rejected_and_keeps_it()
+    public async Task DeletingADivisionWithTeamsIsRejectedAndKeepsIt()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -160,7 +162,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Deleting_a_tournament_deletes_its_divisions()
+    public async Task DeletingATournamentDeletesItsDivisions()
     {
         var client = factory.CreateMemberClient();
         var tournament = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -175,7 +177,7 @@ public sealed class DivisionApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_organizations_division_cannot_be_changed()
+    public async Task AnotherOrganizationsDivisionCannotBeChanged()
     {
         var other = await InsertOtherDivisionAsync();
         var client = factory.CreateMemberClient();

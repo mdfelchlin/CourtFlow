@@ -36,7 +36,7 @@ public class PackageRulesTests
     ];
 
     [Fact]
-    public void Central_file_is_the_only_one_and_enables_central_management()
+    public void CentralFileIsTheOnlyOneAndEnablesCentralManagement()
     {
         var found = Directory.EnumerateFiles(RepoRoot, "Directory.Packages.props", SearchOption.AllDirectories)
             .Where(path => !IsIgnored(path))
@@ -52,7 +52,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Each_package_id_is_declared_once_as_an_exact_stable_version()
+    public void EachPackageIdIsDeclaredOnceAsAnExactStableVersion()
     {
         var versions = PackageVersions();
 
@@ -61,7 +61,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Package_references_set_no_version_and_use_only_the_declared_ids()
+    public void PackageReferencesSetNoVersionAndUseOnlyTheDeclaredIds()
     {
         var references = ProjectFiles()
             .SelectMany(project => ProjectReferences(project.path))
@@ -72,7 +72,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Domain_and_application_reference_no_packages()
+    public void DomainAndApplicationReferenceNoPackages()
     {
         foreach (var name in new[] { "CourtFlow.Domain", "CourtFlow.Application" })
         {
@@ -82,7 +82,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Design_and_dev_server_keep_their_asset_metadata()
+    public void DesignAndDevServerKeepTheirAssetMetadata()
     {
         var design = ProjectReferences(Path.Combine(SolutionDirectory, "CourtFlow.Infrastructure", "CourtFlow.Infrastructure.csproj"))
             .Single(reference => reference.Id == "Microsoft.EntityFrameworkCore.Design");
@@ -95,7 +95,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Every_project_targets_net10()
+    public void EveryProjectTargetsNet10()
     {
         var offenders = ProjectFiles()
             .Where(project => project.document.Descendants().Where(element => element.Name.LocalName == "TargetFramework").All(element => element.Value.Trim() != "net10.0"))
@@ -106,7 +106,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void App_host_sdk_version_matches_the_app_host_package()
+    public void AppHostSdkVersionMatchesTheAppHostPackage()
     {
         var project = XDocument.Load(Path.Combine(SolutionDirectory, "CourtFlow.AppHost", "CourtFlow.AppHost.csproj"));
         var sdk = project.Descendants().Single(element => element.Name.LocalName == "Sdk" && element.Attribute("Name")?.Value == "Aspire.AppHost.Sdk");
@@ -116,7 +116,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Vulnerability_warnings_are_not_suppressed()
+    public void VulnerabilityWarningsAreNotSuppressed()
     {
         var codes = new[] { "NU1901", "NU1902", "NU1903", "NU1904" };
         var files = ProjectFiles().Select(project => project.path)
@@ -129,7 +129,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public async Task A_project_version_fails_the_build()
+    public async Task AProjectVersionFailsTheBuild()
     {
         var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "courtflow-cpm-" + Guid.NewGuid().ToString("N")));
         try
@@ -192,7 +192,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Rule_is_always_on_and_states_the_add_limits()
+    public void RuleIsAlwaysOnAndStatesTheAddLimits()
     {
         var rule = File.ReadAllText(Path.Combine(RepoRoot, ".cursor", "rules", "current-packages.mdc"));
 
@@ -206,7 +206,7 @@ public class PackageRulesTests
     }
 
     [Fact]
-    public void Skill_asks_before_each_breaking_change_and_includes_transitive_vulnerabilities()
+    public void SkillAsksBeforeEachBreakingChangeAndIncludesTransitiveVulnerabilities()
     {
         var skill = File.ReadAllText(Path.Combine(RepoRoot, ".cursor", "skills", "update-packages", "SKILL.md"));
 
@@ -216,7 +216,7 @@ public class PackageRulesTests
         Assert.Contains("does not add a package id", skill);
     }
 
-    private static IReadOnlyList<(string Id, string Version)> PackageVersions()
+    private static List<(string Id, string Version)> PackageVersions()
     {
         var document = XDocument.Load(Path.Combine(SolutionDirectory, "Directory.Packages.props"));
         return document.Descendants()
@@ -231,7 +231,7 @@ public class PackageRulesTests
             .Where(path => !IsIgnored(path))
             .Select(path => (path, XDocument.Load(path)));
 
-    private static IReadOnlyList<PackageReference> ProjectReferences(string path)
+    private static List<PackageReference> ProjectReferences(string path)
     {
         var document = XDocument.Load(path);
         return document.Descendants()

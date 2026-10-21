@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -15,7 +16,7 @@ public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifet
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Every_write_into_an_archived_tournament_is_rejected()
+    public async Task EveryWriteIntoAnArchivedTournamentIsRejected()
     {
         var client = factory.CreateMemberClient();
         var archived = await ArchivedAsync(client);
@@ -32,7 +33,7 @@ public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifet
     }
 
     [Fact]
-    public async Task An_archived_tournament_keeps_its_venues_divisions_and_teams()
+    public async Task AnArchivedTournamentKeepsItsVenuesDivisionsAndTeams()
     {
         var client = factory.CreateMemberClient();
         var archived = await ArchivedAsync(client);
@@ -47,7 +48,7 @@ public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifet
     }
 
     [Fact]
-    public async Task A_rename_through_an_archived_tournament_leaves_the_team_alone()
+    public async Task ARenameThroughAnArchivedTournamentLeavesTheTeamAlone()
     {
         var client = factory.CreateMemberClient();
         var archived = await ArchivedAsync(client);
@@ -63,7 +64,7 @@ public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifet
     }
 
     [Fact]
-    public async Task The_same_team_can_still_be_renamed_through_another_tournament()
+    public async Task TheSameTeamCanStillBeRenamedThroughAnotherTournament()
     {
         var client = factory.CreateMemberClient();
         var archived = await ArchivedAsync(client);
@@ -83,7 +84,7 @@ public sealed class ArchivedTournamentApiTests(ApiFactory factory) : IAsyncLifet
     }
 
     [Fact]
-    public async Task A_restored_tournament_accepts_writes_again()
+    public async Task ARestoredTournamentAcceptsWritesAgain()
     {
         var client = factory.CreateMemberClient();
         var archived = await ArchivedAsync(client);

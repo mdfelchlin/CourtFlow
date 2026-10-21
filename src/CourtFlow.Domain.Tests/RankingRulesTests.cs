@@ -8,7 +8,7 @@ public class RankingRulesTests
     private static readonly DateOnly End = new(2026, 9, 3);
 
     [Fact]
-    public void Saving_requires_exactly_the_divisions_entries_and_then_ranks_them_in_order()
+    public void SavingRequiresExactlyTheDivisionsEntriesAndThenRanksThemInOrder()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("14U Open", "Female");
@@ -33,7 +33,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void Adding_and_moving_in_append_as_new_and_removing_closes_the_gap()
+    public void AddingAndMovingInAppendAsNewAndRemovingClosesTheGap()
     {
         var tournament = Tournament();
         var open = tournament.AddDivision("14U Open", "Female");
@@ -61,7 +61,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void Saving_clears_new_teams_and_the_last_team_leaving_unranks_the_division()
+    public void SavingClearsNewTeamsAndTheLastTeamLeavingUnranksTheDivision()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("14U Open", "Female");
@@ -85,7 +85,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void An_unranked_division_stores_nothing_when_its_teams_change()
+    public void AnUnrankedDivisionStoresNothingWhenItsTeamsChange()
     {
         var tournament = Tournament();
         var open = tournament.AddDivision("14U Open", "Female");
@@ -99,7 +99,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void A_team_that_leaves_and_returns_is_new_again_at_the_bottom()
+    public void ATeamThatLeavesAndReturnsIsNewAgainAtTheBottom()
     {
         var tournament = Tournament();
         var open = tournament.AddDivision("14U Open", "Female");
@@ -118,7 +118,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void Moving_within_a_division_or_renaming_it_leaves_the_ranking_alone()
+    public void MovingWithinADivisionOrRenamingItLeavesTheRankingAlone()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("14U Open", "Female");
@@ -134,12 +134,12 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void An_archived_tournament_cannot_save_a_ranking()
+    public void AnArchivedTournamentCannotSaveARanking()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("14U Open", "Female");
         var entry = tournament.EnterTeam(Guid.NewGuid(), division.Id);
-        tournament.Publish(DateTimeOffset.Parse("2026-09-01T15:00:00Z"));
+        tournament.Publish(DateTimeOffset.Parse("2026-09-01T15:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
         tournament.Archive();
 
         var rejected = Assert.Throws<DomainRuleException>(() => tournament.SaveRanking(division.Id, [entry.Id]));
@@ -148,7 +148,7 @@ public class RankingRulesTests
     }
 
     [Fact]
-    public void Several_teams_added_together_land_at_the_bottom_in_that_order()
+    public void SeveralTeamsAddedTogetherLandAtTheBottomInThatOrder()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("14U Open", "Female");

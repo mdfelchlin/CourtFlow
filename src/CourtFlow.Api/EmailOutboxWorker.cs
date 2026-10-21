@@ -3,7 +3,7 @@ using CourtFlow.Infrastructure.Email;
 namespace CourtFlow.Api;
 
 /// <summary>Sends saved emails. A failed send waits and tries again, so an email provider outage never loses a message.</summary>
-public sealed class EmailOutboxWorker(IServiceScopeFactory scopes, TimeProvider clock, ILogger<EmailOutboxWorker> logger) : BackgroundService
+public sealed partial class EmailOutboxWorker(IServiceScopeFactory scopes, TimeProvider clock, ILogger<EmailOutboxWorker> logger) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
 
@@ -31,7 +31,10 @@ public sealed class EmailOutboxWorker(IServiceScopeFactory scopes, TimeProvider 
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "The email outbox run failed. It will run again later.");
+            LogRunFailed(logger, exception);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The email outbox run failed. It will run again later.")]
+    private static partial void LogRunFailed(ILogger logger, Exception exception);
 }

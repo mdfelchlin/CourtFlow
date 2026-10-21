@@ -1,7 +1,9 @@
 using Bunit;
 using Bunit.TestDoubles;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Web.Tests;
@@ -9,7 +11,7 @@ namespace CourtFlow.Web.Tests;
 public class AccessRedirectTests : AccessTestContext
 {
     [Fact]
-    public void Signed_out_goes_to_sign_in_with_the_current_path()
+    public void SignedOutGoesToSignInWithTheCurrentPath()
     {
         SignInAs(TestAccess.SignedOut);
         Navigation.NavigateTo("/tournaments/abc?tab=teams");
@@ -22,7 +24,7 @@ public class AccessRedirectTests : AccessTestContext
     }
 
     [Fact]
-    public void Without_a_membership_goes_to_no_access()
+    public void WithoutAMembershipGoesToNoAccess()
     {
         SignInAs(TestAccess.NoMembership());
         Navigation.NavigateTo("/tournaments");
@@ -33,7 +35,7 @@ public class AccessRedirectTests : AccessTestContext
     }
 
     [Fact]
-    public void A_deactivated_organization_goes_to_no_access()
+    public void ADeactivatedOrganizationGoesToNoAccess()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Owner, status: OrganizationStatus.Deactivated));
         Navigation.NavigateTo("/teams");
@@ -44,7 +46,7 @@ public class AccessRedirectTests : AccessTestContext
     }
 
     [Fact]
-    public void A_forbidden_role_sees_not_found()
+    public void AForbiddenRoleSeesNotFound()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
         Navigation.NavigateTo("/organization");
@@ -56,7 +58,7 @@ public class AccessRedirectTests : AccessTestContext
     }
 
     [Fact]
-    public void A_member_who_is_not_an_operator_sees_not_found_on_operator_pages()
+    public void AMemberWhoIsNotAnOperatorSeesNotFoundOnOperatorPages()
     {
         SignInAs(TestAccess.NoMembership());
         Navigation.NavigateTo("/operator/requests");

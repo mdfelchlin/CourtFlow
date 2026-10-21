@@ -1,11 +1,14 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Layout;
 using CourtFlow.Web.Services;
 using CourtFlow.Web.Theming;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor.Services;
 
 namespace CourtFlow.Web.Tests;
@@ -24,10 +27,14 @@ public class LayoutTests : BunitContext, IDisposable
         this.AddAccessServices();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Brand_links_home_with_the_logo_and_the_name()
+    public void BrandLinksHomeWithTheLogoAndTheName()
     {
         var cut = RenderLayout();
 
@@ -38,7 +45,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Menu_button_is_labeled_toggle_navigation()
+    public void MenuButtonIsLabeledToggleNavigation()
     {
         var cut = RenderLayout();
 
@@ -49,7 +56,7 @@ public class LayoutTests : BunitContext, IDisposable
     [InlineData(OrganizationRole.Owner)]
     [InlineData(OrganizationRole.Editor)]
     [InlineData(OrganizationRole.Viewer)]
-    public void Drawer_lists_tournaments_then_teams_then_format_then_sign_out(OrganizationRole role)
+    public void DrawerListsTournamentsThenTeamsThenFormatThenSignOut(OrganizationRole role)
     {
         var cut = RenderLayout(TestAccess.Member(role));
 
@@ -66,7 +73,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Theme_toggle_flips_its_label_and_writes_the_store_once()
+    public void ThemeToggleFlipsItsLabelAndWritesTheStoreOnce()
     {
         var cut = RenderLayout();
         var toggle = cut.Find("[data-testid=theme-toggle]");
@@ -79,7 +86,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Theme_toggle_reads_switch_to_light_in_dark_mode()
+    public async Task ThemeToggleReadsSwitchToLightInDarkMode()
     {
         _store.Cookie = "dark";
         await _theme.InitializeAsync();
@@ -90,7 +97,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void No_login_chrome_or_tournament_selector()
+    public void NoLoginChromeOrTournamentSelector()
     {
         var cut = RenderLayout();
 
@@ -100,7 +107,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void The_user_menu_holds_sign_out()
+    public void TheUserMenuHoldsSignOut()
     {
         var cut = RenderLayout();
 
@@ -113,7 +120,7 @@ public class LayoutTests : BunitContext, IDisposable
     [InlineData("/tournaments")]
     [InlineData("/tournaments/new")]
     [InlineData("/tournaments/3f2b8c8e-2c3a-4b8e-9a1d-5c6d7e8f9a0b")]
-    public void Tournaments_link_is_active_on_tournament_pages(string path)
+    public void TournamentsLinkIsActiveOnTournamentPages(string path)
     {
         var cut = RenderLayout();
 
@@ -125,7 +132,7 @@ public class LayoutTests : BunitContext, IDisposable
     [Theory]
     [InlineData("/not-found")]
     [InlineData("/")]
-    public void Tournaments_link_is_not_active_elsewhere(string path)
+    public void TournamentsLinkIsNotActiveElsewhere(string path)
     {
         var cut = RenderLayout();
 
@@ -135,7 +142,7 @@ public class LayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Teams_link_is_active_on_the_teams_page()
+    public void TeamsLinkIsActiveOnTheTeamsPage()
     {
         var cut = RenderLayout();
 
@@ -147,7 +154,7 @@ public class LayoutTests : BunitContext, IDisposable
     [Theory]
     [InlineData("/format")]
     [InlineData("/format/00000000-0000-0000-0000-000000000001/ranking")]
-    public void Format_link_is_active_on_format_and_below_it(string path)
+    public void FormatLinkIsActiveOnFormatAndBelowIt(string path)
     {
         var cut = RenderLayout();
 

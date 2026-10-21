@@ -1,11 +1,12 @@
 using System.Net.Http.Json;
+
 using CourtFlow.Application.Access;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class MeApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -13,7 +14,7 @@ public sealed class MeApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Signed_out_reads_as_signed_out()
+    public async Task SignedOutReadsAsSignedOut()
     {
         var me = await MeAsync(factory.CreateClient());
 
@@ -21,7 +22,7 @@ public sealed class MeApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_member_sees_their_organization_and_role()
+    public async Task AMemberSeesTheirOrganizationAndRole()
     {
         var me = await MeAsync(factory.CreateMemberClient(OrganizationRole.Editor));
 
@@ -33,7 +34,7 @@ public sealed class MeApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_operator_is_recognized_whatever_the_email_case()
+    public async Task AnOperatorIsRecognizedWhateverTheEmailCase()
     {
         var me = await MeAsync(factory.CreateOperatorClient());
 
@@ -42,7 +43,7 @@ public sealed class MeApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_deactivated_organization_reports_its_status()
+    public async Task ADeactivatedOrganizationReportsItsStatus()
     {
         var organization = await factory.CreateOrganizationAsync("Gone Club", OrganizationStatus.Deactivated);
         var user = TestUser.Named("gone");

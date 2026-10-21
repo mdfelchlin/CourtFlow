@@ -1,9 +1,13 @@
 using System.Reflection;
+
 using Bunit;
+
 using CourtFlow.Web.Layout;
 using CourtFlow.Web.Pages;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor.Services;
 
 namespace CourtFlow.Web.Tests;
@@ -16,11 +20,15 @@ public class LandingPageTests : BunitContext, IDisposable
         Services.AddMudServices();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>No <see cref="Services.ICourtFlowApi"/> is registered, so any data call would throw here.</summary>
     [Fact]
-    public void Welcome_is_the_only_heading_and_coming_soon_sits_under_it()
+    public void WelcomeIsTheOnlyHeadingAndComingSoonSitsUnderIt()
     {
         var cut = Render<Landing>();
 
@@ -31,20 +39,20 @@ public class LandingPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Landing_answers_at_the_root_inside_the_public_frame()
+    public void LandingAnswersAtTheRootInsideThePublicFrame()
     {
         Assert.Equal(["/"], Routes(typeof(Landing)));
         Assert.Equal(typeof(PublicLayout), typeof(Landing).GetCustomAttribute<LayoutAttribute>()?.LayoutType);
     }
 
     [Fact]
-    public void The_tournament_list_moved_off_the_root()
+    public void TheTournamentListMovedOffTheRoot()
     {
         Assert.Equal(["/tournaments"], Routes(typeof(TournamentList)));
     }
 
     [Fact]
-    public void Only_the_landing_page_claims_the_root()
+    public void OnlyTheLandingPageClaimsTheRoot()
     {
         var atTheRoot = typeof(Landing).Assembly.GetTypes()
             .Where(type => Routes(type).Contains("/"))
