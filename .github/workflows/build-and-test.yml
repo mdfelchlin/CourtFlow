@@ -1,0 +1,40 @@
+name: Build and test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-and-test-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install .NET 10 SDK
+        id: dotnet
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          dotnet-quality: ga
+
+      - name: Use that SDK
+        run: |
+          version="${{ steps.dotnet.outputs.dotnet-version }}"
+          jq --arg version "$version" '.sdk.version = $version' src/global.json > src/global.json.tmp
+          mv src/global.json.tmp src/global.json
+          jq -e '.test.runner == "Microsoft.Testing.Platform"' src/global.json
+          test "$(dotnet --version)" = "$version"
+
+      - name: Test
+        run: dotnet test src/CourtFlow.slnx
