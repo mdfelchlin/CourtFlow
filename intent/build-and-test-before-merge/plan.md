@@ -34,11 +34,13 @@ The ruleset is not a file. It is created on `mdfelchlin/CourtFlow` through `POST
 
 ## Workflow
 
-`actions/checkout@v7` and `actions/setup-dotnet@v6` are the action tags. Do not float either to `@main`. Do not set `cache: true` on setup-dotnet. `dotnet-version` is `10.0.x` and `dotnet-quality` is `ga`, so the 10.0 band does not install a preview. `src/global.json` does not pin an SDK, and the dotnet host otherwise selects the newest SDK on the runner, including one that was already installed. After setup-dotnet, the job writes that step's `dotnet-version` output into the runner's copy of `src/global.json` as `sdk.version` and leaves `test.runner` as `Microsoft.Testing.Platform`. That write is not committed. `dotnet --version` must be that same version, a `10.0` GA build, before the test command. If `dotnet-quality: ga` is rejected by the action, fix the workflow so the installed SDK is still the latest GA `10.0` patch. Do not install `latest` across majors.
+`actions/checkout@v7` and `actions/setup-dotnet@v6` are the action tags. Do not float either to `@main`. Do not set `cache: true` on setup-dotnet. `dotnet-version` is `10.0.x` and `dotnet-quality` is `ga`, so the 10.0 band does not install a preview. `src/global.json` does not pin an SDK, and the dotnet host otherwise selects the newest SDK on the runner, including one that was already installed. After setup-dotnet, the job writes a runner-only `global.json` at the repository root with that step's `dotnet-version` and `test.runner` set to `Microsoft.Testing.Platform`. That file is not committed. `dotnet --version` must be that same version, a `10.0` GA build, before the test command. If `dotnet-quality: ga` is rejected by the action, fix the workflow so the installed SDK is still the latest GA `10.0` patch. Do not install `latest` across majors.
 
 The test step's working directory is the repository root. Its `run` is exactly `dotnet test src/CourtFlow.slnx`. No configuration, no filter, no `--no-build`, no `--no-restore`, no second test command. No Postgres service. No AppHost. No secret, no `env` block, and no GitHub environment. Permissions stay `contents: read` on the workflow. The job does not widen them.
 
 `ubuntu-latest` supplies Docker. Do not install another daemon, and do not run the tests inside a container. Do not set Testcontainers variables ahead of a failure. If the green-run attempt fails because the daemon is unreachable or Ryuk cannot start, fix that in this workflow and record the reason in the commit. That fix still does not edit `src/`.
+
+`dotnet` reads `global.json` from the working directory upward. It does not read [src/global.json](../../src/global.json) when the command runs from the repository root, so the committed `test.runner` does not select Microsoft.Testing.Platform there. SDK 10.0.402 then builds the test projects with the VSTest target, which Microsoft.Testing.Platform.MSBuild 2 rejects. The job writes a runner-only `global.json` at the repository root with the installed SDK version and `test.runner` set to `Microsoft.Testing.Platform`. That file is not committed. [src/global.json](../../src/global.json) stays as it is.
 
 ```yaml
 name: Build and test
@@ -74,9 +76,8 @@ jobs:
       - name: Use that SDK
         run: |
           version="${{ steps.dotnet.outputs.dotnet-version }}"
-          jq --arg version "$version" '.sdk.version = $version' src/global.json > src/global.json.tmp
-          mv src/global.json.tmp src/global.json
-          jq -e '.test.runner == "Microsoft.Testing.Platform"' src/global.json
+          jq -n --arg version "$version" '{sdk:{version:$version},test:{runner:"Microsoft.Testing.Platform"}}' > global.json
+          jq -e '.test.runner == "Microsoft.Testing.Platform"' src/global.json >/dev/null
           test "$(dotnet --version)" = "$version"
 
       - name: Test
@@ -153,5 +154,5 @@ The existing suite is the regression, run as `dotnet test src/CourtFlow.slnx` lo
 - Required reviews, signed commits, a linear history, and a merge queue staying off. The read-back shows those rules were not added.
 - Draft pull requests running, and a docs-only pull request running the full suite. No test opens those pull requests.
 - `tools/logo/` not being built, and `dotnet format` not being its own step. The workflow has one test command.
-- The runner copy of `src/global.json` gaining `sdk.version` for that job only. The committed file has no SDK pin, which the empty `src` diff checks.
+- The runner-only root `global.json`. The committed [src/global.json](../../src/global.json) has no SDK pin, which the empty `src` diff checks. `dotnet test` from the repository root does not read that committed file.
 - API tests still pulling `postgres:16-alpine`. No test asserts that image tag. [src/CourtFlow.Api.Tests/ApiFactory.cs](../../src/CourtFlow.Api.Tests/ApiFactory.cs) is unchanged, and the existing API tests are what start the container.

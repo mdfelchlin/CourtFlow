@@ -31,9 +31,8 @@ jobs:
       - name: Use that SDK
         run: |
           version="${{ steps.dotnet.outputs.dotnet-version }}"
-          jq --arg version "$version" '.sdk.version = $version' src/global.json > src/global.json.tmp
-          mv src/global.json.tmp src/global.json
-          jq -e '.test.runner == "Microsoft.Testing.Platform"' src/global.json
+          jq -n --arg version "$version" '{sdk:{version:$version},test:{runner:"Microsoft.Testing.Platform"}}' > global.json
+          jq -e '.test.runner == "Microsoft.Testing.Platform"' src/global.json >/dev/null
           test "$(dotnet --version)" = "$version"
 
       - name: Test
