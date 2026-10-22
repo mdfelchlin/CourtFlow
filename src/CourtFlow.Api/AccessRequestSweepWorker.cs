@@ -3,7 +3,7 @@ using CourtFlow.Application.Access;
 namespace CourtFlow.Api;
 
 /// <summary>Reminds operators a day before a request expires, and expires requests after seven days.</summary>
-public sealed class AccessRequestSweepWorker(IServiceScopeFactory scopes, TimeProvider clock, ILogger<AccessRequestSweepWorker> logger) : BackgroundService
+public sealed partial class AccessRequestSweepWorker(IServiceScopeFactory scopes, TimeProvider clock, ILogger<AccessRequestSweepWorker> logger) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
 
@@ -24,8 +24,8 @@ public sealed class AccessRequestSweepWorker(IServiceScopeFactory scopes, TimePr
             await using var scope = scopes.CreateAsyncScope();
             var sweep = scope.ServiceProvider.GetRequiredService<AccessRequestSweep>();
             var result = await sweep.RunAsync(clock.GetUtcNow(), cancellationToken);
-            if (result.Reminded > 0 || result.Expired > 0)
-                logger.LogInformation("Access requests: {Reminded} reminder(s) sent, {Expired} expired.", result.Reminded, result.Expired);
+            if ((result.Reminded > 0 || result.Expired > 0) && logger.IsEnabled(LogLevel.Information))
+                LogReminders(logger, result.Reminded, result.Expired);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -33,7 +33,13 @@ public sealed class AccessRequestSweepWorker(IServiceScopeFactory scopes, TimePr
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "The access request sweep failed. It will run again later.");
+            LogSweepFailed(logger, exception);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Access requests: {Reminded} reminder(s) sent, {Expired} expired.")]
+    private static partial void LogReminders(ILogger logger, int reminded, int expired);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The access request sweep failed. It will run again later.")]
+    private static partial void LogSweepFailed(ILogger logger, Exception exception);
 }

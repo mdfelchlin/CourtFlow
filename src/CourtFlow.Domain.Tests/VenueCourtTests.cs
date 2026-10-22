@@ -8,7 +8,7 @@ public class VenueCourtTests
     private static readonly DateOnly End = new(2026, 9, 3);
 
     [Fact]
-    public void Whitespace_venue_name_is_rejected_and_a_real_name_is_trimmed()
+    public void WhitespaceVenueNameIsRejectedAndARealNameIsTrimmed()
     {
         var tournament = Tournament();
         Assert.Throws<DomainRuleException>(() => tournament.AddVenue("   ", null, 1));
@@ -17,7 +17,7 @@ public class VenueCourtTests
     }
 
     [Fact]
-    public void Empty_address_is_saved_and_duplicate_names_are_allowed()
+    public void EmptyAddressIsSavedAndDuplicateNamesAreAllowed()
     {
         var tournament = Tournament();
         var first = tournament.AddVenue("Main Gym", "   ", 0);
@@ -30,7 +30,7 @@ public class VenueCourtTests
     [Theory]
     [InlineData(0)]
     [InlineData(99)]
-    public void Court_count_boundaries_are_accepted(int count)
+    public void CourtCountBoundariesAreAccepted(int count)
     {
         var venue = Tournament().AddVenue("Main Gym", null, count);
         Assert.Equal(count, venue.Courts.Count);
@@ -40,13 +40,13 @@ public class VenueCourtTests
     [Theory]
     [InlineData(-1)]
     [InlineData(100)]
-    public void Court_count_outside_range_is_rejected(int count)
+    public void CourtCountOutsideRangeIsRejected(int count)
     {
         Assert.Throws<DomainRuleException>(() => Tournament().AddVenue("Main Gym", null, count));
     }
 
     [Fact]
-    public void Changing_the_count_keeps_the_courts_whose_numbers_remain()
+    public void ChangingTheCountKeepsTheCourtsWhoseNumbersRemain()
     {
         var tournament = Tournament();
         var venue = tournament.AddVenue("Main Gym", null, 3);

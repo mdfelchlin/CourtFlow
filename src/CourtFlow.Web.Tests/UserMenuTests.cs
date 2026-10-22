@@ -1,4 +1,5 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Services;
@@ -18,7 +19,7 @@ public class UserMenuTests : AccessTestContext
 
     [Theory]
     [MemberData(nameof(People))]
-    public void The_items_follow_the_person(string who, bool showsOrganization, bool showsOperator)
+    public void TheItemsFollowThePerson(string who, bool showsOrganization, bool showsOperator)
     {
         var menu = RenderMenu(Person(who));
 
@@ -32,7 +33,7 @@ public class UserMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void The_header_shows_the_name_and_email()
+    public void TheHeaderShowsTheNameAndEmail()
     {
         RenderMenu(TestAccess.Member(OrganizationRole.Editor));
 
@@ -42,7 +43,7 @@ public class UserMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void The_button_shows_initials_and_is_labeled_with_the_name()
+    public void TheButtonShowsInitialsAndIsLabeledWithTheName()
     {
         var cut = RenderMenu(TestAccess.Member(OrganizationRole.Editor), open: false);
 
@@ -52,7 +53,7 @@ public class UserMenuTests : AccessTestContext
     }
 
     [Fact]
-    public void View_public_site_goes_home_and_sign_out_goes_to_the_api()
+    public void ViewPublicSiteGoesHomeAndSignOutGoesToTheApi()
     {
         RenderMenu(TestAccess.Member(OrganizationRole.Owner, isOperator: true));
 

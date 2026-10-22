@@ -8,7 +8,7 @@ public class TournamentTeamRulesTests
     private static readonly DateOnly End = new(2026, 9, 3);
 
     [Fact]
-    public void A_team_is_entered_once_per_tournament()
+    public void ATeamIsEnteredOncePerTournament()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("Men's Division I", "Male");
@@ -23,7 +23,7 @@ public class TournamentTeamRulesTests
     }
 
     [Fact]
-    public void Entering_or_moving_needs_a_division_of_this_tournament()
+    public void EnteringOrMovingNeedsADivisionOfThisTournament()
     {
         var tournament = Tournament();
         var own = tournament.AddDivision("Men's Division I", "Male");
@@ -38,7 +38,7 @@ public class TournamentTeamRulesTests
     }
 
     [Fact]
-    public void Moving_changes_the_division_and_keeps_the_entry()
+    public void MovingChangesTheDivisionAndKeepsTheEntry()
     {
         var tournament = Tournament();
         var first = tournament.AddDivision("Men's Division I", "Male");
@@ -52,7 +52,7 @@ public class TournamentTeamRulesTests
     }
 
     [Fact]
-    public void Removing_an_entry_leaves_the_other_entries_and_divisions()
+    public void RemovingAnEntryLeavesTheOtherEntriesAndDivisions()
     {
         var tournament = Tournament();
         var division = tournament.AddDivision("Men's Division I", "Male");
@@ -67,7 +67,7 @@ public class TournamentTeamRulesTests
     }
 
     [Fact]
-    public void A_division_with_teams_cannot_be_removed()
+    public void ADivisionWithTeamsCannotBeRemoved()
     {
         var tournament = Tournament();
         var busy = tournament.AddDivision("Men's Division I", "Male");
@@ -94,7 +94,7 @@ public class TournamentTeamRulesTests
     [InlineData("F", DivisionGender.Female)]
     [InlineData("female", DivisionGender.Female)]
     [InlineData("Female", DivisionGender.Female)]
-    public void Import_gender_accepts_letters_and_words_in_any_case(string value, DivisionGender expected) =>
+    public void ImportGenderAcceptsLettersAndWordsInAnyCase(string value, DivisionGender expected) =>
         Assert.Equal(expected, Division.ParseImportGender(value));
 
     [Theory]
@@ -103,11 +103,11 @@ public class TournamentTeamRulesTests
     [InlineData("X")]
     [InlineData("Coed")]
     [InlineData("Men")]
-    public void Import_gender_rejects_anything_else(string? value) =>
+    public void ImportGenderRejectsAnythingElse(string? value) =>
         Assert.Null(Division.ParseImportGender(value));
 
     [Fact]
-    public void Division_label_shows_name_and_gender() =>
+    public void DivisionLabelShowsNameAndGender() =>
         Assert.Equal("14U Open (Female)", Division.Label("14U Open", "Female"));
 
     private static Tournament Tournament() =>

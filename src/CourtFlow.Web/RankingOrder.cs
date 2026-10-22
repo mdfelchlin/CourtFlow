@@ -21,12 +21,12 @@ public sealed class RankingRow
 public interface IRankingRandom
 {
     /// <summary>A value from 0 inclusive to <paramref name="maxExclusive"/> exclusive.</summary>
-    int Next(int maxExclusive);
+    int NextValue(int maxExclusive);
 }
 
 public sealed class SystemRankingRandom : IRankingRandom
 {
-    public int Next(int maxExclusive) => Random.Shared.Next(maxExclusive);
+    public int NextValue(int maxExclusive) => Random.Shared.Next(maxExclusive);
 }
 
 /// <summary>Reorders the on-screen ranking. Dragging and typing a rank both go through <see cref="Move"/>.</summary>
@@ -60,7 +60,7 @@ public static class RankingOrder
             next = current.ToList();
             for (var index = next.Count - 1; index > 0; index--)
             {
-                var swap = random.Next(index + 1);
+                var swap = random.NextValue(index + 1);
                 if ((uint)swap > (uint)index)
                     swap = index;
                 (next[index], next[swap]) = (next[swap], next[index]);

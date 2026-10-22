@@ -1,11 +1,12 @@
 using CourtFlow.Application.Access;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace CourtFlow.Api.Access;
 
 /// <summary>The API's session: a 30-day cookie from sign-in, renewed against WorkOS every few minutes so a session ended there ends here.</summary>
-public static class SessionCookie
+public static partial class SessionCookie
 {
     public const string Name = "courtflow-session";
     public const string Scheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -88,9 +89,9 @@ public static class SessionCookie
         }
         catch (WorkOsUnavailableException exception)
         {
-            context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                .CreateLogger(typeof(SessionCookie))
-                .LogWarning(exception, "WorkOS could not refresh a session. The session is kept until the next check.");
+            LogRefreshKept(
+                context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(SessionCookie)),
+                exception);
         }
     }
 
@@ -99,6 +100,9 @@ public static class SessionCookie
         context.RejectPrincipal();
         await context.HttpContext.SignOutAsync(Scheme);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "WorkOS could not refresh a session. The session is kept until the next check.")]
+    private static partial void LogRefreshKept(ILogger logger, Exception exception);
 
     private static DateTimeOffset? Read(AuthenticationProperties properties, string key) =>
         properties.Items.TryGetValue(key, out var value) && DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;

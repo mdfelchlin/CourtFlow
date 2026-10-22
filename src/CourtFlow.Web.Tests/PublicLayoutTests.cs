@@ -1,10 +1,13 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Layout;
 using CourtFlow.Web.Services;
 using CourtFlow.Web.Theming;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor.Services;
 
 namespace CourtFlow.Web.Tests;
@@ -27,10 +30,14 @@ public class PublicLayoutTests : BunitContext, IDisposable
         this.AddAccessServices();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Brand_links_to_the_landing_page_with_the_logo_and_the_name()
+    public void BrandLinksToTheLandingPageWithTheLogoAndTheName()
     {
         var cut = RenderLayout();
 
@@ -41,7 +48,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Brand_then_the_toggle_then_request_access_then_login_fill_the_top_bar()
+    public void BrandThenTheToggleThenRequestAccessThenLoginFillTheTopBar()
     {
         var cut = RenderLayout();
 
@@ -57,7 +64,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Login_reads_login_and_signs_in_back_to_the_tournament_list()
+    public void LoginReadsLoginAndSignsInBackToTheTournamentList()
     {
         var cut = RenderLayout();
 
@@ -68,7 +75,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Request_access_goes_to_the_request_page()
+    public void RequestAccessGoesToTheRequestPage()
     {
         var cut = RenderLayout();
 
@@ -76,7 +83,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Signed_in_with_a_membership_shows_dashboard_only()
+    public void SignedInWithAMembershipShowsDashboardOnly()
     {
         var cut = RenderLayout(TestAccess.Member(OrganizationRole.Viewer));
 
@@ -91,7 +98,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Signed_in_without_a_membership_shows_sign_out_only(bool deactivated)
+    public void SignedInWithoutAMembershipShowsSignOutOnly(bool deactivated)
     {
         var me = deactivated
             ? TestAccess.Member(OrganizationRole.Owner, status: OrganizationStatus.Deactivated)
@@ -106,7 +113,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void While_authorizing_no_buttons_show()
+    public void WhileAuthorizingNoButtonsShow()
     {
         this.AddAuthorization().SetAuthorizing();
 
@@ -118,7 +125,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void There_is_no_menu_button_and_no_drawer()
+    public void ThereIsNoMenuButtonAndNoDrawer()
     {
         var cut = RenderLayout();
 
@@ -128,7 +135,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void The_toggle_flips_its_label_and_writes_only_the_public_cookie()
+    public void TheToggleFlipsItsLabelAndWritesOnlyThePublicCookie()
     {
         var cut = RenderLayout();
         var toggle = cut.Find("[data-testid=theme-toggle]");
@@ -143,7 +150,7 @@ public class PublicLayoutTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_dark_public_cookie_reads_switch_to_light()
+    public async Task ADarkPublicCookieReadsSwitchToLight()
     {
         _publicStore.Cookie = "dark";
         await _publicTheme.InitializeAsync();

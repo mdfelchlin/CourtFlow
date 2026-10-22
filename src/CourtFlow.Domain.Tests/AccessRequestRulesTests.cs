@@ -7,7 +7,7 @@ public class AccessRequestRulesTests
     private static readonly DateTimeOffset Requested = new(2026, 3, 1, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void A_new_request_is_trimmed_waiting_and_expires_in_7_days()
+    public void ANewRequestIsTrimmedWaitingAndExpiresIn7Days()
     {
         var request = AccessRequest.Create("wl_1", "  Pat Lee ", " Pat@Example.com ", "  Rapids ", "  Hello ", Requested);
 
@@ -26,14 +26,14 @@ public class AccessRequestRulesTests
     [InlineData("Pat", "pat@", "Rapids", null, AccessRequest.EmailInvalid)]
     [InlineData("Pat", "pat example@x.com", "Rapids", null, AccessRequest.EmailInvalid)]
     [InlineData("Pat", "pat@example.com", "", null, AccessRequest.OrganizationNameRequired)]
-    public void Required_fields_and_email_shape_are_checked(string name, string email, string organization, string? message, string expected)
+    public void RequiredFieldsAndEmailShapeAreChecked(string name, string email, string organization, string? message, string expected)
     {
         Assert.Equal(expected, AccessRequest.Problem(name, email, organization, message));
         Assert.Equal(expected, Assert.Throws<DomainRuleException>(() => AccessRequest.Validate(name, email, organization, message)).Message);
     }
 
     [Fact]
-    public void Lengths_are_limited()
+    public void LengthsAreLimited()
     {
         Assert.Null(AccessRequest.Problem(new string('a', 100), "pat@example.com", new string('b', 100), new string('c', 1000)));
         Assert.Equal(AccessRequest.NameTooLong, AccessRequest.Problem(new string('a', 101), "pat@example.com", "Rapids", null));
@@ -46,7 +46,7 @@ public class AccessRequestRulesTests
     }
 
     [Fact]
-    public void The_reminder_is_due_24_hours_before_expiry()
+    public void TheReminderIsDue24HoursBeforeExpiry()
     {
         var request = Create();
 
@@ -55,7 +55,7 @@ public class AccessRequestRulesTests
     }
 
     [Fact]
-    public void The_reminder_is_due_only_once()
+    public void TheReminderIsDueOnlyOnce()
     {
         var request = Create();
 
@@ -67,7 +67,7 @@ public class AccessRequestRulesTests
     [Theory]
     [InlineData("approve")]
     [InlineData("decline")]
-    public void No_reminder_after_a_decision(string action)
+    public void NoReminderAfterADecision(string action)
     {
         var request = Create();
 
@@ -81,7 +81,7 @@ public class AccessRequestRulesTests
     }
 
     [Fact]
-    public void Expiry_is_due_at_7_days()
+    public void ExpiryIsDueAt7Days()
     {
         var request = Create();
 
@@ -94,7 +94,7 @@ public class AccessRequestRulesTests
     [InlineData("decline")]
     [InlineData("expire")]
     [InlineData("remind")]
-    public void Every_change_refuses_a_request_that_is_not_waiting(string action)
+    public void EveryChangeRefusesARequestThatIsNotWaiting(string action)
     {
         var request = Create();
         request.Expire();

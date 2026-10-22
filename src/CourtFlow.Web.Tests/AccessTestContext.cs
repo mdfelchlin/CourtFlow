@@ -1,9 +1,13 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Web.Services;
 using CourtFlow.Web.Theming;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -12,8 +16,8 @@ namespace CourtFlow.Web.Tests;
 /// <summary>The services every access page and component needs, with the fake API and a popover and dialog host.</summary>
 public abstract class AccessTestContext : BunitContext, IDisposable
 {
-    protected readonly FakeApi Api = new();
-    protected readonly FakeTournamentMemory Memory = new();
+    protected FakeApi Api { get; } = new();
+    protected FakeTournamentMemory Memory { get; } = new();
     protected IRenderedComponent<MudPopoverProvider> Popovers { get; private set; } = default!;
     protected IRenderedComponent<MudDialogProvider> Dialogs { get; private set; } = default!;
 
@@ -38,7 +42,11 @@ public abstract class AccessTestContext : BunitContext, IDisposable
         Dialogs = Render<MudDialogProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     protected NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 

@@ -12,7 +12,7 @@ public class TeamImportPlannerTests
     [InlineData("Club", "", "", "X", TeamImportPlanner.TeamRequired)]
     [InlineData("Club", "Team", "", "X", TeamImportPlanner.DivisionRequired)]
     [InlineData("Club", "Team", "14U Open", "X", TeamImportPlanner.GenderInvalid)]
-    public void Row_checks_report_the_first_failure_in_order(string club, string team, string division, string gender, string message)
+    public void RowChecksReportTheFirstFailureInOrder(string club, string team, string division, string gender, string message)
     {
         var (tournament, _, _) = Setup();
 
@@ -23,7 +23,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void A_missing_division_names_the_row_spelling_and_resolved_gender()
+    public void AMissingDivisionNamesTheRowSpellingAndResolvedGender()
     {
         var (tournament, _, _) = Setup();
 
@@ -33,7 +33,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void Division_name_matches_ignoring_case_but_gender_must_match_too()
+    public void DivisionNameMatchesIgnoringCaseButGenderMustMatchToo()
     {
         var (tournament, _, _) = Setup();
 
@@ -44,7 +44,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void Every_duplicate_row_is_rejected_and_lists_every_line()
+    public void EveryDuplicateRowIsRejectedAndListsEveryLine()
     {
         var (tournament, _, _) = Setup();
 
@@ -63,7 +63,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void Two_duplicate_rows_say_and()
+    public void TwoDuplicateRowsSayAnd()
     {
         var (tournament, _, _) = Setup();
 
@@ -73,7 +73,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void Outcomes_cover_new_existing_moved_and_unchanged()
+    public void OutcomesCoverNewExistingMovedAndUnchanged()
     {
         var (tournament, open, gold) = Setup();
         var club = Club.Create(Organization, "Ohio State University");
@@ -101,7 +101,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void A_new_club_named_with_different_case_counts_once()
+    public void ANewClubNamedWithDifferentCaseCountsOnce()
     {
         var (tournament, _, _) = Setup();
 
@@ -113,7 +113,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void A_reader_rejection_is_kept_and_counted()
+    public void AReaderRejectionIsKeptAndCounted()
     {
         var (tournament, _, _) = Setup();
 
@@ -126,7 +126,7 @@ public class TeamImportPlannerTests
     }
 
     [Fact]
-    public void Entries_missing_from_the_file_are_not_touched()
+    public void EntriesMissingFromTheFileAreNotTouched()
     {
         var (tournament, open, _) = Setup();
         var club = Club.Create(Organization, "Kept Club");

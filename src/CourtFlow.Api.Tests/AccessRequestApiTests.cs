@@ -1,13 +1,16 @@
 using System.Net.Http.Json;
+
 using CourtFlow.Application.Access;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -25,7 +28,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_failed_check_stops_before_anything_else()
+    public async Task AFailedCheckStopsBeforeAnythingElse()
     {
         factory.Captcha.Passes = false;
 
@@ -37,7 +40,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Someone_with_access_is_told_to_sign_in()
+    public async Task SomeoneWithAccessIsToldToSignIn()
     {
         factory.AddMember(TestOrganizationSeed.Id, new TestUser("user_casey", "casey@club.test", "Casey"), OrganizationRole.Viewer);
 
@@ -47,7 +50,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_waiting_request_is_reported()
+    public async Task AWaitingRequestIsReported()
     {
         await SubmitAsync(factory.CreateClient(), Form());
 
@@ -58,7 +61,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_declined_email_cannot_send_again()
+    public async Task ADeclinedEmailCannotSendAgain()
     {
         await SubmitAsync(factory.CreateClient(), Form());
         var waiting = (await factory.CreateOperatorClient().GetFromJsonAsync<List<AccessRequestDetails>>("/api/operator/requests", TestContext.Current.CancellationToken))!.Single();
@@ -70,7 +73,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_good_request_creates_the_waitlist_entry_stores_it_and_emails_every_operator()
+    public async Task AGoodRequestCreatesTheWaitlistEntryStoresItAndEmailsEveryOperator()
     {
         var result = await SubmitAsync(factory.CreateClient(), Form());
 
@@ -91,7 +94,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task When_WorkOS_fails_nothing_is_stored_or_sent()
+    public async Task WhenWorkOSFailsNothingIsStoredOrSent()
     {
         factory.WorkOs.Unavailable = true;
 
@@ -103,7 +106,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_signed_in_email_wins_over_the_form()
+    public async Task TheSignedInEmailWinsOverTheForm()
     {
         var client = factory.CreateClientAs(new TestUser("user_signed", "signed@club.test", "Signed In"));
 
@@ -113,7 +116,7 @@ public sealed class AccessRequestApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Field_problems_are_refused()
+    public async Task FieldProblemsAreRefused()
     {
         var response = await factory.CreateClient().PostAsJsonAsync("/api/access-requests", Form() with { Name = " " }, TestContext.Current.CancellationToken);
 

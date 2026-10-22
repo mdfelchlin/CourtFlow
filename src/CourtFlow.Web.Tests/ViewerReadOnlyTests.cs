@@ -1,4 +1,5 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
@@ -12,7 +13,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     // ----- Tournament list -----
 
     [Fact]
-    public void With_nothing_published_a_viewer_sees_so_and_no_add_button()
+    public void WithNothingPublishedAViewerSeesSoAndNoAddButton()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
 
@@ -25,7 +26,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     }
 
     [Fact]
-    public void A_published_row_has_no_edit_or_delete_for_a_viewer()
+    public void APublishedRowHasNoEditOrDeleteForAViewer()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
         var tournament = Published();
@@ -42,7 +43,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     // ----- Tournament page -----
 
     [Fact]
-    public void Every_field_is_disabled_and_venues_and_divisions_have_no_controls()
+    public void EveryFieldIsDisabledAndVenuesAndDivisionsHaveNoControls()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
         var tournament = Published();
@@ -68,7 +69,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     }
 
     [Fact]
-    public void The_status_bar_shows_the_published_text_without_actions()
+    public void TheStatusBarShowsThePublishedTextWithoutActions()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
 
@@ -80,7 +81,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     }
 
     [Fact]
-    public void A_viewer_on_new_tournament_sees_not_found()
+    public void AViewerOnNewTournamentSeesNotFound()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
 
@@ -93,7 +94,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     // ----- Teams page -----
 
     [Fact]
-    public void A_viewer_has_no_team_controls_and_no_archived_note()
+    public void AViewerHasNoTeamControlsAndNoArchivedNote()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Viewer));
         var tournament = Published();
@@ -118,7 +119,7 @@ public class ViewerReadOnlyTests : AccessTestContext
     [Theory]
     [InlineData(OrganizationRole.Owner)]
     [InlineData(OrganizationRole.Editor)]
-    public void Owners_and_editors_keep_every_control(OrganizationRole role)
+    public void OwnersAndEditorsKeepEveryControl(OrganizationRole role)
     {
         SignInAs(TestAccess.Member(role));
         var tournament = Published();

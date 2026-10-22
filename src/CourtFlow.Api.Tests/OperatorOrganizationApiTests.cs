@@ -1,16 +1,19 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Application.Access;
 using CourtFlow.Application.Organizations;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -18,13 +21,13 @@ public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLif
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Only_operators_can_use_it()
+    public async Task OnlyOperatorsCanUseIt()
     {
         Assert.Equal(AccessReasons.Forbidden, await ReasonAsync(await factory.CreateMemberClient().GetAsync("/api/operator/organizations", TestContext.Current.CancellationToken)));
     }
 
     [Fact]
-    public async Task The_list_shows_status_member_count_and_owners()
+    public async Task TheListShowsStatusMemberCountAndOwners()
     {
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("zed"), OrganizationRole.Owner);
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("amy"), OrganizationRole.Owner);
@@ -43,7 +46,7 @@ public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLif
     }
 
     [Fact]
-    public async Task Inviting_an_owner_sends_email_7()
+    public async Task InvitingAnOwnerSendsEmail7()
     {
         var response = await PostAsync(factory.CreateOperatorClient(), $"/api/operator/organizations/{TestOrganizationSeed.Id}/owner-invitations", new InviteOwner("New.Owner@club.test"));
 
@@ -56,7 +59,7 @@ public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLif
     }
 
     [Fact]
-    public async Task Inviting_an_owner_has_the_same_refusals()
+    public async Task InvitingAnOwnerHasTheSameRefusals()
     {
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("taken"), OrganizationRole.Viewer);
 
@@ -66,7 +69,7 @@ public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLif
     }
 
     [Fact]
-    public async Task Deactivating_cancels_and_revokes_invitations_emails_members_and_ends_access()
+    public async Task DeactivatingCancelsAndRevokesInvitationsEmailsMembersAndEndsAccess()
     {
         var owner = factory.CreateMemberClient();
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("ed"), OrganizationRole.Editor);
@@ -85,7 +88,7 @@ public sealed class OperatorOrganizationApiTests(ApiFactory factory) : IAsyncLif
     }
 
     [Fact]
-    public async Task Reactivating_sends_email_9_and_restores_access_but_not_invitations()
+    public async Task ReactivatingSendsEmail9AndRestoresAccessButNotInvitations()
     {
         var owner = factory.CreateMemberClient();
         (await PostAsync(owner, "/api/organization/invitations", new InviteMember("pending@club.test", OrganizationRole.Viewer))).EnsureSuccessStatusCode();

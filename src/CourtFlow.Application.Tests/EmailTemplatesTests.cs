@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+
 using CourtFlow.Application.Email;
 using CourtFlow.Domain;
 
@@ -31,7 +32,7 @@ public sealed class EmailTemplatesTests
 
     [Theory]
     [MemberData(nameof(Emails))]
-    public void Each_email_has_its_subject_and_no_unfilled_placeholders(EmailMessage email, string subject)
+    public void EachEmailHasItsSubjectAndNoUnfilledPlaceholders(EmailMessage email, string subject)
     {
         Assert.Equal(subject, email.Subject);
         Assert.DoesNotContain("{", email.Text);
@@ -41,7 +42,7 @@ public sealed class EmailTemplatesTests
 
     [Theory]
     [MemberData(nameof(Bodies))]
-    public void Text_and_html_carry_the_same_sentences(EmailMessage email)
+    public void TextAndHtmlCarryTheSameSentences(EmailMessage email)
     {
         var htmlText = WebUtility.HtmlDecode(Regex.Replace(email.Html.Replace("<br>", "\n").Replace("</p>", "\n\n"), "<[^>]+>", ""));
 
@@ -49,7 +50,7 @@ public sealed class EmailTemplatesTests
     }
 
     [Fact]
-    public void Links_become_anchors_in_html()
+    public void LinksBecomeAnchorsInHtml()
     {
         var email = EmailTemplates.ApprovedNewOrganization("casey@club.test", "Casey", "River City VBC", Link, Expires);
 
@@ -58,7 +59,7 @@ public sealed class EmailTemplatesTests
     }
 
     [Fact]
-    public void Dates_read_like_October_20_2026()
+    public void DatesReadLikeOctober202026()
     {
         var email = EmailTemplates.ApprovedNewOrganization("casey@club.test", "Casey", "River City VBC", Link, Expires);
 
@@ -70,7 +71,7 @@ public sealed class EmailTemplatesTests
     [InlineData(OrganizationRole.Editor, "as an editor")]
     [InlineData(OrganizationRole.Viewer, "as a viewer")]
     [InlineData(OrganizationRole.Owner, "as an owner")]
-    public void Roles_read_with_their_article(OrganizationRole role, string expected)
+    public void RolesReadWithTheirArticle(OrganizationRole role, string expected)
     {
         var email = EmailTemplates.OwnerInvitation("casey@club.test", "Pat", "River City VBC", role, Link, Expires);
 
@@ -78,7 +79,7 @@ public sealed class EmailTemplatesTests
     }
 
     [Fact]
-    public void The_contact_address_appears_in_emails_2_5_and_8()
+    public void TheContactAddressAppearsInEmails25And8()
     {
         Assert.Contains(CourtFlowContact.Email, EmailTemplates.RequestExpiring(Request(), Link).Text);
         Assert.Contains(CourtFlowContact.Email, EmailTemplates.Declined("casey@club.test", "Casey", "River City VBC").Text);
@@ -86,7 +87,7 @@ public sealed class EmailTemplatesTests
     }
 
     [Fact]
-    public void The_new_request_email_lists_the_request()
+    public void TheNewRequestEmailListsTheRequest()
     {
         var email = EmailTemplates.NewAccessRequest(["op@courtflow.test"], Request(message: null), Link);
 

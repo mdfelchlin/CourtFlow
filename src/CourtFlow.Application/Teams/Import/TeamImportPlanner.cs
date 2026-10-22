@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using CourtFlow.Domain;
 
 namespace CourtFlow.Application.Teams.Import;
@@ -19,7 +21,7 @@ public static class TeamImportPlanner
         $"Add the division \"{Division.Label(division, gender.ToString())}\" to the tournament before importing.";
 
     public static string DuplicateRows(IReadOnlyList<int> lines) =>
-        $"This team is on more than one row (lines {TeamCsvReader.JoinWithAnd(lines.Select(line => line.ToString()).ToList())}).";
+        $"This team is on more than one row (lines {TeamCsvReader.JoinWithAnd(lines.Select(line => line.ToString(CultureInfo.InvariantCulture)).ToList())}).";
 
     public static TeamImportPreview FileFailed(string error) =>
         new(error, [], new TeamImportSummary(0, 0, 0, 0, 0, 0, 0), Stale: false);
@@ -96,7 +98,7 @@ public static class TeamImportPlanner
     private static string? Check(
         TeamCsvRow row,
         Tournament tournament,
-        IReadOnlyDictionary<int, List<int>> duplicateLines,
+        Dictionary<int, List<int>> duplicateLines,
         out Division? division)
     {
         division = null;

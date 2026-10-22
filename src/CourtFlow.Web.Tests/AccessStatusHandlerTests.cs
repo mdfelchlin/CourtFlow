@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using Bunit;
 using Bunit.TestDoubles;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Web.Tests;
@@ -28,7 +31,7 @@ public class AccessStatusHandlerTests : BunitContext
     }
 
     [Fact]
-    public async Task A_401_goes_to_sign_in_with_the_current_path()
+    public async Task A401GoesToSignInWithTheCurrentPath()
     {
         Navigation.NavigateTo("/teams");
         _api.Status = HttpStatusCode.Unauthorized;
@@ -42,7 +45,7 @@ public class AccessStatusHandlerTests : BunitContext
     [Theory]
     [InlineData("organization_deactivated")]
     [InlineData("no_access")]
-    public async Task Losing_the_organization_refreshes_me_and_goes_to_no_access(string reason)
+    public async Task LosingTheOrganizationRefreshesMeAndGoesToNoAccess(string reason)
     {
         Navigation.NavigateTo("/tournaments");
         await _provider.GetAuthenticationStateAsync();
@@ -60,7 +63,7 @@ public class AccessStatusHandlerTests : BunitContext
     }
 
     [Fact]
-    public async Task A_plain_forbidden_reaches_the_caller_with_its_body()
+    public async Task APlainForbiddenReachesTheCallerWithItsBody()
     {
         Navigation.NavigateTo("/tournaments");
         _api.Status = HttpStatusCode.Forbidden;

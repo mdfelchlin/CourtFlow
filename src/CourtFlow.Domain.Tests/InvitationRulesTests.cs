@@ -7,7 +7,7 @@ public class InvitationRulesTests
     private static readonly DateTimeOffset Sent = new(2026, 3, 1, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void The_email_is_trimmed_and_lowercased()
+    public void TheEmailIsTrimmedAndLowercased()
     {
         var invitation = Create(email: "  Pat@Example.COM ");
 
@@ -15,13 +15,13 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void A_bad_email_is_refused()
+    public void ABadEmailIsRefused()
     {
         Assert.Throws<DomainRuleException>(() => Create(email: "not-an-email"));
     }
 
     [Fact]
-    public void It_expires_exactly_7_days_after_it_was_sent()
+    public void ItExpiresExactly7DaysAfterItWasSent()
     {
         var invitation = Create();
 
@@ -33,7 +33,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void Accepting_a_pending_invitation_marks_it_accepted()
+    public void AcceptingAPendingInvitationMarksItAccepted()
     {
         var invitation = Create();
 
@@ -43,7 +43,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void An_expired_invitation_cannot_be_accepted()
+    public void AnExpiredInvitationCannotBeAccepted()
     {
         var invitation = Create();
 
@@ -53,7 +53,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void A_cancelled_or_accepted_invitation_cannot_be_accepted()
+    public void ACancelledOrAcceptedInvitationCannotBeAccepted()
     {
         var cancelled = Create();
         cancelled.Cancel();
@@ -65,7 +65,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void Reissue_gives_a_fresh_link_and_a_fresh_7_days()
+    public void ReissueGivesAFreshLinkAndAFresh7Days()
     {
         var invitation = Create();
         var later = Sent.AddDays(10);
@@ -79,7 +79,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void Reissue_brings_back_a_cancelled_invitation()
+    public void ReissueBringsBackACancelledInvitation()
     {
         var invitation = Create();
         invitation.Cancel();
@@ -90,7 +90,7 @@ public class InvitationRulesTests
     }
 
     [Fact]
-    public void An_accepted_invitation_cannot_be_reissued_or_cancelled()
+    public void AnAcceptedInvitationCannotBeReissuedOrCancelled()
     {
         var invitation = Create();
         invitation.Accept(Sent);

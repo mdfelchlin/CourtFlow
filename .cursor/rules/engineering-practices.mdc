@@ -9,22 +9,15 @@ Write product code under `src/` to current Microsoft guidance for .NET, ASP.NET 
 
 These accepted decisions stay as they are:
 
-- **Styling.** Theme and layout live in typed C# and MudBlazor parameters. Do not add `*.razor.css`. Hand-written CSS is only what the look-and-feel spec names.
-- **Aspire.** Do not add a service-defaults project. The API, the Blazor app, and Postgres keep their fixed ports.
-- **Sign-in.** The session stays in the `HttpOnly` cookie `courtflow-session`. Page code does not read a WorkOS token.
+- **Styling.** Theme and layout live in typed C# and MudBlazor parameters. Do not add `*.razor.css`. Hand-written CSS is only the loading screen and the unhandled-error bar in `wwwroot/css/app.css`.
+- **Aspire.** Do not add a service-defaults project. The API stays on `5009` and `7011`, the Blazor app on `5186` and `7211`, and Postgres on `5432`.
+- **Sign-in.** The session stays in the `HttpOnly` cookie `courtflow-session`. Page code does not read a WorkOS token. Who is signed in still comes from `GET /api/me`.
 - **Dates.** A calendar date a director sees uses `MM/dd/yyyy`. The API keeps `yyyy-MM-dd`.
 
 Do not change director-facing behavior, an API contract, or behavior an accepted intent specifies. When Microsoft guidance would change one of those, keep the accepted behavior.
 
-Every project under `src/` sets `AnalysisLevel` to latest, `AnalysisMode` to Recommended, `TreatWarningsAsErrors` to true, and `EnforceCodeStyleInBuild` to true. Leave info-level suggestions off. Generated Entity Framework migration files stay generated. A suppression needs a reason beside it. Do not add one to make the build pass.
+`src/Directory.Build.props` holds `AnalysisLevel` `latest`, `AnalysisMode` `Recommended`, `TreatWarningsAsErrors` `true`, and `EnforceCodeStyleInBuild` `true`. Leave info-level suggestions off. Generated migration files stay generated. A suppression needs a reason beside it. Do not add one to make the build pass.
 
 Google OR-Tools, hosted Postgres, and `tools/logo/` are outside this rule. Package versions belong to the current-packages rule.
 
 Checking a branch against this rule is the `verify-engineering-practices` skill.
-
-```razor
-@* Wrong: a scoped stylesheet for a component *@
-
-@* Right: a CourtFlow wrapper and MudBlazor parameters *@
-<CfTextField Label="Name" Required="true" />
-```

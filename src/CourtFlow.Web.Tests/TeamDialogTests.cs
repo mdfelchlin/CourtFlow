@@ -1,10 +1,14 @@
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -27,10 +31,14 @@ public class TeamDialogTests : BunitContext, IDisposable
         Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Adding_starts_with_no_division_and_a_disabled_team_field()
+    public void AddingStartsWithNoDivisionAndADisabledTeamField()
     {
         WithReadyTournament();
         var dialogs = Render<MudDialogProvider>();
@@ -48,7 +56,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Changing_the_club_clears_the_team()
+    public async Task ChangingTheClubClearsTheTeam()
     {
         WithReadyTournament();
         var dialogs = OpenAdd();
@@ -64,7 +72,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Unmatched_text_offers_a_new_club_and_a_new_team()
+    public async Task UnmatchedTextOffersANewClubAndANewTeam()
     {
         var club = new ClubResponse(Guid.NewGuid(), "Ohio State University");
         _api.Clubs.Add(club);
@@ -82,7 +90,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Typing_an_existing_team_name_in_a_different_case_picks_that_team()
+    public async Task TypingAnExistingTeamNameInADifferentCasePicksThatTeam()
     {
         var (tournament, open, _) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -97,7 +105,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Already_entered_teams_are_listed_and_cannot_be_picked()
+    public async Task AlreadyEnteredTeamsAreListedAndCannotBePicked()
     {
         var (tournament, open, _) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -113,7 +121,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Save_saves_closes_reloads_and_shows_saved()
+    public async Task SaveSavesClosesReloadsAndShowsSaved()
     {
         var (_, open, _) = WithReadyTournament();
         var dialogs = OpenAdd();
@@ -132,7 +140,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Save_and_add_another_keeps_the_club_and_division_and_clears_the_team()
+    public async Task SaveAndAddAnotherKeepsTheClubAndDivisionAndClearsTheTeam()
     {
         var (_, open, _) = WithReadyTournament();
         var dialogs = OpenAdd();
@@ -162,7 +170,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Cancel_saves_nothing_and_a_rejected_save_keeps_the_fields()
+    public async Task CancelSavesNothingAndARejectedSaveKeepsTheFields()
     {
         var (_, open, _) = WithReadyTournament();
         var dialogs = OpenAdd();
@@ -186,7 +194,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_failed_call_leaves_the_dialog_open()
+    public async Task AFailedCallLeavesTheDialogOpen()
     {
         var (_, open, _) = WithReadyTournament();
         var dialogs = OpenAdd();
@@ -201,7 +209,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Edit_shows_the_club_as_read_only_and_saves_the_rename_and_move()
+    public async Task EditShowsTheClubAsReadOnlyAndSavesTheRenameAndMove()
     {
         var (tournament, open, gold) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -228,7 +236,7 @@ public class TeamDialogTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_edit_saves_nothing()
+    public void CancelingEditSavesNothing()
     {
         var (tournament, open, _) = WithReadyTournament();
         var entry = _api.SeedEntry(tournament.Id, "Ohio State University", "Ohio St U", open.Id);
@@ -255,7 +263,7 @@ public class TeamDialogTests : BunitContext, IDisposable
         return dialogs;
     }
 
-    private async Task FillAdd(IRenderedComponent<MudDialogProvider> dialogs, string club, string team, DivisionResponse division)
+    private static async Task FillAdd(IRenderedComponent<MudDialogProvider> dialogs, string club, string team, DivisionResponse division)
     {
         await ChooseClub(dialogs, NewClub(club));
         await ChooseTeam(dialogs, NewTeam(team));

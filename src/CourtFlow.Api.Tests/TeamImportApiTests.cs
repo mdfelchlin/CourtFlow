@@ -2,15 +2,17 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+
 using CourtFlow.Application;
 using CourtFlow.Application.Teams.Import;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
 {
     private const string Header = "Club,Team,Division,Gender\n";
@@ -20,7 +22,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Preview_writes_nothing()
+    public async Task PreviewWritesNothing()
     {
         var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
@@ -33,7 +35,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_clean_file_writes_clubs_teams_entries_and_moves_in_one_import()
+    public async Task ACleanFileWritesClubsTeamsEntriesAndMovesInOneImport()
     {
         var client = factory.CreateMemberClient();
         var (tournament, open, gold) = await SetupAsync(client);
@@ -56,7 +58,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_file_with_a_rejected_row_returns_the_preview_and_writes_nothing()
+    public async Task AFileWithARejectedRowReturnsThePreviewAndWritesNothing()
     {
         var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
@@ -71,7 +73,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Data_that_changed_since_the_preview_returns_a_fresh_preview()
+    public async Task DataThatChangedSinceThePreviewReturnsAFreshPreview()
     {
         var client = factory.CreateMemberClient();
         var (tournament, _, gold) = await SetupAsync(client);
@@ -89,7 +91,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_oversized_file_gets_the_spec_message()
+    public async Task AnOversizedFileGetsTheSpecMessage()
     {
         var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
@@ -101,7 +103,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Importing_the_same_file_twice_changes_nothing_the_second_time()
+    public async Task ImportingTheSameFileTwiceChangesNothingTheSecondTime()
     {
         var client = factory.CreateMemberClient();
         var (tournament, _, _) = await SetupAsync(client);
@@ -116,7 +118,7 @@ public sealed class TeamImportApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_missing_tournament_is_not_found()
+    public async Task AMissingTournamentIsNotFound()
     {
         var client = factory.CreateMemberClient();
         var missing = Guid.NewGuid();

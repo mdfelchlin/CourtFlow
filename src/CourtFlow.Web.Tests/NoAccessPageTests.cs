@@ -1,4 +1,5 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Pages;
 
@@ -7,7 +8,7 @@ namespace CourtFlow.Web.Tests;
 public class NoAccessPageTests : AccessTestContext
 {
     [Fact]
-    public void Without_a_membership_it_explains_the_invitation_email()
+    public void WithoutAMembershipItExplainsTheInvitationEmail()
     {
         SignInAs(TestAccess.NoMembership());
 
@@ -18,7 +19,7 @@ public class NoAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void A_deactivated_organization_is_named()
+    public void ADeactivatedOrganizationIsNamed()
     {
         SignInAs(TestAccess.Member(OrganizationRole.Editor, status: OrganizationStatus.Deactivated));
 
@@ -30,7 +31,7 @@ public class NoAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void It_offers_request_access_and_sign_out_and_loads_nothing()
+    public void ItOffersRequestAccessAndSignOutAndLoadsNothing()
     {
         SignInAs(TestAccess.NoMembership());
 

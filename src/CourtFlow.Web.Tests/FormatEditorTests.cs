@@ -1,11 +1,14 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -28,10 +31,14 @@ public class FormatEditorTests : BunitContext, IDisposable
         Services.AddScoped<Confirmations>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void The_three_steps_have_addresses_and_the_placeholders_are_empty()
+    public void TheThreeStepsHaveAddressesAndThePlaceholdersAreEmpty()
     {
         var (_, division, _) = Seed(("Ohio State University", "Ohio St U"));
         Ready();
@@ -69,7 +76,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_missing_division_says_it_was_not_found()
+    public void AMissingDivisionSaysItWasNotFound()
     {
         Ready();
 
@@ -80,7 +87,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Opening_the_editor_remembers_the_tournament()
+    public void OpeningTheEditorRemembersTheTournament()
     {
         var (tournament, division, _) = Seed(("Ohio State University", "Ohio St U"));
         Ready();
@@ -91,7 +98,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_division_with_no_teams_says_to_add_them_first()
+    public void ADivisionWithNoTeamsSaysToAddThemFirst()
     {
         var (_, division, _) = Seed();
         Ready();
@@ -104,7 +111,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Drag_and_a_typed_rank_land_on_the_same_order()
+    public void DragAndATypedRankLandOnTheSameOrder()
     {
         var (_, division, teams) = Seed(
             ("Alpha Club", "Alpha"),
@@ -136,7 +143,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_out_of_range_rank_is_rejected_and_nothing_moves()
+    public void AnOutOfRangeRankIsRejectedAndNothingMoves()
     {
         var (_, division, teams) = Seed(("Alpha Club", "Alpha"), ("Zeta Club", "Bravo"));
         Ready();
@@ -151,7 +158,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Randomize_uses_the_injected_source_and_changes_the_order()
+    public void RandomizeUsesTheInjectedSourceAndChangesTheOrder()
     {
         var (_, division, _) = Seed(("Alpha Club", "Alpha"), ("Alpha Club", "Bravo"), ("Zeta Club", "Charlie"));
         Ready();
@@ -167,7 +174,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Randomize_is_disabled_for_one_team()
+    public void RandomizeIsDisabledForOneTeam()
     {
         var (_, division, _) = Seed(("Ohio State University", "Ohio St U"));
         Ready();
@@ -177,7 +184,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Saving_an_unchanged_never_ranked_division_ranks_it_and_discard_reloads()
+    public void SavingAnUnchangedNeverRankedDivisionRanksItAndDiscardReloads()
     {
         var (_, division, teams) = Seed(("Zeta Club", "Alpha"), ("Alpha Club", "alpha"));
         Ready();
@@ -207,7 +214,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Leaving_with_unsaved_changes_asks_and_leaving_a_clean_ranking_does_not()
+    public async Task LeavingWithUnsavedChangesAsksAndLeavingACleanRankingDoesNot()
     {
         var (_, division, teams) = Seed(("Alpha Club", "Alpha"), ("Zeta Club", "Bravo"));
         Ready();
@@ -242,7 +249,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_rejected_save_keeps_the_order_drops_gone_teams_and_appends_new_ones()
+    public void ARejectedSaveKeepsTheOrderDropsGoneTeamsAndAppendsNewOnes()
     {
         var (tournament, division, teams) = Seed(("Alpha Club", "Alpha"), ("Zeta Club", "Bravo"), ("Kent State", "Charlie"));
         _api.Rank(division.Id, teams.Select(team => team.Id).ToArray());
@@ -271,7 +278,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_viewer_and_an_archived_tournament_are_read_only()
+    public void AViewerAndAnArchivedTournamentAreReadOnly()
     {
         var (_, division, teams) = Seed(("Ohio State University", "Ohio St U"), ("Kent State", "Kent A"));
         Ready(TestAccess.Member(OrganizationRole.Viewer));
@@ -289,7 +296,7 @@ public class FormatEditorTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void An_archived_tournament_is_read_only()
+    public void AnArchivedTournamentIsReadOnly()
     {
         Ready();
         var archivedTournament = new TournamentResponse(Guid.NewGuid(), "Old Cup", "", new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 3), "America/Chicago", 60, TournamentStatus.Archived);
@@ -360,14 +367,14 @@ public class FormatEditorTests : BunitContext, IDisposable
     private static AngleSharp.Dom.IElement Step(IRenderedComponent<FormatEditor> cut, string label) =>
         cut.FindAll("a").Single(link =>
             link.TextContent.Contains(label, StringComparison.Ordinal)
-            && link.GetAttribute("href")?.EndsWith($"/{label.ToLowerInvariant()}") == true);
+            && link.GetAttribute("href")?.EndsWith($"/{label.ToLowerInvariant()}", StringComparison.Ordinal) == true);
 
     private AngleSharp.Dom.IElement Button(string text) =>
         _dialogs.FindAll("button").Single(button => button.TextContent.Trim() == text);
 
     private sealed class FixedRandom(int value) : IRankingRandom
     {
-        public int Next(int maxExclusive)
+        public int NextValue(int maxExclusive)
         {
             var chosen = value < 0 ? 0 : value;
             return chosen >= maxExclusive ? maxExclusive - 1 : chosen;

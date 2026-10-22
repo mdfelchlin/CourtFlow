@@ -1,6 +1,8 @@
 using CourtFlow.Application;
 using CourtFlow.Domain;
+
 using Microsoft.EntityFrameworkCore;
+
 using Npgsql;
 
 namespace CourtFlow.Infrastructure;

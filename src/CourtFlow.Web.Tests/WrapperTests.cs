@@ -1,9 +1,14 @@
 using System.Globalization;
+
 using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Web;
 using CourtFlow.Web.Components;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -20,10 +25,14 @@ public class WrapperTests : BunitContext, IDisposable
         _popovers = Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
-    public void Text_field_renders_a_plain_label_tied_to_the_input()
+    public void TextFieldRendersAPlainLabelTiedToTheInput()
     {
         var cut = Render<CfTextField>(parameters => parameters.Add(field => field.Label, "Name"));
 
@@ -31,7 +40,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Numeric_field_renders_a_plain_label_tied_to_the_input()
+    public void NumericFieldRendersAPlainLabelTiedToTheInput()
     {
         var cut = Render<CfNumericField<int?>>(parameters => parameters
             .Add(field => field.Label, "Count")
@@ -42,7 +51,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_renders_a_plain_label_tied_to_the_input()
+    public void DateFieldRendersAPlainLabelTiedToTheInput()
     {
         var cut = Render<CfDateField>(parameters => parameters.Add(field => field.Label, "Start date"));
 
@@ -50,7 +59,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Select_renders_a_plain_label_tied_to_the_input()
+    public void SelectRendersAPlainLabelTiedToTheInput()
     {
         var cut = RenderSelect();
 
@@ -58,7 +67,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Required_fields_show_an_asterisk_and_mark_the_input_required()
+    public void RequiredFieldsShowAnAsteriskAndMarkTheInputRequired()
     {
         var text = Render<CfTextField>(parameters => parameters.Add(field => field.Label, "Name").Add(field => field.Required, true));
         var date = Render<CfDateField>(parameters => parameters.Add(field => field.Label, "Start").Add(field => field.Required, true));
@@ -71,7 +80,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Optional_fields_show_no_asterisk()
+    public void OptionalFieldsShowNoAsterisk()
     {
         var cut = Render<CfTextField>(parameters => parameters.Add(field => field.Label, "Description"));
 
@@ -79,7 +88,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Numeric_field_passes_min_and_max_through()
+    public void NumericFieldPassesMinAndMaxThrough()
     {
         var cut = Render<CfNumericField<int?>>(parameters => parameters
             .Add(field => field.Label, "Duration")
@@ -92,7 +101,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_shows_a_us_date_and_the_placeholder_when_empty()
+    public void DateFieldShowsAUsDateAndThePlaceholderWhenEmpty()
     {
         var filled = RenderDateField(new DateOnly(2026, 9, 3));
         Assert.Equal("09/03/2026", filled.Find("input").GetAttribute("value"));
@@ -104,7 +113,7 @@ public class WrapperTests : BunitContext, IDisposable
     [Theory]
     [InlineData("09/01/2026")]
     [InlineData("9/1/2026")]
-    public void Date_field_accepts_a_us_date(string typed)
+    public void DateFieldAcceptsAUsDate(string typed)
     {
         DateOnly? changed = null;
         var cut = RenderDateField(null, value => changed = value);
@@ -116,7 +125,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_reads_month_before_day()
+    public void DateFieldReadsMonthBeforeDay()
     {
         DateOnly? changed = null;
         var cut = RenderDateField(null, value => changed = value);
@@ -131,7 +140,7 @@ public class WrapperTests : BunitContext, IDisposable
     [InlineData("02/31/2026")]
     [InlineData("09/01/26")]
     [InlineData("2026-09-01")]
-    public void Date_field_rejects_a_date_that_is_not_a_real_us_date(string typed)
+    public void DateFieldRejectsADateThatIsNotARealUsDate(string typed)
     {
         var accepted = new List<DateOnly?>();
         var cut = RenderDateField(null, value => accepted.Add(value));
@@ -142,7 +151,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_clears_when_the_input_is_emptied()
+    public void DateFieldClearsWhenTheInputIsEmptied()
     {
         DateOnly? changed = new DateOnly(2026, 9, 3);
         var cut = RenderDateField(changed, value => changed = value);
@@ -153,7 +162,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Date_field_keeps_us_order_when_the_culture_is_day_first()
+    public void DateFieldKeepsUsOrderWhenTheCultureIsDayFirst()
     {
         var original = CultureInfo.CurrentCulture;
         var originalUi = CultureInfo.CurrentUICulture;
@@ -179,7 +188,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Date_field_shows_a_date_chosen_on_the_picker()
+    public async Task DateFieldShowsADateChosenOnThePicker()
     {
         DateOnly? changed = null;
         var cut = RenderDateField(null, value => changed = value);
@@ -195,7 +204,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Autocomplete_renders_a_plain_label_tied_to_the_input()
+    public void AutocompleteRendersAPlainLabelTiedToTheInput()
     {
         var cut = Render<CfAutocomplete<string>>(parameters => parameters
             .Add(field => field.Label, "Club")
@@ -205,7 +214,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void File_drop_zone_renders_a_label_and_a_browse_button()
+    public void FileDropZoneRendersALabelAndABrowseButton()
     {
         var cut = Render<CfFileDropZone>(parameters => parameters
             .Add(field => field.Label, "CSV file")
@@ -217,7 +226,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Switch_renders_its_label()
+    public void SwitchRendersItsLabel()
     {
         var cut = Render<CfSwitch>(parameters => parameters.Add(field => field.Label, "Rejected only"));
 
@@ -225,7 +234,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Select_shows_its_placeholder_when_empty_and_lists_labels()
+    public async Task SelectShowsItsPlaceholderWhenEmptyAndListsLabels()
     {
         var cut = RenderSelect();
 
@@ -242,7 +251,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Save_button_disables_while_saving_and_runs_once_for_two_clicks()
+    public async Task SaveButtonDisablesWhileSavingAndRunsOnceForTwoClicks()
     {
         var gate = new TaskCompletionSource();
         var calls = 0;
@@ -261,7 +270,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Icon_button_uses_its_label_for_aria_and_tooltip()
+    public void IconButtonUsesItsLabelForAriaAndTooltip()
     {
         var cut = Render<CfIconButton>(parameters => parameters
             .Add(button => button.Icon, Icons.Material.Filled.Edit)
@@ -272,7 +281,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_disabled_icon_button_keeps_its_label_and_says_why_in_the_tooltip()
+    public void ADisabledIconButtonKeepsItsLabelAndSaysWhyInTheTooltip()
     {
         var cut = Render<CfIconButton>(parameters => parameters
             .Add(button => button.Icon, Icons.Material.Filled.Delete)
@@ -286,7 +295,7 @@ public class WrapperTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Page_header_renders_exactly_one_h1()
+    public void PageHeaderRendersExactlyOneH1()
     {
         var cut = Render<CfPageHeader>(parameters => parameters
             .Add(header => header.Title, "Tournaments")

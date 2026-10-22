@@ -8,7 +8,7 @@ public class DivisionRulesTests
     private static readonly DateOnly End = new(2026, 9, 3);
 
     [Fact]
-    public void Whitespace_name_is_rejected_and_a_real_name_is_trimmed()
+    public void WhitespaceNameIsRejectedAndARealNameIsTrimmed()
     {
         var tournament = Tournament();
         var blank = Assert.Throws<DomainRuleException>(() => tournament.AddDivision("   ", "Female"));
@@ -24,14 +24,14 @@ public class DivisionRulesTests
     [InlineData("")]
     [InlineData("female")]
     [InlineData("Coed")]
-    public void Gender_other_than_male_or_female_is_rejected(string? gender)
+    public void GenderOtherThanMaleOrFemaleIsRejected(string? gender)
     {
         var error = Assert.Throws<DomainRuleException>(() => Tournament().AddDivision("14U Open", gender));
         Assert.Equal(Division.GenderRequired, error.Message);
     }
 
     [Fact]
-    public void The_same_name_is_allowed_once_per_gender()
+    public void TheSameNameIsAllowedOncePerGender()
     {
         var tournament = Tournament();
         tournament.AddDivision("14U Open", "Female");
@@ -43,7 +43,7 @@ public class DivisionRulesTests
     }
 
     [Fact]
-    public void Updating_a_division_does_not_conflict_with_itself()
+    public void UpdatingADivisionDoesNotConflictWithItself()
     {
         var tournament = Tournament();
         var female = tournament.AddDivision("14U Open", "Female");
@@ -60,7 +60,7 @@ public class DivisionRulesTests
     }
 
     [Fact]
-    public void Another_tournament_may_reuse_the_same_name_and_gender()
+    public void AnotherTournamentMayReuseTheSameNameAndGender()
     {
         Tournament().AddDivision("14U Open", "Female");
         var other = Tournament().AddDivision("14U Open", "Female");
@@ -68,7 +68,7 @@ public class DivisionRulesTests
     }
 
     [Fact]
-    public void Removing_a_division_leaves_the_tournament_and_its_other_divisions()
+    public void RemovingADivisionLeavesTheTournamentAndItsOtherDivisions()
     {
         var tournament = Tournament();
         var female = tournament.AddDivision("14U Open", "Female");
@@ -81,7 +81,7 @@ public class DivisionRulesTests
     }
 
     [Fact]
-    public void List_order_is_name_then_female_before_male()
+    public void ListOrderIsNameThenFemaleBeforeMale()
     {
         var ordered = Division.OrderForList(
             [

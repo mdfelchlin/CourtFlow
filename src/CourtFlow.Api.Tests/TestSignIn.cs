@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Infrastructure.Access;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

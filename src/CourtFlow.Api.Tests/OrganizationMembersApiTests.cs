@@ -1,15 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Application.Access;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -19,7 +22,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     [Theory]
     [InlineData(OrganizationRole.Editor)]
     [InlineData(OrganizationRole.Viewer)]
-    public async Task Only_owners_can_use_it(OrganizationRole role)
+    public async Task OnlyOwnersCanUseIt(OrganizationRole role)
     {
         var response = await factory.CreateMemberClient(role).GetAsync("/api/organization", TestContext.Current.CancellationToken);
 
@@ -27,7 +30,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task The_overview_lists_members_and_pending_invitations()
+    public async Task TheOverviewListsMembersAndPendingInvitations()
     {
         var owner = factory.CreateMemberClient();
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("ed"), OrganizationRole.Editor);
@@ -44,7 +47,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Inviting_creates_a_WorkOS_invitation_and_sends_email_6()
+    public async Task InvitingCreatesAWorkOSInvitationAndSendsEmail6()
     {
         var owner = factory.CreateMemberClient();
 
@@ -58,7 +61,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Inviting_refuses_each_of_the_four_cases()
+    public async Task InvitingRefusesEachOfTheFourCases()
     {
         var owner = factory.CreateMemberClient();
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("here"), OrganizationRole.Viewer);
@@ -76,7 +79,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Resending_revokes_the_old_link_and_gives_a_fresh_7_days_even_when_expired()
+    public async Task ResendingRevokesTheOldLinkAndGivesAFresh7DaysEvenWhenExpired()
     {
         var owner = factory.CreateMemberClient();
         await InviteAsync(owner, "pending@club.test", OrganizationRole.Viewer);
@@ -94,7 +97,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Cancelling_revokes_the_invitation()
+    public async Task CancellingRevokesTheInvitation()
     {
         var owner = factory.CreateMemberClient();
         await InviteAsync(owner, "pending@club.test", OrganizationRole.Viewer);
@@ -108,7 +111,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Another_organizations_invitation_is_not_found()
+    public async Task AnotherOrganizationsInvitationIsNotFound()
     {
         var other = await factory.CreateOrganizationAsync("Other Club");
         var otherOwner = TestUser.Named("other-owner");
@@ -122,7 +125,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task An_owner_changes_a_role_and_removes_a_member()
+    public async Task AnOwnerChangesARoleAndRemovesAMember()
     {
         var owner = factory.CreateMemberClient();
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("ed"), OrganizationRole.Editor);
@@ -136,7 +139,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task The_last_owner_cannot_be_demoted_or_removed()
+    public async Task TheLastOwnerCannotBeDemotedOrRemoved()
     {
         var owner = factory.CreateMemberClient();
         var me = (await OverviewAsync(owner)).Members.Single(member => member.IsYou);
@@ -146,7 +149,7 @@ public sealed class OrganizationMembersApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Removing_yourself_leaves_your_next_call_without_access()
+    public async Task RemovingYourselfLeavesYourNextCallWithoutAccess()
     {
         var owner = factory.CreateMemberClient();
         factory.AddMember(TestOrganizationSeed.Id, TestUser.Named("second"), OrganizationRole.Owner);

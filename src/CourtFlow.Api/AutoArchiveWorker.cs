@@ -6,7 +6,7 @@ namespace CourtFlow.Api;
 /// Archives published tournaments whose 270 days are up. It runs at startup and then hourly, which keeps
 /// the "within one day" promise while the API is running, and catches up on overdue ones after an outage.
 /// </summary>
-public sealed class AutoArchiveWorker(IServiceScopeFactory scopes, ILogger<AutoArchiveWorker> logger) : BackgroundService
+public sealed partial class AutoArchiveWorker(IServiceScopeFactory scopes, ILogger<AutoArchiveWorker> logger) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
@@ -27,8 +27,8 @@ public sealed class AutoArchiveWorker(IServiceScopeFactory scopes, ILogger<AutoA
             await using var scope = scopes.CreateAsyncScope();
             var useCases = scope.ServiceProvider.GetRequiredService<TournamentUseCases>();
             var archived = await useCases.ArchiveExpiredAsync(cancellationToken);
-            if (archived > 0)
-                logger.LogInformation("Archived {Count} tournament(s) 270 days after publishing.", archived);
+            if (archived > 0 && logger.IsEnabled(LogLevel.Information))
+                LogArchived(logger, archived);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -36,7 +36,13 @@ public sealed class AutoArchiveWorker(IServiceScopeFactory scopes, ILogger<AutoA
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "The automatic tournament archive failed. It will run again later.");
+            LogArchiveFailed(logger, exception);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Archived {Count} tournament(s) 270 days after publishing.")]
+    private static partial void LogArchived(ILogger logger, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The automatic tournament archive failed. It will run again later.")]
+    private static partial void LogArchiveFailed(ILogger logger, Exception exception);
 }

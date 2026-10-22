@@ -1,14 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -16,7 +18,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task List_returns_the_saved_fields_for_the_test_organization()
+    public async Task ListReturnsTheSavedFieldsForTheTestOrganization()
     {
         var client = factory.CreateMemberClient();
         var created = await CreateAsync(client, Sample());
@@ -33,7 +35,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Create_get_and_update_round_trip()
+    public async Task CreateGetAndUpdateRoundTrip()
     {
         var client = factory.CreateMemberClient();
         var created = await CreateAsync(client, Sample());
@@ -52,7 +54,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Missing_tournament_is_not_found()
+    public async Task MissingTournamentIsNotFound()
     {
         var client = factory.CreateMemberClient();
         var response = await client.GetAsync($"/api/tournaments/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
@@ -60,7 +62,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Duplicate_names_and_long_spans_are_saved()
+    public async Task DuplicateNamesAndLongSpansAreSaved()
     {
         var client = factory.CreateMemberClient();
         var first = await client.PostAsJsonAsync("/api/tournaments", Sample(name: "City Cup"), TestContext.Current.CancellationToken);
@@ -84,7 +86,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     [InlineData("City Cup", "2026-09-01", "2026-09-03", "UTC", 60)]
     [InlineData("City Cup", "2026-09-01", "2026-09-03", "America/Chicago", 14)]
     [InlineData("City Cup", "2026-09-01", "2026-09-03", "America/Chicago", 241)]
-    public async Task Invalid_details_are_rejected(string name, string start, string end, string timeZoneId, int duration)
+    public async Task InvalidDetailsAreRejected(string name, string start, string end, string timeZoneId, int duration)
     {
         var client = factory.CreateMemberClient();
         var response = await client.PostAsJsonAsync("/api/tournaments", new
@@ -100,7 +102,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Missing_required_details_are_rejected()
+    public async Task MissingRequiredDetailsAreRejected()
     {
         var client = factory.CreateMemberClient();
         var response = await client.PostAsJsonAsync("/api/tournaments", new { description = "" }, TestContext.Current.CancellationToken);
@@ -108,7 +110,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Fractional_duration_is_rejected()
+    public async Task FractionalDurationIsRejected()
     {
         var client = factory.CreateMemberClient();
         var response = await client.PostAsJsonAsync("/api/tournaments", new
@@ -124,7 +126,7 @@ public sealed class TournamentApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_organizations_tournament_is_hidden_and_cannot_be_changed()
+    public async Task AnotherOrganizationsTournamentIsHiddenAndCannotBeChanged()
     {
         var other = await InsertOtherOrganizationTournamentAsync();
         var client = factory.CreateMemberClient();

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace CourtFlow.Domain;
 
 public sealed class Court
@@ -7,7 +9,7 @@ public sealed class Court
     public Guid VenueId { get; private set; }
     public int Number { get; private set; }
 
-    public string Name => Number.ToString();
+    public string Name => Number.ToString(CultureInfo.InvariantCulture);
 
     private Court()
     {

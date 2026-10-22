@@ -1,10 +1,14 @@
-﻿using AngleSharp.Dom;
+﻿﻿﻿using AngleSharp.Dom;
+
 using Bunit;
+
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -12,6 +16,7 @@ namespace CourtFlow.Web.Tests;
 
 public class TournamentPageTests : BunitContext, IDisposable
 {
+    private static readonly string[] UsTimeZoneLabels = ["Eastern", "Central", "Mountain", "Arizona", "Pacific", "Alaska", "Hawaii"];
     private readonly FakeApi _api = new();
     private readonly FakeTournamentMemory _memory = new();
     private readonly IRenderedComponent<MudPopoverProvider> _popovers;
@@ -27,12 +32,16 @@ public class TournamentPageTests : BunitContext, IDisposable
         _popovers = Render<MudPopoverProvider>();
     }
 
-    void IDisposable.Dispose() => Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    void IDisposable.Dispose()
+    {
+        Services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
 
     // ----- Tournament list -----
 
     [Fact]
-    public void Empty_list_tells_the_director_to_add_a_tournament()
+    public void EmptyListTellsTheDirectorToAddATournament()
     {
         var cut = Render<TournamentList>();
 
@@ -40,7 +49,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void List_shows_name_dates_time_zone_and_duration()
+    public void ListShowsNameDatesTimeZoneAndDuration()
     {
         _api.Tournaments.Add(Sample());
 
@@ -57,7 +66,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void List_renders_one_h1()
+    public void ListRendersOneH1()
     {
         var cut = Render<TournamentList>();
 
@@ -65,7 +74,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Add_opens_the_new_tournament_editor()
+    public void AddOpensTheNewTournamentEditor()
     {
         var cut = Render<TournamentList>();
         cut.WaitForState(() => cut.Find("#add-tournament") is not null);
@@ -76,7 +85,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_delete_leaves_the_tournament()
+    public void CancelingDeleteLeavesTheTournament()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -99,7 +108,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_delete_removes_the_tournament_and_says_deleted()
+    public void ConfirmingDeleteRemovesTheTournamentAndSaysDeleted()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -122,7 +131,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     // ----- Tournament editor -----
 
     [Fact]
-    public void Create_and_edit_use_the_same_editor()
+    public void CreateAndEditUseTheSameEditor()
     {
         var create = Render<TournamentEditor>();
         create.WaitForAssertion(() => Assert.Contains("Details", create.Markup));
@@ -132,7 +141,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Editor_renders_one_h1()
+    public void EditorRendersOneH1()
     {
         var cut = Render<TournamentEditor>();
 
@@ -140,7 +149,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Editor_shows_a_progress_bar_and_no_form_until_the_tournament_loads()
+    public void EditorShowsAProgressBarAndNoFormUntilTheTournamentLoads()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -161,7 +170,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Venues_are_unavailable_until_details_are_saved()
+    public void VenuesAreUnavailableUntilDetailsAreSaved()
     {
         var cut = Render<TournamentEditor>();
 
@@ -170,7 +179,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Saving_a_create_opens_the_new_tournament_and_says_saved()
+    public async Task SavingACreateOpensTheNewTournamentAndSaysSaved()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
@@ -186,7 +195,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Saving_an_edit_stays_on_that_tournament()
+    public async Task SavingAnEditStaysOnThatTournament()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -205,7 +214,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Unknown_tournament_says_it_was_not_found_and_links_home()
+    public void UnknownTournamentSaysItWasNotFoundAndLinksHome()
     {
         var cut = Render<TournamentEditor>(parameters => parameters.Add(page => page.Id, Guid.NewGuid()));
 
@@ -214,7 +223,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Not_found_page_links_home()
+    public void NotFoundPageLinksHome()
     {
         var cut = Render<NotFound>();
 
@@ -224,7 +233,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Tournament_list_and_editor_have_no_tournament_dropdown()
+    public void TournamentListAndEditorHaveNoTournamentDropdown()
     {
         var list = Render<TournamentList>();
         list.WaitForAssertion(() => Assert.Contains(TournamentList.EmptyMessage, list.Markup));
@@ -242,7 +251,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Time_zone_picker_lists_only_the_us_zones()
+    public async Task TimeZonePickerListsOnlyTheUsZones()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.Contains("Time zone", cut.Markup));
@@ -252,7 +261,7 @@ public class TournamentPageTests : BunitContext, IDisposable
 
         _popovers.WaitForAssertion(() =>
         {
-            foreach (var label in new[] { "Eastern", "Central", "Mountain", "Arizona", "Pacific", "Alaska", "Hawaii" })
+            foreach (var label in UsTimeZoneLabels)
                 Assert.Contains(label, _popovers.Markup);
         });
         Assert.DoesNotContain("UTC", _popovers.Markup);
@@ -260,7 +269,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task Warnings_show_and_save_still_runs()
+    public async Task WarningsShowAndSaveStillRuns()
     {
         _api.Tournaments.Add(Sample(Guid.NewGuid(), "City Cup"));
         var cut = Render<TournamentEditor>();
@@ -276,7 +285,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Editing_does_not_warn_about_the_tournaments_own_name()
+    public void EditingDoesNotWarnAboutTheTournamentsOwnName()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -287,7 +296,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Opening_an_existing_tournament_remembers_it()
+    public void OpeningAnExistingTournamentRemembersIt()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -298,7 +307,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task September_1_through_5_does_not_warn()
+    public async Task September1Through5DoesNotWarn()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
@@ -309,7 +318,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_rejected_save_shows_the_rule_as_a_warning_and_no_inline_error()
+    public void ARejectedSaveShowsTheRuleAsAWarningAndNoInlineError()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
@@ -322,7 +331,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public async Task A_failed_save_shows_an_error_and_keeps_the_values()
+    public async Task AFailedSaveShowsAnErrorAndKeepsTheValues()
     {
         var cut = Render<TournamentEditor>();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#save-details")));
@@ -339,7 +348,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     // ----- Venues -----
 
     [Fact]
-    public void Empty_venue_list_tells_the_director_to_add_one()
+    public void EmptyVenueListTellsTheDirectorToAddOne()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -350,7 +359,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_venue_delete_leaves_the_venue()
+    public void CancelingVenueDeleteLeavesTheVenue()
     {
         var (tournament, venueId) = WithVenue();
         var dialogs = Render<MudDialogProvider>();
@@ -370,7 +379,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Confirming_venue_delete_removes_the_venue_and_says_deleted()
+    public void ConfirmingVenueDeleteRemovesTheVenueAndSaysDeleted()
     {
         var (tournament, venueId) = WithVenue();
         var dialogs = Render<MudDialogProvider>();
@@ -390,7 +399,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Adding_a_venue_saves_closes_and_reloads()
+    public void AddingAVenueSavesClosesAndReloads()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -419,7 +428,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Canceling_the_venue_dialog_saves_nothing()
+    public void CancelingTheVenueDialogSavesNothing()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -438,7 +447,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_blank_venue_name_keeps_the_dialog_open_with_a_warning()
+    public void ABlankVenueNameKeepsTheDialogOpenWithAWarning()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -457,7 +466,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void A_failed_venue_save_keeps_the_dialog_open_with_an_error()
+    public void AFailedVenueSaveKeepsTheDialogOpenWithAnError()
     {
         var tournament = Sample();
         _api.Tournaments.Add(tournament);
@@ -478,7 +487,7 @@ public class TournamentPageTests : BunitContext, IDisposable
     }
 
     [Fact]
-    public void Editing_a_venue_opens_prefilled_and_updates()
+    public void EditingAVenueOpensPrefilledAndUpdates()
     {
         var (tournament, venueId) = WithVenue();
         var dialogs = Render<MudDialogProvider>();

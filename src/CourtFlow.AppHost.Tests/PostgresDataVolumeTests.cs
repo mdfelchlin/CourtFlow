@@ -5,7 +5,7 @@ namespace CourtFlow.AppHost.Tests;
 public class PostgresDataVolumeTests
 {
     [Fact]
-    public void Named_volume_is_used_without_copying()
+    public void NamedVolumeIsUsedWithoutCopying()
     {
         var decision = PostgresDataVolume.Decide(namedVolumeExists: true, composeSourceVolume: "old-compose-data");
 
@@ -14,7 +14,7 @@ public class PostgresDataVolumeTests
     }
 
     [Fact]
-    public void Missing_named_volume_copies_the_compose_source()
+    public void MissingNamedVolumeCopiesTheComposeSource()
     {
         var decision = PostgresDataVolume.Decide(namedVolumeExists: false, composeSourceVolume: "old-compose-data");
 
@@ -26,7 +26,7 @@ public class PostgresDataVolumeTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void No_named_volume_and_no_compose_source_starts_empty(string? composeSourceVolume)
+    public void NoNamedVolumeAndNoComposeSourceStartsEmpty(string? composeSourceVolume)
     {
         var decision = PostgresDataVolume.Decide(namedVolumeExists: false, composeSourceVolume);
 

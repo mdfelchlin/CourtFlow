@@ -1,11 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -13,7 +14,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task A_new_tournament_is_unpublished()
+    public async Task ANewTournamentIsUnpublished()
     {
         var client = factory.CreateMemberClient();
 
@@ -26,7 +27,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task A_create_body_cannot_choose_a_state()
+    public async Task ACreateBodyCannotChooseAState()
     {
         var client = factory.CreateMemberClient();
 
@@ -48,7 +49,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task The_allowed_transitions_each_return_the_new_state()
+    public async Task TheAllowedTransitionsEachReturnTheNewState()
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -66,7 +67,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     [InlineData(null, "archive", Tournament.OnlyPublishedCanBeArchived)]
     [InlineData(null, "restore", Tournament.OnlyArchivedCanBeRestored)]
     [InlineData("publish", "restore", Tournament.OnlyArchivedCanBeRestored)]
-    public async Task An_illegal_transition_is_rejected_with_its_message(string? setUp, string action, string message)
+    public async Task AnIllegalTransitionIsRejectedWithItsMessage(string? setUp, string action, string message)
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -85,7 +86,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     [InlineData("unpublish")]
     [InlineData("archive")]
     [InlineData("restore")]
-    public async Task A_transition_on_an_unknown_tournament_is_not_found(string action)
+    public async Task ATransitionOnAnUnknownTournamentIsNotFound(string action)
     {
         var client = factory.CreateMemberClient();
 
@@ -95,7 +96,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task The_list_and_the_tournament_carry_the_state_and_its_dates()
+    public async Task TheListAndTheTournamentCarryTheStateAndItsDates()
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -113,7 +114,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task The_published_day_is_the_tournaments_own_day_not_the_utc_one()
+    public async Task ThePublishedDayIsTheTournamentsOwnDayNotTheUtcOne()
     {
         var client = factory.CreateMemberClient();
         var pacific = new SaveTournament("Coast Cup", "", new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 3), "America/Los_Angeles", 60);
@@ -128,7 +129,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task Saving_details_leaves_the_state_alone()
+    public async Task SavingDetailsLeavesTheStateAlone()
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -146,7 +147,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     }
 
     [Fact]
-    public async Task A_published_tournament_cannot_be_deleted()
+    public async Task APublishedTournamentCannotBeDeleted()
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -162,7 +163,7 @@ public sealed class TournamentLifecycleApiTests(ApiFactory factory) : IAsyncLife
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task An_unpublished_or_archived_tournament_is_deleted(bool archiveFirst)
+    public async Task AnUnpublishedOrArchivedTournamentIsDeleted(bool archiveFirst)
     {
         var client = factory.CreateMemberClient();
         var created = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());

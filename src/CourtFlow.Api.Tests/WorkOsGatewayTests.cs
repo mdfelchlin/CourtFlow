@@ -1,5 +1,6 @@
 using CourtFlow.Application.Access;
 using CourtFlow.Infrastructure.WorkOs;
+
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CourtFlow.Api.Tests;
@@ -7,7 +8,7 @@ namespace CourtFlow.Api.Tests;
 public sealed class WorkOsGatewayTests
 {
     [Fact]
-    public void Sign_in_url_opens_the_sign_in_screen_rather_than_the_waitlist()
+    public void SignInUrlOpensTheSignInScreenRatherThanTheWaitlist()
     {
         var options = new WorkOsOptions { ClientId = "client_123", RedirectUri = "https://localhost:7011/auth/callback" };
         using var http = new HttpClient();

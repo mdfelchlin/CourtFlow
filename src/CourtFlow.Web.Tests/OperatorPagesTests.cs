@@ -1,8 +1,10 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using MudBlazor;
 
 namespace CourtFlow.Web.Tests;
@@ -31,7 +33,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Requests_are_listed_oldest_first()
+    public void RequestsAreListedOldestFirst()
     {
         var cut = RenderRequests();
 
@@ -40,7 +42,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Approving_into_a_new_organization_sends_its_name()
+    public void ApprovingIntoANewOrganizationSendsItsName()
     {
         var cut = RenderRequests();
 
@@ -55,7 +57,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Approving_into_an_existing_organization_sends_it_and_the_role()
+    public void ApprovingIntoAnExistingOrganizationSendsItAndTheRole()
     {
         var cut = RenderRequests();
 
@@ -77,7 +79,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Decline_confirms_first()
+    public void DeclineConfirmsFirst()
     {
         var cut = RenderRequests();
 
@@ -89,7 +91,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Organizations_show_status_members_and_owners()
+    public void OrganizationsShowStatusMembersAndOwners()
     {
         var cut = RenderOrganizations();
 
@@ -101,7 +103,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Deactivate_names_the_organization_and_confirms()
+    public void DeactivateNamesTheOrganizationAndConfirms()
     {
         var cut = RenderOrganizations();
 
@@ -114,7 +116,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Reactivate_confirms_then_calls_the_api()
+    public void ReactivateConfirmsThenCallsTheApi()
     {
         var cut = RenderOrganizations();
 
@@ -125,7 +127,7 @@ public class OperatorPagesTests : AccessTestContext
     }
 
     [Fact]
-    public void Invite_owner_takes_an_email()
+    public void InviteOwnerTakesAnEmail()
     {
         var cut = RenderOrganizations();
 

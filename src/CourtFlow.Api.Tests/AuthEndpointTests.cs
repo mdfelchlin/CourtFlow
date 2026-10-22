@@ -1,12 +1,14 @@
 using System.Net;
 using System.Web;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Application.Access;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
 {
     private const string WebBase = "https://localhost:7211";
@@ -22,7 +24,7 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Login_redirects_to_WorkOS_and_sets_the_state_cookie()
+    public async Task LoginRedirectsToWorkOSAndSetsTheStateCookie()
     {
         var response = await Browser().GetAsync("/auth/login?returnUrl=%2Fteams", TestContext.Current.CancellationToken);
 
@@ -34,18 +36,18 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_callback_with_a_bad_state_is_refused()
+    public async Task ACallbackWithABadStateIsRefused()
     {
         var (_, stateCookie) = await StartAsync("/teams");
 
         var response = await SendWithCookieAsync("/auth/callback?code=good&state=wrong", stateCookie);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies) && cookies.Any(item => item.StartsWith(SessionCookie.Name + "=")));
+        Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies) && cookies.Any(item => item.StartsWith(SessionCookie.Name + "=", StringComparison.Ordinal)));
     }
 
     [Fact]
-    public async Task A_callback_without_the_state_cookie_is_refused()
+    public async Task ACallbackWithoutTheStateCookieIsRefused()
     {
         var (state, _) = await StartAsync("/teams");
 
@@ -55,7 +57,7 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_good_callback_sets_the_session_cookie_and_lands()
+    public async Task AGoodCallbackSetsTheSessionCookieAndLands()
     {
         var (state, stateCookie) = await StartAsync("/request-access");
 
@@ -67,13 +69,15 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=lax", cookie, StringComparison.OrdinalIgnoreCase);
-        var expires = DateTimeOffset.Parse(cookie.Split(';').Select(part => part.Trim())
-            .Single(part => part.StartsWith("expires=", StringComparison.OrdinalIgnoreCase))["expires=".Length..]);
+        var expires = DateTimeOffset.Parse(
+            cookie.Split(';').Select(part => part.Trim())
+                .Single(part => part.StartsWith("expires=", StringComparison.OrdinalIgnoreCase))["expires=".Length..],
+            System.Globalization.CultureInfo.InvariantCulture);
         Assert.InRange(expires, factory.Clock.GetUtcNow().AddDays(30).AddMinutes(-1), factory.Clock.GetUtcNow().AddDays(30).AddMinutes(1));
     }
 
     [Fact]
-    public async Task A_person_without_access_lands_on_no_access()
+    public async Task APersonWithoutAccessLandsOnNoAccess()
     {
         var (state, stateCookie) = await StartAsync("/teams");
 
@@ -83,7 +87,7 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_outside_return_url_falls_back()
+    public async Task AnOutsideReturnUrlFallsBack()
     {
         var (state, stateCookie) = await StartAsync("https://evil.example/");
 
@@ -93,7 +97,7 @@ public sealed class AuthEndpointTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Logout_clears_the_cookie_and_goes_to_WorkOS()
+    public async Task LogoutClearsTheCookieAndGoesToWorkOS()
     {
         var (state, stateCookie) = await StartAsync("/teams");
         var signedIn = await SendWithCookieAsync($"/auth/callback?code=good&state={state}", stateCookie);

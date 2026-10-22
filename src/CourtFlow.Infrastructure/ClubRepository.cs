@@ -1,5 +1,6 @@
 using CourtFlow.Application;
 using CourtFlow.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace CourtFlow.Infrastructure;

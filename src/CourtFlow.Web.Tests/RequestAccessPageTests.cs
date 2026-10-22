@@ -1,8 +1,10 @@
 using Bunit;
+
 using CourtFlow.Domain;
 using CourtFlow.Web.Components;
 using CourtFlow.Web.Pages;
 using CourtFlow.Web.Services;
+
 using MudBlazor;
 
 namespace CourtFlow.Web.Tests;
@@ -10,7 +12,7 @@ namespace CourtFlow.Web.Tests;
 public class RequestAccessPageTests : AccessTestContext
 {
     [Fact]
-    public void The_page_explains_itself_and_links_back_to_sign_in()
+    public void ThePageExplainsItselfAndLinksBackToSignIn()
     {
         var cut = RenderPage();
 
@@ -20,7 +22,7 @@ public class RequestAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Required_fields_are_checked_before_sending()
+    public void RequiredFieldsAreCheckedBeforeSending()
     {
         var cut = RenderPage();
 
@@ -33,7 +35,7 @@ public class RequestAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Length_limits_and_email_shape_are_checked()
+    public void LengthLimitsAndEmailShapeAreChecked()
     {
         var cut = RenderPage();
 
@@ -51,7 +53,7 @@ public class RequestAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Sending_includes_the_turnstile_token_and_success_replaces_the_form()
+    public void SendingIncludesTheTurnstileTokenAndSuccessReplacesTheForm()
     {
         Api.AccessRequestResult = new AccessRequestResultResponse(AccessRequestOutcome.Sent, "Thanks — we'll email you when your account is ready.");
         var cut = RenderPage();
@@ -75,7 +77,7 @@ public class RequestAccessPageTests : AccessTestContext
     [InlineData(AccessRequestOutcome.AlreadyWaiting, "There's already a request waiting for this email.")]
     [InlineData(AccessRequestOutcome.Declined, "This email can't send a new request. Contact mdfelchlin@gmail.com.")]
     [InlineData(AccessRequestOutcome.CouldNotSend, "We couldn't send your request. Please try again in a few minutes.")]
-    public void Each_refusal_shows_its_message_and_keeps_the_form(AccessRequestOutcome outcome, string message)
+    public void EachRefusalShowsItsMessageAndKeepsTheForm(AccessRequestOutcome outcome, string message)
     {
         Api.AccessRequestResult = new AccessRequestResultResponse(outcome, message);
         var cut = RenderPage();
@@ -90,7 +92,7 @@ public class RequestAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void A_failed_call_shows_could_not_send()
+    public void AFailedCallShowsCouldNotSend()
     {
         var cut = RenderPage();
         FillValid(cut);
@@ -104,7 +106,7 @@ public class RequestAccessPageTests : AccessTestContext
     }
 
     [Fact]
-    public void Signed_in_the_email_is_filled_and_read_only()
+    public void SignedInTheEmailIsFilledAndReadOnly()
     {
         SignInAs(TestAccess.NoMembership());
         var cut = Render<RequestAccess>();

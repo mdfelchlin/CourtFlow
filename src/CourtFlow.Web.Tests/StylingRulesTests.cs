@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+
 using CourtFlow.Web.Theming;
 
 namespace CourtFlow.Web.Tests;
@@ -18,7 +19,7 @@ public class StylingRulesTests
     private static readonly string WebRoot = FindWebRoot();
 
     [Fact]
-    public void No_scoped_css_file_exists()
+    public void NoScopedCssFileExists()
     {
         var scoped = SourceFiles("*.razor.css").ToList();
 
@@ -26,13 +27,13 @@ public class StylingRulesTests
     }
 
     [Fact]
-    public void Bootstrap_is_gone()
+    public void BootstrapIsGone()
     {
         Assert.False(Directory.Exists(Path.Combine(WebRoot, "wwwroot", "lib", "bootstrap")));
     }
 
     [Fact]
-    public void Razor_files_have_no_style_attribute_or_hex_color()
+    public void RazorFilesHaveNoStyleAttributeOrHexColor()
     {
         var offenders = SourceFiles("*.razor")
             .Select(path => (path, text: File.ReadAllText(path)))
@@ -44,7 +45,7 @@ public class StylingRulesTests
     }
 
     [Fact]
-    public void Literal_class_values_are_only_spacing_utilities()
+    public void LiteralClassValuesAreOnlySpacingUtilities()
     {
         var offenders = new List<string>();
         foreach (var path in SourceFiles("*.razor"))
@@ -61,7 +62,7 @@ public class StylingRulesTests
     }
 
     [Fact]
-    public void Only_the_theme_file_holds_hex_colors_or_the_font_name()
+    public void OnlyTheThemeFileHoldsHexColorsOrTheFontName()
     {
         var offenders = SourceFiles("*.cs")
             .Where(path => !path.EndsWith(Path.Combine("Theming", "CourtFlowTheme.cs"), StringComparison.Ordinal))
@@ -74,7 +75,7 @@ public class StylingRulesTests
     }
 
     [Fact]
-    public void App_css_uses_only_the_light_background_primary_and_text_colors()
+    public void AppCssUsesOnlyTheLightBackgroundPrimaryAndTextColors()
     {
         var palette = CourtFlowTheme.Theme.PaletteLight;
         var allowed = new[] { palette.Background, palette.Primary, palette.TextPrimary }

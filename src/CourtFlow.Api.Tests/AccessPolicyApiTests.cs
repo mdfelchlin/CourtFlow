@@ -1,15 +1,17 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+
 using CourtFlow.Api.Access;
 using CourtFlow.Application;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using static CourtFlow.Api.Tests.AccessTestHelpers;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -32,7 +34,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     ];
 
     [Fact]
-    public async Task Signed_out_calls_to_every_organization_route_get_401()
+    public async Task SignedOutCallsToEveryOrganizationRouteGet401()
     {
         var client = factory.CreateClient();
         foreach (var (name, send) in OrganizationRoutes())
@@ -43,7 +45,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Signed_in_without_a_membership_gets_no_access()
+    public async Task SignedInWithoutAMembershipGetsNoAccess()
     {
         var client = factory.CreateClientAs(TestUser.Named("stranger"));
         foreach (var (name, send) in OrganizationRoutes())
@@ -51,7 +53,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_deactivated_organization_gets_organization_deactivated()
+    public async Task ADeactivatedOrganizationGetsOrganizationDeactivated()
     {
         var organization = await factory.CreateOrganizationAsync("Gone Club", OrganizationStatus.Deactivated);
         var user = TestUser.Named("gone");
@@ -63,7 +65,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_viewer_sees_only_published_tournaments_and_their_children()
+    public async Task AViewerSeesOnlyPublishedTournamentsAndTheirChildren()
     {
         var owner = factory.CreateMemberClient();
         var unpublished = await CreateWithChildrenAsync(owner, "Draft Cup");
@@ -94,7 +96,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Every_viewer_write_is_forbidden()
+    public async Task EveryViewerWriteIsForbidden()
     {
         var owner = factory.CreateMemberClient();
         var tournament = await CreateWithChildrenAsync(owner, "Live Cup");
@@ -136,7 +138,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     [Theory]
     [InlineData(OrganizationRole.Owner)]
     [InlineData(OrganizationRole.Editor)]
-    public async Task Owners_and_editors_see_every_state_and_use_every_lifecycle_action(OrganizationRole role)
+    public async Task OwnersAndEditorsSeeEveryStateAndUseEveryLifecycleAction(OrganizationRole role)
     {
         var client = factory.CreateMemberClient(role);
         var unpublished = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample("Draft Cup"));
@@ -155,7 +157,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_operator_without_a_membership_gets_no_access_on_tournaments()
+    public async Task AnOperatorWithoutAMembershipGetsNoAccessOnTournaments()
     {
         var response = await factory.CreateOperatorClient().GetAsync("/api/tournaments", TestContext.Current.CancellationToken);
 
@@ -163,7 +165,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_tournament_leaving_published_disappears_for_a_viewer()
+    public async Task ATournamentLeavingPublishedDisappearsForAViewer()
     {
         var editor = factory.CreateMemberClient(OrganizationRole.Editor);
         var tournament = await TournamentApiTests.CreateAsync(editor, TournamentApiTests.Sample());
@@ -177,7 +179,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_tournament_in_one_organization_is_not_found_from_another()
+    public async Task ATournamentInOneOrganizationIsNotFoundFromAnother()
     {
         var mine = await TournamentApiTests.CreateAsync(factory.CreateMemberClient(), TournamentApiTests.Sample());
         var other = await factory.CreateOrganizationAsync("Other Club");
@@ -191,7 +193,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_write_with_the_session_cookie_from_another_origin_is_refused()
+    public async Task AWriteWithTheSessionCookieFromAnotherOriginIsRefused()
     {
         var client = factory.CreateMemberClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/tournaments")
@@ -207,7 +209,7 @@ public sealed class AccessPolicyApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_write_with_the_session_cookie_from_the_web_origin_is_allowed()
+    public async Task AWriteWithTheSessionCookieFromTheWebOriginIsAllowed()
     {
         var client = factory.CreateMemberClient();
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/tournaments")

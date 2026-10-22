@@ -2,12 +2,13 @@ using CourtFlow.Application.Access;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
 using CourtFlow.Infrastructure.Access;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -15,7 +16,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task An_exact_email_match_accepts_the_invitation_with_its_role()
+    public async Task AnExactEmailMatchAcceptsTheInvitationWithItsRole()
     {
         var invitation = await InviteAsync("Casey@Club.test", OrganizationRole.Editor);
 
@@ -27,7 +28,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_address_at_the_same_domain_does_nothing()
+    public async Task AnotherAddressAtTheSameDomainDoesNothing()
     {
         var invitation = await InviteAsync("casey@club.test", OrganizationRole.Editor);
 
@@ -38,7 +39,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_expired_invitation_does_nothing()
+    public async Task AnExpiredInvitationDoesNothing()
     {
         await InviteAsync("casey@club.test", OrganizationRole.Editor);
         factory.Clock.Advance(Invitation.Lifetime + TimeSpan.FromMinutes(1));
@@ -49,7 +50,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_cancelled_invitation_does_nothing()
+    public async Task ACancelledInvitationDoesNothing()
     {
         var invitation = await InviteAsync("casey@club.test", OrganizationRole.Editor);
         await WithDbAsync(async db =>
@@ -64,7 +65,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Someone_who_is_already_a_member_leaves_the_invitation_pending()
+    public async Task SomeoneWhoIsAlreadyAMemberLeavesTheInvitationPending()
     {
         var elsewhere = await factory.CreateOrganizationAsync("Other Club");
         factory.AddMember(elsewhere.Id, new TestUser("user_casey", "casey@club.test", "Casey"), OrganizationRole.Viewer);
@@ -77,7 +78,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Name_and_email_refresh_at_sign_in()
+    public async Task NameAndEmailRefreshAtSignIn()
     {
         factory.AddMember(TestOrganizationSeed.Id, new TestUser("user_casey", "old@club.test", "Old Name"), OrganizationRole.Owner);
 
@@ -91,7 +92,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     [Theory]
     [InlineData(true, true)]
     [InlineData(false, false)]
-    public async Task The_development_owners_list_works_only_in_development(bool enabled, bool becomesOwner)
+    public async Task TheDevelopmentOwnersListWorksOnlyInDevelopment(bool enabled, bool becomesOwner)
     {
         using var scope = factory.Services.CreateScope();
         var development = new DevelopmentOptions
@@ -109,7 +110,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Landing_follows_the_spec_order()
+    public async Task LandingFollowsTheSpecOrder()
     {
         var operatorOnly = await AccessForAsync(ApiFactory.Operator.UserId, ApiFactory.Operator.Email);
         Assert.Equal(SignInUseCases.OperatorRequests, SignInUseCases.LandingFor(operatorOnly, null));
@@ -161,7 +162,7 @@ public sealed class SignInTests(ApiFactory factory) : IAsyncLifetime
 
     private Task<T> WithDbAsync<T>(Func<CourtFlowDbContext, Task<T>> action) => factory.WithDbAsync(action);
 
-    private Task WithDbAsync(Func<CourtFlowDbContext, Task> action) => factory.WithDbAsync(async db =>
+    private Task<bool> WithDbAsync(Func<CourtFlowDbContext, Task> action) => factory.WithDbAsync(async db =>
     {
         await action(db);
         return true;

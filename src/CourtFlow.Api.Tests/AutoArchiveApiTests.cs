@@ -1,13 +1,15 @@
 using System.Net.Http.Json;
+
 using CourtFlow.Application;
 using CourtFlow.Domain;
 using CourtFlow.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CourtFlow.Api.Tests;
 
-[Collection(ApiCollection.Name)]
+[Collection(ApiFixture.Name)]
 public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
 {
     public async ValueTask InitializeAsync() => await factory.ResetAsync();
@@ -15,7 +17,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Nothing_is_archived_until_the_270_days_are_up()
+    public async Task NothingIsArchivedUntilThe270DaysAreUp()
     {
         var client = factory.CreateMemberClient();
         var published = await PublishedAsync(client);
@@ -30,7 +32,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Unpublished_and_archived_tournaments_are_left_alone()
+    public async Task UnpublishedAndArchivedTournamentsAreLeftAlone()
     {
         var client = factory.CreateMemberClient();
         var unpublished = await TournamentApiTests.CreateAsync(client, TournamentApiTests.Sample());
@@ -45,7 +47,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Republishing_restarts_the_clock()
+    public async Task RepublishingRestartsTheClock()
     {
         var client = factory.CreateMemberClient();
         var published = await PublishedAsync(client);
@@ -64,7 +66,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Running_the_archive_twice_changes_nothing_the_second_time()
+    public async Task RunningTheArchiveTwiceChangesNothingTheSecondTime()
     {
         var client = factory.CreateMemberClient();
         var published = await PublishedAsync(client);
@@ -76,7 +78,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Every_organizations_tournaments_are_archived()
+    public async Task EveryOrganizationsTournamentsAreArchived()
     {
         var client = factory.CreateMemberClient();
         var mine = await PublishedAsync(client);
@@ -101,7 +103,7 @@ public sealed class AutoArchiveApiTests(ApiFactory factory) : IAsyncLifetime
         return await TournamentLifecycleApiTests.TransitionAsync(client, created.Id, "publish");
     }
 
-    private async Task<TournamentStatus> StatusAsync(HttpClient client, Guid id) =>
+    private static async Task<TournamentStatus> StatusAsync(HttpClient client, Guid id) =>
         (await client.GetFromJsonAsync<TournamentDetails>($"/api/tournaments/{id}", TestContext.Current.CancellationToken))!.Status;
 
     private async Task<TournamentStatus> StoredStatusAsync(Guid id)
