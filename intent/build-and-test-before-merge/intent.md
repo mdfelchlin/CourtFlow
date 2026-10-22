@@ -1,5 +1,5 @@
 # Intent: Build and test before merge
-Author: developer. Status: draft.
+Author: developer. Status: accepted.
 
 ## Problem
 A developer can build CourtFlow and run its tests only on their own machine. Nothing in the repository builds the project and runs the tests before a change merges to main. The engineering-practices slice named the missing continuous integration and left the workflow out. There is still no pipeline.
