@@ -13,6 +13,8 @@ The director sets, on the tournament, when registration opens and when it closes
 
 A team the director adds to a division, including a team from an import, counts toward that division's cap. When the teams being added would put the division over its cap, the director is asked whether to increase the cap. If the director raises the cap enough to include those teams, they are added. If the director does not raise the cap, those teams are not added.
 
+After registration has closed, a club can no longer register a team. The director can still add, remove, and update teams in the tournament. An add after the close still counts toward the division cap.
+
 Registered and accepted stay separate, as they do on SportsWrench. The director approves a team before it is accepted into the tournament. A waitlisted team stays registered until the director approves it into an open spot. A spot opens when the director declines a registration that holds one, removes an accepted team, or raises the division cap past the teams that hold a spot. The director can then approve a waitlisted team into that spot.
 
 Registration follows the patterns of SportsWrench, the service now called OTTO Event. On that service the event has an open and a close, a roster deadline, and a listed registration fee, each division has a maximum number of teams, registered and accepted are separate counts, a full division waitlists later teams, and a club director enters the event and assigns the club's teams to divisions.
@@ -26,7 +28,8 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - The registration open and the registration close are set on the tournament. The team cap is set on the division.
 - The tournament lists a roster deadline and one price for a team. The roster deadline is a date and time. For now those are listed.
 - This slice does not collect payment. The director can mark a team as paid, and can clear that mark. The mark is for tracking. It does not accept the team, change its spot, or change its price. A later payment system records the same mark when a team pays.
-- A club can register more than one team for a tournament while registration is open. Every team is at that same price.
+- A club can register more than one team for a tournament while registration is open. Every team is at that same price. After registration has closed, a club cannot register a team.
+- After registration has closed, the director can still add, remove, and update teams in the tournament. An add, including an import, still counts toward the division cap.
 - A lower price for a club's later teams is a later slice.
 - A registration holds a spot until the division reaches its cap. Registrations after that go on the waitlist, in the order they arrived, and do not hold a spot.
 - A team the director adds or imports counts toward the division cap. When that would put the division over its cap, the director is asked whether to increase the cap. Raising it enough to include the teams adds them. Leaving the cap where it is does not add them.
@@ -38,6 +41,5 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - How a club account is created, and how it relates to the existing invite-only director sign-in.
 - What "roster" is: players kept on the team, or the players submitted for one tournament, and what the club records about each player. The roster deadline is a date and time and is listed. What happens when that deadline passes is still open.
 - How a club's teams relate to teams a director has already entered by typing a club name.
-- Whether the director can add or import a team after registration has closed.
 - Whether the open and the close are a calendar date or a date and time. SportsWrench publishes both a date and a time. The tournament already has a time zone. The roster deadline is a date and time.
 - Which further SportsWrench registration patterns belong in this slice: a public note that registration is open, and a limit on how many teams from one club a division will take. Collecting payment, requiring payment before a team counts, and paying for every team from a club in one step belong to the later payment system.
