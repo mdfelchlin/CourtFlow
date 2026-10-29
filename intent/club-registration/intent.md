@@ -4,12 +4,12 @@ Author: product owner. Status: draft.
 ## Problem
 A club cannot create an account, cannot register its own teams for a tournament, and cannot manage the roster it wants to submit with that registration. Today a director types each team in (club, team name, and division) or imports a spreadsheet. Coaches have no account. There is no roster of players to submit.
 
-A director cannot set when registration for a tournament opens or closes, and a division has no cap on teams. Nothing keeps a team from registering after the window has shut, or from taking a spot in a division that is already full. Registering a team is the same as the team being in the tournament. The director cannot approve it separately, and a full division has no waitlist. The tournament does not list a roster deadline or a single price for a team. A club has no way to register more than one team.
+A director cannot set when registration for a tournament opens or closes, and a division has no cap on teams. Nothing keeps a team from registering after the window has shut, or from taking a spot in a division that is already full. Registering a team is the same as the team being in the tournament. The director cannot approve it separately, and a full division has no waitlist. The tournament does not list a roster deadline or a single price for a team. A club has no way to register more than one team. The director cannot mark a team as paid.
 
 ## Proposed outcome
 Someone acting for a club creates an account, registers that club's teams for a tournament, and manages the roster they want to submit to that tournament.
 
-The director sets, on the tournament, when registration opens and when it closes, a roster deadline, and one price for a team. The roster deadline is a date and time. For now the tournament lists that deadline and that price. Each division has a cap of teams. While registration is open, a club can register more than one team, each in a division. Every team is at that same price. A lower price for a club's later teams is a later slice. While the division is under its cap, that registration holds a spot and waits for the director. Once the division is at its cap, further registrations go on a waitlist, in the order they registered. A waitlisted team does not hold a spot, so the number of teams registered can be higher than the cap.
+The director sets, on the tournament, when registration opens and when it closes, a roster deadline, and one price for a team. The roster deadline is a date and time. For now the tournament lists that deadline and that price. This slice does not collect payment. The director can mark a team as paid, for tracking. A later payment system records that same paid mark when a team pays. Each division has a cap of teams. While registration is open, a club can register more than one team, each in a division. Every team is at that same price. A lower price for a club's later teams is a later slice. While the division is under its cap, that registration holds a spot and waits for the director. Once the division is at its cap, further registrations go on a waitlist, in the order they registered. A waitlisted team does not hold a spot, so the number of teams registered can be higher than the cap.
 
 A team the director adds to a division, including a team from an import, counts toward that division's cap. When the teams being added would put the division over its cap, the director is asked whether to increase the cap. If the director raises the cap enough to include those teams, they are added. If the director does not raise the cap, those teams are not added.
 
@@ -24,7 +24,8 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - A club is not an organization. An organization is the tenant that runs tournaments. A club is an affiliation that owns teams.
 - A team is the long-lived record owned by a club. Entering that team in one division of one tournament is separate from the team itself.
 - The registration open and the registration close are set on the tournament. The team cap is set on the division.
-- The tournament lists a roster deadline and one price for a team. The roster deadline is a date and time. For now those are listed. The price is not collected.
+- The tournament lists a roster deadline and one price for a team. The roster deadline is a date and time. For now those are listed.
+- This slice does not collect payment. The director can mark a team as paid, and can clear that mark. The mark is for tracking. It does not accept the team, change its spot, or change its price. A later payment system records the same mark when a team pays.
 - A club can register more than one team for a tournament while registration is open. Every team is at that same price.
 - A lower price for a club's later teams is a later slice.
 - A registration holds a spot until the division reaches its cap. Registrations after that go on the waitlist, in the order they arrived, and do not hold a spot.
@@ -39,4 +40,4 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - How a club's teams relate to teams a director has already entered by typing a club name.
 - Whether the director can add or import a team after registration has closed.
 - Whether the open and the close are a calendar date or a date and time. SportsWrench publishes both a date and a time. The tournament already has a time zone. The roster deadline is a date and time.
-- Which further SportsWrench registration patterns belong in this slice: collecting the team price, payment before a team counts, paying for every team from the club in one step, a public note that registration is open, and a limit on how many teams from one club a division will take.
+- Which further SportsWrench registration patterns belong in this slice: a public note that registration is open, and a limit on how many teams from one club a division will take. Collecting payment, requiring payment before a team counts, and paying for every team from a club in one step belong to the later payment system.
