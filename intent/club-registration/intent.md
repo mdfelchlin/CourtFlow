@@ -15,6 +15,8 @@ The director sets, on the tournament, when registration opens and when it closes
 
 A team the director adds to a division, including a team from an import, counts toward that division's cap. When the teams being added would put the division over its cap, the director is asked whether to increase the cap. If the director raises the cap enough to include those teams, they are added. If the director does not raise the cap, those teams are not added.
 
+When a director adds a team, they use a team already established in the database when one exists. A team a club created is an established team. If the team does not exist and the director adds it, that entry is a one-off team. A one-off is for that tournament. It is not a team the club keeps.
+
 After registration has closed, a club can no longer register a team. The director can still add, remove, and update teams in the tournament. An add after the close still counts toward the division cap.
 
 Registered and accepted stay separate, as they do on SportsWrench. The director approves a team before it is accepted into the tournament. A waitlisted team stays registered until the director approves it into an open spot. A spot opens when the director declines a registration that holds one, removes an accepted team, or raises the division cap past the teams that hold a spot. The director can then approve a waitlisted team into that spot.
@@ -27,7 +29,8 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 ## Constraints
 - A club is not an organization. An organization is the tenant that runs tournaments. A club is an affiliation that owns teams.
 - One sign-in covers a person who acts for a club, runs tournaments, or both. Acting for a club starts when they sign up and activate from an email. They are not invited for that. Running tournaments stays invite-only, on that same sign-in. The club has an administrative email different from that person's email. The person then creates the club's teams.
-- A team is the long-lived record owned by a club. A club creates its teams. Entering that team in one division of one tournament is separate from the team itself.
+- A team a club creates is a long-lived record owned by that club. Entering that team in one division of one tournament is separate from the team itself.
+- When a director adds a team that is already established in the database, that add uses the established team. A team the director adds that is not already established is a one-off for that tournament. A one-off is not a team the club keeps.
 - A club adds players to a team's roster. A player has a name and a jersey. The roster stays on the team.
 - The registration open and the registration close are set on the tournament. Each is a date and time in the tournament's time zone. The tournament shows both, so a visitor can see them. The team cap is set on the division.
 - The director sets one price for a team, and the tournament lists it.
@@ -43,4 +46,4 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - Declining a registration that holds a spot, removing an accepted team, or raising the division cap past the teams that hold a spot opens a spot.
 
 ## Open questions
-- How a club's teams relate to teams a director has already entered by typing a club name.
+None.
