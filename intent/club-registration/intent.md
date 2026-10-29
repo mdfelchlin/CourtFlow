@@ -2,14 +2,14 @@
 Author: product owner. Status: draft.
 
 ## Problem
-A club cannot create an account, cannot register its own teams for a tournament, and cannot fill out a roster when a tournament asks for one. Today a director types each team in (club, team name, and division) or imports a spreadsheet. Coaches have no account. A tournament cannot turn rosters on or leave them off, so a recreational adult tournament cannot stay simple.
+A club cannot create an account, cannot create its own teams, cannot add players to a team's roster, and cannot register those teams for a tournament. Today a director types each team in (club, team name, and division) or imports a spreadsheet. Coaches have no account. A tournament cannot turn rosters on or leave them off, so a recreational adult tournament cannot stay simple.
 
 A director cannot set when registration for a tournament opens or closes, and a division has no cap on teams. Nothing keeps a team from registering after the window has shut, or from taking a spot in a division that is already full. Registering a team is the same as the team being in the tournament. The director cannot approve it separately, and a full division has no waitlist. The tournament does not list a single price for a team, and it cannot enable an optional roster or list a roster deadline. A club has no way to register more than one team. The director cannot mark a team as paid.
 
 ## Proposed outcome
-Someone acting for a club creates an account and registers that club's teams for a tournament. When that tournament has rosters enabled, the roster information for each of those teams has to be filled out.
+Someone acting for a club creates an account, creates that club's teams, and adds players to each team's roster. A player has a name and a jersey. The roster stays on the team. The club registers those teams for a tournament. When that tournament has rosters enabled, each team's roster has to be filled out.
 
-Rosters are optional, and the director turns them on per tournament. With rosters off, the tournament asks for no roster, so a recreational adult tournament stays simple. With rosters on, each team entered in the tournament has to have its roster information filled out. The director then sets a roster deadline, and the tournament lists it. When that deadline passes, the director gets a report and chooses how to handle it. This slice does not apply an automatic consequence.
+Rosters are optional, and the director turns them on per tournament. With rosters off, the tournament asks for no roster, so a recreational adult tournament stays simple. With rosters on, each team entered in the tournament has to have its roster filled out. That roster is the players on the team, each with a name and a jersey. The director then sets a roster deadline, and the tournament lists it. When that deadline passes, the director gets a report and chooses how to handle it. This slice does not apply an automatic consequence.
 
 The director sets, on the tournament, when registration opens and when it closes, and one price for a team. The registration open, the registration close, and the roster deadline are each a date and time in the tournament's time zone. The tournament shows the registration open and the registration close, so a visitor can see both. The tournament lists that price. A club has no limit on how many of its teams can be in the tournament. The division cap still applies. This slice handles no payment. Collecting payment is a later slice. The director can mark a team as paid, for tracking. That later slice records the same paid mark when a team pays. Each division has a cap of teams. While registration is open, a club can register more than one team, each in a division. Every team is at that same price. A lower price for a club's later teams is a later slice. While the division is under its cap, that registration holds a spot and waits for the director. Once the division is at its cap, further registrations go on a waitlist, in the order they registered. A waitlisted team does not hold a spot, so the number of teams registered can be higher than the cap.
 
@@ -26,11 +26,12 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 
 ## Constraints
 - A club is not an organization. An organization is the tenant that runs tournaments. A club is an affiliation that owns teams.
-- A team is the long-lived record owned by a club. Entering that team in one division of one tournament is separate from the team itself.
+- A team is the long-lived record owned by a club. A club creates its teams. Entering that team in one division of one tournament is separate from the team itself.
+- A club adds players to a team's roster. A player has a name and a jersey. The roster stays on the team.
 - The registration open and the registration close are set on the tournament. Each is a date and time in the tournament's time zone. The tournament shows both, so a visitor can see them. The team cap is set on the division.
 - The director sets one price for a team, and the tournament lists it.
 - Rosters are off unless the director enables them on the tournament. With rosters off, no roster is collected. This keeps a recreational adult tournament simple.
-- When rosters are on, each team entered in the tournament has to have its roster information filled out. The director sets a roster deadline, and the tournament lists it. That deadline is a date and time in the tournament's time zone. When it passes, the director gets a report and chooses how to handle it. This slice does not apply an automatic consequence.
+- When rosters are on, each team entered in the tournament has to have its roster filled out: the players on that team, each with a name and a jersey. The director sets a roster deadline, and the tournament lists it. That deadline is a date and time in the tournament's time zone. When it passes, the director gets a report and chooses how to handle it. This slice does not apply an automatic consequence.
 - This slice handles no payment. Collecting payment is a later slice. The director can mark a team as paid, and can clear that mark, for tracking. The mark does not accept the team, change its spot, or change its price. The later slice records that same mark when a team pays.
 - A club can register more than one team for a tournament while registration is open. Every team is at that same price. A club has no limit on how many of its teams can be in the tournament. After registration has closed, a club cannot register a team.
 - After registration has closed, the director can still add, remove, and update teams in the tournament. An add, including an import, still counts toward the division cap.
@@ -43,6 +44,5 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 ## Open questions
 - One sign-in for the same person, who may run tournaments, act for a club, or both, versus two separate sign-ins.
 - How a club account is created, and how it relates to the existing invite-only director sign-in.
-- When rosters are enabled, what the roster records about each player, kept simple, and whether those players stay on the team or belong only to this tournament.
 - What the roster-deadline report shows, and which choices the director has for handling it.
 - How a club's teams relate to teams a director has already entered by typing a club name.
