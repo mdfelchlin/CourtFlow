@@ -9,7 +9,7 @@ A director cannot set when registration for a tournament opens or closes, and a 
 ## Proposed outcome
 Someone acting for a club creates an account, registers that club's teams for a tournament, and manages the roster they want to submit to that tournament.
 
-The director sets, on the tournament, when registration opens and when it closes, a roster deadline, and one price for a team. For now the tournament lists the roster deadline and that price. Each division has a cap of teams. While registration is open, a club can register more than one team, each in a division. Every team is at that same price. A lower price for a club's later teams is a later slice. While the division is under its cap, that registration holds a spot and waits for the director. Once the division is at its cap, further registrations go on a waitlist, in the order they registered. A waitlisted team does not hold a spot, so the number of teams registered can be higher than the cap.
+The director sets, on the tournament, when registration opens and when it closes, a roster deadline, and one price for a team. The roster deadline is a date and time. For now the tournament lists that deadline and that price. Each division has a cap of teams. While registration is open, a club can register more than one team, each in a division. Every team is at that same price. A lower price for a club's later teams is a later slice. While the division is under its cap, that registration holds a spot and waits for the director. Once the division is at its cap, further registrations go on a waitlist, in the order they registered. A waitlisted team does not hold a spot, so the number of teams registered can be higher than the cap.
 
 A team the director adds to a division, including a team from an import, counts toward that division's cap. When the teams being added would put the division over its cap, the director is asked whether to increase the cap. If the director raises the cap enough to include those teams, they are added. If the director does not raise the cap, those teams are not added.
 
@@ -24,7 +24,7 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 - A club is not an organization. An organization is the tenant that runs tournaments. A club is an affiliation that owns teams.
 - A team is the long-lived record owned by a club. Entering that team in one division of one tournament is separate from the team itself.
 - The registration open and the registration close are set on the tournament. The team cap is set on the division.
-- The tournament lists a roster deadline and one price for a team. For now those are listed. The price is not collected.
+- The tournament lists a roster deadline and one price for a team. The roster deadline is a date and time. For now those are listed. The price is not collected.
 - A club can register more than one team for a tournament while registration is open. Every team is at that same price.
 - A lower price for a club's later teams is a later slice.
 - A registration holds a spot until the division reaches its cap. Registrations after that go on the waitlist, in the order they arrived, and do not hold a spot.
@@ -35,8 +35,8 @@ Club contacts, who cannot do this today. Directors, whose tournaments currently 
 ## Open questions
 - One sign-in for the same person, who may run tournaments, act for a club, or both, versus two separate sign-ins.
 - How a club account is created, and how it relates to the existing invite-only director sign-in.
-- What "roster" is: players kept on the team, or the players submitted for one tournament, and what the club records about each player. The roster deadline is listed. What happens when that deadline passes is still open.
+- What "roster" is: players kept on the team, or the players submitted for one tournament, and what the club records about each player. The roster deadline is a date and time and is listed. What happens when that deadline passes is still open.
 - How a club's teams relate to teams a director has already entered by typing a club name.
 - Whether the director can add or import a team after registration has closed.
-- Whether the open, the close, and the roster deadline are a calendar date or a date and time. SportsWrench publishes both a date and a time. The tournament already has a time zone.
+- Whether the open and the close are a calendar date or a date and time. SportsWrench publishes both a date and a time. The tournament already has a time zone. The roster deadline is a date and time.
 - Which further SportsWrench registration patterns belong in this slice: collecting the team price, payment before a team counts, paying for every team from the club in one step, a public note that registration is open, and a limit on how many teams from one club a division will take.
