@@ -30,6 +30,8 @@ dotnet test src/CourtFlow.slnx
 
 The command has no configuration switch, no filter, no `--no-build`, and no `--no-restore`. It restores, builds, and runs every test project in the solution. Today those projects are `CourtFlow.Domain.Tests`, `CourtFlow.Application.Tests`, `CourtFlow.Api.Tests`, `CourtFlow.Web.Tests`, and `CourtFlow.AppHost.Tests`. A test project that is not in `src/CourtFlow.slnx` is outside this run. The job does not split the suite into unit and integration, and it does not add a second job.
 
+After that command, whether it passed or failed, the job writes a GitHub Actions step summary. The summary shows the run totals: total, passed, failed, skipped, and duration, and one row per test project. When one or more tests fail, the summary lists each failed test with its name, project, and the message from the log. A run that stops before those totals says so instead of showing zeroes. The summary does not change the command, and a failed test still fails the job.
+
 `TreatWarningsAsErrors` is already on, so a warning fails the build and fails this command. A failed restore, a failed build, a failed test, a Docker pull that fails, or the job timeout fails the job. The job timeout is 30 minutes. `continue-on-error` is not set.
 
 API tests start Postgres themselves through Testcontainers, using the image they already use, `postgres:16-alpine`. The workflow does not define a Postgres service container. It does not start the Aspire AppHost, Mailpit, or the local Postgres on port `5432`. The AppHost tests keep setting `COURTFLOW_SKIP_VOLUME_ADOPTION` themselves. The workflow does not set it.
@@ -64,6 +66,7 @@ The product tree under `src/` stays as it is. `src/global.json`, `src/Directory.
 - `.github/workflows/build-and-test.yml` is the workflow this slice adds. Its trigger is `pull_request` to `main`, with no path filter and no `pull_request_target`.
 - The job is named `build-and-test`, runs on `ubuntu-latest`, times out at 30 minutes, sets permissions to `contents: read`, and declares no secrets.
 - The job's test command is `dotnet test src/CourtFlow.slnx` from the repository root, with no extra arguments.
+- The job summary lists total, passed, failed, and skipped. A failed test is named there with its message. The job still fails when a test fails.
 - A pull request into `main` shows the check `Build and test / build-and-test`. A failing test fails that check.
 - The ruleset on `main` requires a pull request and that check, and its bypass list is empty.
 - The same `dotnet test src/CourtFlow.slnx` command still passes locally when a container runtime is available.

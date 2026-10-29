@@ -36,4 +36,16 @@ jobs:
           test "$(dotnet --version)" = "$version"
 
       - name: Test
-        run: dotnet test src/CourtFlow.slnx
+        id: test
+        run: |
+          set +e
+          dotnet test src/CourtFlow.slnx > "$RUNNER_TEMP/test-output.txt"
+          code=$?
+          cat "$RUNNER_TEMP/test-output.txt"
+          exit "$code"
+
+      - name: Summarize tests
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: python3 .github/scripts/summarize-tests.py "$RUNNER_TEMP/test-output.txt"

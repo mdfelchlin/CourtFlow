@@ -81,8 +81,22 @@ jobs:
           test "$(dotnet --version)" = "$version"
 
       - name: Test
-        run: dotnet test src/CourtFlow.slnx
+        id: test
+        run: |
+          set +e
+          dotnet test src/CourtFlow.slnx > "$RUNNER_TEMP/test-output.txt"
+          code=$?
+          cat "$RUNNER_TEMP/test-output.txt"
+          exit "$code"
+
+      - name: Summarize tests
+        if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: python3 .github/scripts/summarize-tests.py "$RUNNER_TEMP/test-output.txt"
 ```
+
+[.github/scripts/summarize-tests.py](../../.github/scripts/summarize-tests.py) reads that captured log. It writes the totals and, when tests fail, each failed test's name and message to `$GITHUB_STEP_SUMMARY`. The test command stays `dotnet test src/CourtFlow.slnx`. The summary step runs even when the test step fails, and it does not change the job's exit.
 
 Omit `types` on `pull_request`, so the default events run for draft and ready pull requests. Omit `paths` and `paths-ignore`. The concurrency group is the pull request number, so a new commit cancels the in-progress run for the older commit. A cancelled run is not a success. There is one job, so the suite is not split.
 
